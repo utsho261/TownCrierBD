@@ -15,7 +15,7 @@ public class Announcement {
     private String description;
     private String phone;
 
-    private String imageBase64;
+    private String imageUrl;  // ✅ Base64 এর বদলে Cloudinary URL
 
     private double lat;
     private double lng;
@@ -29,20 +29,15 @@ public class Announcement {
     public String getUserId() { return userId; }
     public String getUserName() { return userName; }
     public String getUserRole() { return userRole; }
-
     public String getCategory() { return category; }
     public String getSubcategory() { return subcategory; }
     public String getCustomSubcategory() { return customSubcategory; }
-
     public String getTitle() { return title; }
     public String getDescription() { return description; }
     public String getPhone() { return phone; }
-
-    public String getImageBase64() { return imageBase64; }
-
+    public String getImageUrl() { return imageUrl; }  // ✅
     public double getLat() { return lat; }
     public double getLng() { return lng; }
-
     public long getTime() { return time; }
     public long getExpireAt() { return expireAt; }
 
@@ -50,20 +45,15 @@ public class Announcement {
     public void setUserId(String userId) { this.userId = userId; }
     public void setUserName(String userName) { this.userName = userName; }
     public void setUserRole(String userRole) { this.userRole = userRole; }
-
     public void setCategory(String category) { this.category = category; }
     public void setSubcategory(String subcategory) { this.subcategory = subcategory; }
-    public void setCustomSubcategory(String customSubcategory) { this.customSubcategory = customSubcategory; }
-
+    public void setCustomSubcategory(String s) { this.customSubcategory = s; }
     public void setTitle(String title) { this.title = title; }
-    public void setDescription(String description) { this.description = description; }
+    public void setDescription(String d) { this.description = d; }
     public void setPhone(String phone) { this.phone = phone; }
-
-    public void setImageBase64(String imageBase64) { this.imageBase64 = imageBase64; }
-
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }  // ✅
     public void setLat(double lat) { this.lat = lat; }
     public void setLng(double lng) { this.lng = lng; }
-
     public void setTime(long time) { this.time = time; }
     public void setExpireAt(long expireAt) { this.expireAt = expireAt; }
 

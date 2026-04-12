@@ -20,6 +20,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.bumptech.glide.Glide;
 import com.example.towncrierbd.R;
 import com.example.towncrierbd.models.Announcement;
 import com.example.towncrierbd.models.UserModel;
@@ -332,20 +333,18 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             tvDistance.setText("Nearby");
         }
 
-        // ✅ Image: if empty -> hide (NO garbage)
-        String b64 = safe(a.getImageBase64());
-        if (b64.isEmpty()) {
-            ivCover.setImageDrawable(null);
-            ivCover.setVisibility(android.view.View.GONE);
+        // ✅ Glide দিয়ে image load
+        String imgUrl = safe(a.getImageUrl());
+        if (!imgUrl.isEmpty()) {
+            ivCover.setVisibility(android.view.View.VISIBLE);
+            Glide.with(this)
+                    .load(imgUrl)
+                    .centerCrop()
+                    .placeholder(android.R.drawable.ic_menu_gallery)
+                    .into(ivCover);
         } else {
-            Bitmap bmp = ImageBase64Util.base64ToBitmap(b64);
-            if (bmp != null) {
-                ivCover.setVisibility(android.view.View.VISIBLE);
-                ivCover.setImageBitmap(bmp);
-            } else {
-                ivCover.setImageDrawable(null);
-                ivCover.setVisibility(android.view.View.GONE);
-            }
+            ivCover.setVisibility(android.view.View.GONE);
+            ivCover.setImageDrawable(null);
         }
 
         btnCall.setOnClickListener(v -> {
@@ -370,8 +369,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
 
         btnDetails.setOnClickListener(v ->
-                Toast.makeText(this, "Details screen later", Toast.LENGTH_SHORT).show()
-        );
+                Toast.makeText(this, "Details screen later", Toast.LENGTH_SHORT).show());
 
         sheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
     }

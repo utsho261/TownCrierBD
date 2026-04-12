@@ -14,7 +14,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- ✅ Image: default GONE (no placeholder) -->
+        <!-- Image -->
         <ImageView
             android:id="@+id/ivPhoto"
             android:layout_width="match_parent"
@@ -64,6 +64,17 @@
             android:text="Description"
             android:textColor="#666666"
             android:textSize="15sp" />
+
+        <!-- ✅ Time -->
+        <TextView
+            android:id="@+id/tvTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="4dp"
+            android:text="Just now"
+            android:textColor="#999999"
+            android:textSize="12sp" />
 
         <!-- User row -->
         <LinearLayout
@@ -160,7 +171,6 @@
                 android:insetTop="0dp"
                 android:insetBottom="0dp" />
         </LinearLayout>
-
 
     </LinearLayout>
 </androidx.cardview.widget.CardView>

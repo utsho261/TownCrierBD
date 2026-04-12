@@ -194,27 +194,25 @@ public class GeneralFeedActivity extends AppCompatActivity {
 
     private void applyAndShow() {
         String myUid = auth.getUid();
+        long now = System.currentTimeMillis();
         List<Announcement> out = new ArrayList<>();
 
         for (Announcement a : all) {
             if (a == null) continue;
-
-            // own post never in FEED (own post goes to Profile)
             if (myUid != null && myUid.equals(a.getUserId())) continue;
 
-            // show only opposite role
+            // ✅ Expired বাদ
+            if (a.getExpireAt() > 0 && now > a.getExpireAt()) continue;
+
             String postRole = safe(a.getUserRole());
             if (!wantRole.equals(postRole)) continue;
 
-            // category filter
             if (!CategoryConfig.CAT_ALL.equals(selectedCategory)) {
                 String c = a.getCategory() == null ? "" : a.getCategory().trim();
                 if (!selectedCategory.equals(c)) continue;
             }
 
-            // distance filter
             if (!locationReady) continue;
-
             double dist = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
             if (dist <= Constants.FEED_RADIUS_KM) out.add(a);
         }

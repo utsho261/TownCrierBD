@@ -38,8 +38,6 @@ dependencies {
     implementation("com.google.firebase:firebase-database")
     implementation("com.google.firebase:firebase-storage")
     implementation("com.google.firebase:firebase-functions")
-    implementation("com.google.firebase:firebase-storage:20.3.0")
-
 
     implementation("com.google.android.gms:play-services-maps:18.2.0")
     implementation("com.google.android.gms:play-services-location:21.0.1")
@@ -48,4 +46,6 @@ dependencies {
     implementation("com.github.bumptech.glide:glide:4.16.0")
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 
+    // ✅ Cloudinary
+    implementation("com.cloudinary:cloudinary-android:2.3.1")
 }

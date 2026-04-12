@@ -151,16 +151,18 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
      */
     private void applyAndShow() {
         String myUid = auth.getUid();
+        long now = System.currentTimeMillis();
         List<Announcement> out = new ArrayList<>();
 
         for (Announcement a : all) {
             if (a == null) continue;
+            if (myUid != null && myUid.equals(a.getUserId())) continue;
 
-            if (myUid != null && myUid.equals(a.getUserId())) continue; // own post -> profile
+            // ✅ Expired বাদ
+            if (a.getExpireAt() > 0 && now > a.getExpireAt()) continue;
 
-            // ✅ resolve role even if old post missing it
             String postRole = resolvePostRole(a);
-            if (!Constants.ROLE_USER.equals(postRole)) continue; // announcer sees ONLY users
+            if (!Constants.ROLE_USER.equals(postRole)) continue;
 
             if (!locationReady) continue;
             double dist = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());

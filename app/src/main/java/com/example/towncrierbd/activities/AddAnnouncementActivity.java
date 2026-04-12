@@ -22,8 +22,8 @@ import com.example.towncrierbd.R;
 import com.example.towncrierbd.models.Announcement;
 import com.example.towncrierbd.models.UserModel;
 import com.example.towncrierbd.utils.CategoryConfig;
+import com.example.towncrierbd.utils.CloudinaryUploader;
 import com.example.towncrierbd.utils.Constants;
-import com.example.towncrierbd.utils.ImageBase64Util;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.*;
 
@@ -36,15 +36,14 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     private Spinner spCategory, spSubcategory;
     private EditText etCustomSub, etTitle, etDesc, etHours;
     private Button btnCancel, btnPublish;
-    private ImageView btnClose;
-
+    private ImageView btnClose, ivPreview;
     private View btnAddImage;
     private TextView tvImageStatus;
 
     private FirebaseAuth auth;
     private DatabaseReference annRef, userRef;
 
-    private String imageBase64 = ""; // ✅ Base64 image (optional)
+    private Bitmap selectedBitmap = null;
 
     private ActivityResultLauncher<Intent> galleryLauncher;
     private ActivityResultLauncher<String[]> permissionLauncher;
@@ -54,23 +53,21 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_announcement);
 
-        spCategory = findViewById(R.id.spCategory);
+        spCategory    = findViewById(R.id.spCategory);
         spSubcategory = findViewById(R.id.spSubcategory);
-
-        etCustomSub = findViewById(R.id.etCustomSub);
-        etTitle = findViewById(R.id.etTitle);
-        etDesc = findViewById(R.id.etDesc);
-        etHours = findViewById(R.id.etHours);
-
-        btnCancel = findViewById(R.id.btnCancel);
-        btnPublish = findViewById(R.id.btnPublish);
-        btnClose = findViewById(R.id.btnClose);
-
-        btnAddImage = findViewById(R.id.btnAddImage);
+        etCustomSub   = findViewById(R.id.etCustomSub);
+        etTitle       = findViewById(R.id.etTitle);
+        etDesc        = findViewById(R.id.etDesc);
+        etHours       = findViewById(R.id.etHours);
+        btnCancel     = findViewById(R.id.btnCancel);
+        btnPublish    = findViewById(R.id.btnPublish);
+        btnClose      = findViewById(R.id.btnClose);
+        btnAddImage   = findViewById(R.id.btnAddImage);
         tvImageStatus = findViewById(R.id.tvImageStatus);
+        ivPreview     = findViewById(R.id.ivPreview);
 
-        auth = FirebaseAuth.getInstance();
-        annRef = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
+        auth    = FirebaseAuth.getInstance();
+        annRef  = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
         userRef = FirebaseDatabase.getInstance().getReference(Constants.DB_USERS);
 
         setupPermissions();
@@ -80,29 +77,24 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         btnCancel.setOnClickListener(v -> finish());
         if (btnClose != null) btnClose.setOnClickListener(v -> finish());
         btnPublish.setOnClickListener(v -> publish());
-
         if (btnAddImage != null) btnAddImage.setOnClickListener(v -> showImageChooser());
     }
 
     private void setupPermissions() {
         permissionLauncher = registerForActivityResult(
-                new ActivityResultContracts.RequestMultiplePermissions(),
-                result -> {}
-        );
+                new ActivityResultContracts.RequestMultiplePermissions(), result -> {});
     }
 
     private void requestImagePermissionsIfNeeded() {
         List<String> need = new ArrayList<>();
         if (Build.VERSION.SDK_INT >= 33) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
-                    != PackageManager.PERMISSION_GRANTED) {
+                    != PackageManager.PERMISSION_GRANTED)
                 need.add(Manifest.permission.READ_MEDIA_IMAGES);
-            }
         } else {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                    != PackageManager.PERMISSION_GRANTED) {
+                    != PackageManager.PERMISSION_GRANTED)
                 need.add(Manifest.permission.READ_EXTERNAL_STORAGE);
-            }
         }
         if (!need.isEmpty()) permissionLauncher.launch(need.toArray(new String[0]));
     }
@@ -114,11 +106,15 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                     if (res.getResultCode() == RESULT_OK && res.getData() != null) {
                         Uri uri = res.getData().getData();
                         if (uri == null) return;
-
                         try {
-                            Bitmap bmp = MediaStore.Images.Media.getBitmap(getContentResolver(), uri);
-                            imageBase64 = ImageBase64Util.bitmapToBase64(bmp);
-                            if (tvImageStatus != null) tvImageStatus.setText("Image selected ✅");
+                            selectedBitmap = MediaStore.Images.Media
+                                    .getBitmap(getContentResolver(), uri);
+                            if (ivPreview != null) {
+                                ivPreview.setVisibility(View.VISIBLE);
+                                ivPreview.setImageBitmap(selectedBitmap);
+                            }
+                            if (tvImageStatus != null)
+                                tvImageStatus.setText("Image selected ✅");
                         } catch (IOException e) {
                             toast("Image read failed");
                         }
@@ -145,31 +141,27 @@ public class AddAnnouncementActivity extends AppCompatActivity {
 
     private void setupCategoryUI() {
         List<String> cats = new ArrayList<>(CategoryConfig.MAIN);
-        ArrayAdapter<String> catAdapter = new ArrayAdapter<>(this, R.layout.spinner_selected_white, cats);
+        ArrayAdapter<String> catAdapter = new ArrayAdapter<>(
+                this, R.layout.spinner_selected_white, cats);
         catAdapter.setDropDownViewResource(R.layout.spinner_dropdown_dark);
         spCategory.setAdapter(catAdapter);
 
         spCategory.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+            @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
                 updateSubcategoryUI(getSelected(spCategory));
             }
-            @Override public void onNothingSelected(AdapterView<?> parent) {}
+            @Override public void onNothingSelected(AdapterView<?> p) {}
         });
 
         spSubcategory.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+            @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
                 String cat = getSelected(spCategory);
                 String sub = getSelected(spSubcategory);
-
-                if ("Others".equals(cat)) {
-                    showCustom(true, "Optional: Write details if needed");
-                } else if ("Other".equalsIgnoreCase(sub)) {
-                    showCustom(true, "Specify other (optional)");
-                } else {
-                    showCustom(false, "");
-                }
+                if ("Others".equals(cat)) showCustom(true, "Optional: Write details");
+                else if ("Other".equalsIgnoreCase(sub)) showCustom(true, "Specify other (optional)");
+                else showCustom(false, "");
             }
-            @Override public void onNothingSelected(AdapterView<?> parent) {}
+            @Override public void onNothingSelected(AdapterView<?> p) {}
         });
     }
 
@@ -177,12 +169,11 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         List<String> subs = new ArrayList<>();
         subs.add("Select subcategory");
         if (!"Others".equals(cat)) subs.addAll(CategoryConfig.getSubcategories(cat));
-
-        ArrayAdapter<String> subAdapter = new ArrayAdapter<>(this, R.layout.spinner_dropdown_dark, subs);
+        ArrayAdapter<String> subAdapter = new ArrayAdapter<>(
+                this, R.layout.spinner_dropdown_dark, subs);
         subAdapter.setDropDownViewResource(R.layout.spinner_dropdown_dark);
         spSubcategory.setAdapter(subAdapter);
-
-        showCustom("Others".equals(cat), "Optional: Write details if needed");
+        showCustom("Others".equals(cat), "Optional: Write details");
     }
 
     private void showCustom(boolean show, String hint) {
@@ -200,17 +191,16 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     // ---------------- Publish ----------------
 
     private void publish() {
-        String title = etTitle.getText().toString().trim();
-        String desc  = etDesc.getText().toString().trim();
-
-        String cat = getSelected(spCategory);
-        String subSel = getSelected(spSubcategory);
+        String title    = etTitle.getText().toString().trim();
+        String desc     = etDesc.getText().toString().trim();
+        String cat      = getSelected(spCategory);
+        String subSel   = getSelected(spSubcategory);
         if ("Select subcategory".equalsIgnoreCase(subSel)) subSel = "";
-        String custom = etCustomSub.getText().toString().trim();
-
+        String custom   = etCustomSub.getText().toString().trim();
         String hoursStr = etHours.getText().toString().trim();
         long hoursValue = 24;
-        try { if (!hoursStr.isEmpty()) hoursValue = Long.parseLong(hoursStr); } catch (Exception ignored) {}
+        try { if (!hoursStr.isEmpty()) hoursValue = Long.parseLong(hoursStr); }
+        catch (Exception ignored) {}
 
         if (title.isEmpty() || desc.isEmpty()) {
             toast("Title & Description required");
@@ -221,57 +211,72 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         if (uid == null) return;
 
         btnPublish.setEnabled(false);
+        if (tvImageStatus != null) tvImageStatus.setText("Please wait...");
 
-        final String fCat = cat, fSub = subSel, fCustom = custom, fTitle = title, fDesc = desc;
+        final String fCat = cat, fSub = subSel, fCustom = custom,
+                fTitle = title, fDesc = desc;
         final long fHours = hoursValue;
 
         userRef.child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
                 UserModel u = snapshot.getValue(UserModel.class);
-                if (u == null) { btnPublish.setEnabled(true); toast("User not found"); return; }
+                if (u == null) {
+                    btnPublish.setEnabled(true);
+                    toast("User not found");
+                    return;
+                }
 
                 if (u.getLat() == 0.0 && u.getLng() == 0.0) {
                     btnPublish.setEnabled(true);
-                    toast("Location not detected yet. Open Feed once and try again.");
+                    toast("Location not detected. Open Feed once and try again.");
                     return;
                 }
 
                 String id = annRef.push().getKey();
                 if (id == null) { btnPublish.setEnabled(true); return; }
 
-                long now = System.currentTimeMillis();
+                long now      = System.currentTimeMillis();
                 long expireAt = now + (fHours * 60L * 60L * 1000L);
 
                 Announcement a = new Announcement();
                 a.setId(id);
                 a.setUserId(uid);
                 a.setUserName(u.getName());
-
-                // ✅ IMPORTANT
                 String role = (u.getRole() == null || u.getRole().trim().isEmpty())
-                        ? Constants.ROLE_USER
-                        : u.getRole().trim();
+                        ? Constants.ROLE_USER : u.getRole().trim();
                 a.setUserRole(role);
-
                 a.setCategory(fCat);
                 a.setSubcategory(fSub);
                 a.setCustomSubcategory(fCustom);
-
                 a.setTitle(fTitle);
                 a.setDescription(fDesc);
-
                 a.setPhone(u.getPhone());
                 a.setLat(u.getLat());
                 a.setLng(u.getLng());
-
                 a.setTime(now);
                 a.setExpireAt(expireAt);
 
-                a.setImageBase64(imageBase64 == null ? "" : imageBase64);
-
-                annRef.child(id).setValue(a)
-                        .addOnSuccessListener(v -> { toast("Published"); finish(); })
-                        .addOnFailureListener(e -> { btnPublish.setEnabled(true); toast("Save failed"); });
+                if (selectedBitmap != null) {
+                    if (tvImageStatus != null) tvImageStatus.setText("Uploading image...");
+                    CloudinaryUploader.uploadBitmap(
+                            AddAnnouncementActivity.this,
+                            selectedBitmap,
+                            new CloudinaryUploader.UploadListener() {
+                                @Override public void onSuccess(String imageUrl) {
+                                    a.setImageUrl(imageUrl);
+                                    saveAnnouncement(a, id);
+                                }
+                                @Override public void onError(String message) {
+                                    a.setImageUrl("");
+                                    saveAnnouncement(a, id);
+                                    toast("Image upload failed, posting without image");
+                                }
+                            }
+                    );
+                } else {
+                    a.setImageUrl("");
+                    saveAnnouncement(a, id);
+                }
             }
 
             @Override public void onCancelled(@NonNull DatabaseError error) {
@@ -279,6 +284,16 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 toast("Failed");
             }
         });
+    }
+
+    private void saveAnnouncement(Announcement a, String id) {
+        annRef.child(id).setValue(a)
+                .addOnSuccessListener(v -> { toast("Published ✅"); finish(); })
+                .addOnFailureListener(e -> {
+                    btnPublish.setEnabled(true);
+                    if (tvImageStatus != null) tvImageStatus.setText("");
+                    toast("Save failed");
+                });
     }
 
     private void toast(String s) {
