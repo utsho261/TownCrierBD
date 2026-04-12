@@ -1,0 +1,7 @@
+<resources>
+    <color name="blue_start">#2196F3</color>
+    <color name="blue_end">#00BCD4</color>
+    <color name="white">#FFFFFF</color>
+    <color name="hint_gray">#9E9E9E</color>
+    <color name="text_primary">#0D47A1</color>
+</resources>

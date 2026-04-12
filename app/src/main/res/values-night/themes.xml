@@ -1,0 +1,14 @@
+<resources>
+    <style name="Theme.TownCrierBD" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/blue_end</item>
+        <item name="colorPrimaryVariant">@color/blue_start</item>
+        <item name="colorOnPrimary">@color/white</item>
+
+        <item name="colorSecondary">@color/blue_start</item>
+        <item name="colorSecondaryVariant">@color/blue_end</item>
+        <item name="colorOnSecondary">@color/white</item>
+
+        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <item name="android:navigationBarColor">?attr/colorPrimaryVariant</item>
+    </style>
+</resources>
