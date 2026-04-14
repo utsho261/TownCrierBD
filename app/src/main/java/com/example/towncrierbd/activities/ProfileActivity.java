@@ -1,9 +1,14 @@
 package com.example.towncrierbd.activities;
 
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -24,7 +29,7 @@ import java.util.List;
 public class ProfileActivity extends AppCompatActivity {
 
     private TextView tvName, tvRole, tvEmail, tvPhone;
-    private Button btnLogout;
+    private Button btnLogout, btnEditProfile;
 
     private RecyclerView rvMyPosts;
     private FeedAdapter myPostsAdapter;
@@ -32,19 +37,21 @@ public class ProfileActivity extends AppCompatActivity {
     private FirebaseAuth auth;
     private DatabaseReference userRef, annRef;
 
+    private UserModel currentUser = null;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
 
-        tvName    = findViewById(R.id.tvName);
-        tvRole    = findViewById(R.id.tvRole);
-        tvEmail   = findViewById(R.id.tvEmail);
-        tvPhone   = findViewById(R.id.tvPhone);
-        btnLogout = findViewById(R.id.btnLogout);
-        rvMyPosts = findViewById(R.id.rvMyPosts);
+        tvName        = findViewById(R.id.tvName);
+        tvRole        = findViewById(R.id.tvRole);
+        tvEmail       = findViewById(R.id.tvEmail);
+        tvPhone       = findViewById(R.id.tvPhone);
+        btnLogout     = findViewById(R.id.btnLogout);
+        btnEditProfile = findViewById(R.id.btnEditProfile);
+        rvMyPosts     = findViewById(R.id.rvMyPosts);
 
-        // ✅ Profile mode: edit/delete দেখাবে, card click disable
         myPostsAdapter = new FeedAdapter(this);
         myPostsAdapter.setShowEditDelete(true);
         myPostsAdapter.setDisableCardClick(true);
@@ -63,6 +70,11 @@ public class ProfileActivity extends AppCompatActivity {
             finish();
         });
 
+        // ✅ Profile Edit
+        if (btnEditProfile != null) {
+            btnEditProfile.setOnClickListener(v -> showEditProfileDialog());
+        }
+
         loadProfile();
         loadMyPosts();
     }
@@ -78,10 +90,10 @@ public class ProfileActivity extends AppCompatActivity {
         if (uid == null) return;
 
         userRef.child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
+            @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
                 UserModel u = snapshot.getValue(UserModel.class);
                 if (u == null) return;
+                currentUser = u;
 
                 tvName.setText(u.getName());
                 tvRole.setText(u.getRole());
@@ -90,9 +102,7 @@ public class ProfileActivity extends AppCompatActivity {
 
                 myPostsAdapter.setMyLocation(u.getLat(), u.getLng());
             }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {}
+            @Override public void onCancelled(@NonNull DatabaseError error) {}
         });
     }
 
@@ -102,8 +112,7 @@ public class ProfileActivity extends AppCompatActivity {
 
         annRef.orderByChild("userId").equalTo(uid)
                 .addValueEventListener(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
                         List<Announcement> list = new ArrayList<>();
                         for (DataSnapshot s : snapshot.getChildren()) {
                             Announcement a = s.getValue(Announcement.class);
@@ -114,10 +123,68 @@ public class ProfileActivity extends AppCompatActivity {
                         }
                         myPostsAdapter.setData(list);
                     }
-
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {}
+                    @Override public void onCancelled(@NonNull DatabaseError error) {}
                 });
+    }
+
+    // ✅ Profile Edit Dialog
+    private void showEditProfileDialog() {
+        if (currentUser == null) {
+            Toast.makeText(this, "Profile not loaded yet", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(48, 16, 48, 0);
+
+        TextView labelName = new TextView(this);
+        labelName.setText("Name");
+        labelName.setTextSize(14);
+        EditText etName = new EditText(this);
+        etName.setText(currentUser.getName());
+
+        TextView labelPhone = new TextView(this);
+        labelPhone.setText("Phone");
+        labelPhone.setTextSize(14);
+        labelPhone.setPadding(0, 16, 0, 0);
+        EditText etPhone = new EditText(this);
+        etPhone.setText(currentUser.getPhone());
+        etPhone.setInputType(android.text.InputType.TYPE_CLASS_PHONE);
+
+        layout.addView(labelName);
+        layout.addView(etName);
+        layout.addView(labelPhone);
+        layout.addView(etPhone);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Edit Profile")
+                .setView(layout)
+                .setPositiveButton("Save", (d, w) -> {
+                    String newName  = etName.getText().toString().trim();
+                    String newPhone = etPhone.getText().toString().trim();
+
+                    if (newName.isEmpty()) {
+                        Toast.makeText(this, "Name cannot be empty", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    String uid = auth.getUid();
+                    if (uid == null) return;
+
+                    userRef.child(uid).child("name").setValue(newName);
+                    userRef.child(uid).child("phone").setValue(newPhone);
+
+                    currentUser.setName(newName);
+                    currentUser.setPhone(newPhone);
+
+                    tvName.setText(newName);
+                    tvPhone.setText("Phone: " + newPhone);
+
+                    Toast.makeText(this, "Profile updated ✅", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private String safe(String s) { return s == null ? "" : s.trim(); }

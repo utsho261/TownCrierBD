@@ -50,10 +50,12 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
 
     public void setShowEditDelete(boolean show) {
         this.showEditDelete = show;
+        notifyDataSetChanged();
     }
 
     public void setDisableCardClick(boolean disable) {
         this.disableCardClick = disable;
+        notifyDataSetChanged();
     }
 
     public void release() {
@@ -124,67 +126,73 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             h.tvDistance.setText("Nearby");
         }
 
-        // ✅ Profile এ Listen/Chat/Call hide করো
+        // ✅ Profile mode: Edit/Delete দেখাও, Listen/Chat/Call লুকাও
         if (showEditDelete) {
-            h.btnListen.setVisibility(View.GONE);
-            h.btnChat.setVisibility(View.GONE);
-            h.btnCall.setVisibility(View.GONE);
+            if (h.btnListen != null) h.btnListen.setVisibility(View.GONE);
+            if (h.btnChat != null) h.btnChat.setVisibility(View.GONE);
+            if (h.btnCall != null) h.btnCall.setVisibility(View.GONE);
+            if (h.layoutEditDelete != null) h.layoutEditDelete.setVisibility(View.VISIBLE);
+
+            if (h.btnEdit != null) h.btnEdit.setOnClickListener(v -> showEditDialog(a, pos));
+            if (h.btnDelete != null) {
+                h.btnDelete.setOnClickListener(v ->
+                        new AlertDialog.Builder(context)
+                                .setTitle("Delete Post")
+                                .setMessage("Are you sure?")
+                                .setPositiveButton("Delete", (d, w) -> deletePost(a, pos))
+                                .setNegativeButton("Cancel", null)
+                                .show()
+                );
+            }
+            if (h.btnDetails != null) {
+                h.btnDetails.setOnClickListener(v -> openDetail(a));
+            }
+
         } else {
-            h.btnListen.setVisibility(View.VISIBLE);
-            h.btnChat.setVisibility(View.VISIBLE);
-            h.btnCall.setVisibility(View.VISIBLE);
+            // Feed mode
+            if (h.btnListen != null) h.btnListen.setVisibility(View.VISIBLE);
+            if (h.btnChat != null) h.btnChat.setVisibility(View.VISIBLE);
+            if (h.btnCall != null) h.btnCall.setVisibility(View.VISIBLE);
+            if (h.layoutEditDelete != null) h.layoutEditDelete.setVisibility(View.GONE);
 
-            // Call
-            h.btnCall.setOnClickListener(v -> {
-                String phone = safe(a.getPhone());
-                if (phone.isEmpty()) {
-                    Toast.makeText(context, "No phone number", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                context.startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + phone)));
-            });
+            if (h.btnCall != null) {
+                h.btnCall.setOnClickListener(v -> {
+                    String phone = safe(a.getPhone());
+                    if (phone.isEmpty()) {
+                        Toast.makeText(context, "No phone number", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    context.startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + phone)));
+                });
+            }
 
-            // Chat
-            h.btnChat.setOnClickListener(v -> {
-                String phone = safe(a.getPhone());
-                if (phone.isEmpty()) {
-                    Toast.makeText(context, "No phone number", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                Intent i = new Intent(Intent.ACTION_SENDTO);
-                i.setData(Uri.parse("smsto:" + phone));
-                i.putExtra("sms_body", "Hello! I'm interested in: " + safe(a.getTitle()));
-                context.startActivity(i);
-            });
+            if (h.btnChat != null) {
+                h.btnChat.setOnClickListener(v -> {
+                    String phone = safe(a.getPhone());
+                    if (phone.isEmpty()) {
+                        Toast.makeText(context, "No phone number", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    Intent i = new Intent(Intent.ACTION_SENDTO);
+                    i.setData(Uri.parse("smsto:" + phone));
+                    i.putExtra("sms_body", "Hello! I'm interested in: " + safe(a.getTitle()));
+                    context.startActivity(i);
+                });
+            }
 
-            // Listen
-            h.btnListen.setOnClickListener(v -> {
-                String speak = safe(a.getTitle()) + ". " + safe(a.getDescription());
-                if (tts != null) tts.speak(speak, TextToSpeech.QUEUE_FLUSH, null, "tc_announce");
-            });
+            if (h.btnListen != null) {
+                h.btnListen.setOnClickListener(v -> {
+                    String speak = safe(a.getTitle()) + ". " + safe(a.getDescription());
+                    if (tts != null) tts.speak(speak, TextToSpeech.QUEUE_FLUSH, null, "tc_announce");
+                });
+            }
         }
 
-        // ✅ Card click → Detail (Profile এ disable)
+        // ✅ Card click → Detail (Profile mode তে disable)
         if (!disableCardClick) {
             h.itemView.setOnClickListener(v -> openDetail(a));
         } else {
             h.itemView.setOnClickListener(null);
-        }
-
-        // ✅ Edit/Delete — শুধু Profile এ
-        if (showEditDelete && h.layoutEditDelete != null) {
-            h.layoutEditDelete.setVisibility(View.VISIBLE);
-            h.btnEdit.setOnClickListener(v -> showEditDialog(a, pos));
-            h.btnDelete.setOnClickListener(v ->
-                    new AlertDialog.Builder(context)
-                            .setTitle("Delete Post")
-                            .setMessage("Are you sure you want to delete this post?")
-                            .setPositiveButton("Delete", (d, w) -> deletePost(a, pos))
-                            .setNegativeButton("Cancel", null)
-                            .show()
-            );
-        } else if (h.layoutEditDelete != null) {
-            h.layoutEditDelete.setVisibility(View.GONE);
         }
     }
 
@@ -264,9 +272,11 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                 .child(a.getId())
                 .removeValue()
                 .addOnSuccessListener(v -> {
-                    items.remove(pos);
-                    notifyItemRemoved(pos);
-                    notifyItemRangeChanged(pos, items.size());
+                    if (pos < items.size()) {
+                        items.remove(pos);
+                        notifyItemRemoved(pos);
+                        notifyItemRangeChanged(pos, items.size());
+                    }
                     Toast.makeText(context, "Deleted ✅", Toast.LENGTH_SHORT).show();
                 })
                 .addOnFailureListener(e ->
@@ -293,7 +303,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         TextView tvBadge, tvTitle, tvDesc, tvAvatar, tvName, tvDistance, tvTime;
         View btnListen, btnChat, btnCall;
         View layoutEditDelete;
-        android.widget.Button btnEdit, btnDelete;
+        android.widget.Button btnEdit, btnDelete, btnDetails;
 
         public VH(@NonNull View itemView) {
             super(itemView);
@@ -311,6 +321,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             layoutEditDelete = itemView.findViewById(R.id.layoutEditDelete);
             btnEdit          = itemView.findViewById(R.id.btnEdit);
             btnDelete        = itemView.findViewById(R.id.btnDelete);
+            btnDetails       = itemView.findViewById(R.id.btnDetails);
         }
     }
 

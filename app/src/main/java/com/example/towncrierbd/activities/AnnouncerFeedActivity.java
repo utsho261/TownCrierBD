@@ -10,6 +10,7 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Looper;
 import android.provider.Settings;
+import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -41,6 +42,9 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     private FeedAdapter adapter;
     private FloatingActionButton fabAdd;
 
+    // ✅ Empty state
+    private View layoutEmpty;
+
     private FirebaseAuth auth;
     private DatabaseReference annRef, userRef;
 
@@ -54,7 +58,6 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     private final List<Announcement> all = new ArrayList<>();
     private ValueEventListener feedListener;
 
-    // ✅ cache user roles to fix old posts missing userRole
     private final Map<String, String> roleCache = new HashMap<>();
     private final Set<String> roleFetching = new HashSet<>();
 
@@ -63,24 +66,25 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_announcer_feed);
 
-        tvWelcome = findViewById(R.id.tvWelcome);
+        tvWelcome      = findViewById(R.id.tvWelcome);
         tvLocationName = findViewById(R.id.tvLocationName);
-        tvRadius = findViewById(R.id.tvRadius);
-
-        rvFeed = findViewById(R.id.rvFeed);
-        fabAdd = findViewById(R.id.fabAdd);
+        tvRadius       = findViewById(R.id.tvRadius);
+        rvFeed         = findViewById(R.id.rvFeed);
+        fabAdd         = findViewById(R.id.fabAdd);
+        layoutEmpty    = findViewById(R.id.layoutEmpty);
 
         adapter = new FeedAdapter(this);
         rvFeed.setLayoutManager(new LinearLayoutManager(this));
         rvFeed.setAdapter(adapter);
 
-        auth = FirebaseAuth.getInstance();
-        annRef = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
+        auth    = FirebaseAuth.getInstance();
+        annRef  = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
         userRef = FirebaseDatabase.getInstance().getReference(Constants.DB_USERS);
 
         if (tvRadius != null) tvRadius.setText("within " + Constants.FEED_RADIUS_KM + " km");
 
-        fabAdd.setOnClickListener(v -> startActivity(new Intent(this, AddAnnouncementActivity.class)));
+        fabAdd.setOnClickListener(v ->
+                startActivity(new Intent(this, AddAnnouncementActivity.class)));
 
         BottomNavigationView nav = findViewById(R.id.bottomNav);
         if (nav != null) {
@@ -104,11 +108,18 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         startLiveLocation();
     }
 
+    // ✅ Back press করলে app minimize হবে
+    @Override
+    public void onBackPressed() {
+        moveTaskToBack(true);
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
         if (feedListener != null) annRef.removeEventListener(feedListener);
-        if (locationClient != null && locationCallback != null) locationClient.removeLocationUpdates(locationCallback);
+        if (locationClient != null && locationCallback != null)
+            locationClient.removeLocationUpdates(locationCallback);
         if (adapter != null) adapter.release();
     }
 
@@ -118,7 +129,8 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         userRef.child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
                 UserModel u = snapshot.getValue(UserModel.class);
-                if (u != null && u.getName() != null) tvWelcome.setText("Welcome Back, " + u.getName() + "!");
+                if (u != null && u.getName() != null)
+                    tvWelcome.setText("Welcome Back, " + u.getName() + "!");
             }
             @Override public void onCancelled(@NonNull DatabaseError error) {}
         });
@@ -144,11 +156,6 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         annRef.addValueEventListener(feedListener);
     }
 
-    /**
-     * ✅ Announcer Feed Rule:
-     * - show ONLY USER posts (not announcer)
-     * - own post not in feed
-     */
     private void applyAndShow() {
         String myUid = auth.getUid();
         long now = System.currentTimeMillis();
@@ -157,8 +164,6 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         for (Announcement a : all) {
             if (a == null) continue;
             if (myUid != null && myUid.equals(a.getUserId())) continue;
-
-            // ✅ Expired বাদ
             if (a.getExpireAt() > 0 && now > a.getExpireAt()) continue;
 
             String postRole = resolvePostRole(a);
@@ -171,9 +176,13 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
 
         adapter.setData(out);
         if (locationReady) adapter.setMyLocation(myLat, myLng);
+
+        // ✅ Empty state
+        if (layoutEmpty != null) {
+            layoutEmpty.setVisibility(out.isEmpty() && locationReady ? View.VISIBLE : View.GONE);
+        }
     }
 
-    // ✅ if userRole empty, read from /users/{userId}/role (cache)
     private String resolvePostRole(Announcement a) {
         String r = safe(a.getUserRole());
         if (!r.isEmpty()) return r;
@@ -191,11 +200,6 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
                     if (rr.isEmpty()) rr = Constants.ROLE_USER;
                     roleCache.put(uid, rr);
                     roleFetching.remove(uid);
-
-                    // ✅ optional: migrate old post (write back role once)
-                    // a.setUserRole(rr);
-                    // annRef.child(a.getId()).child("userRole").setValue(rr);
-
                     applyAndShow();
                 }
                 @Override public void onCancelled(@NonNull DatabaseError error) {
@@ -203,11 +207,8 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
                 }
             });
         }
-
-        return ""; // not resolved yet
+        return "";
     }
-
-    // ================= LIVE LOCATION =================
 
     private void startLiveLocation() {
         if (!isLocationEnabled()) {
@@ -218,7 +219,8 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_REQ);
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_REQ);
             return;
         }
 
@@ -239,7 +241,6 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
                 if (tvLocationName != null) tvLocationName.setText(nice);
 
                 updateUserLocationInFirebase(myLat, myLng, nice);
-
                 adapter.setMyLocation(myLat, myLng);
                 applyAndShow();
             }
@@ -254,11 +255,10 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
             List<Address> list = g.getFromLocation(lat, lng, 1);
             if (list != null && !list.isEmpty()) {
                 Address a = list.get(0);
-                String sub = safe(a.getSubLocality());
+                String sub  = safe(a.getSubLocality());
                 String city = safe(a.getLocality());
                 if (city.isEmpty()) city = safe(a.getSubAdminArea());
                 if (city.isEmpty()) city = safe(a.getAdminArea());
-
                 if (!sub.isEmpty() && !city.isEmpty()) return sub + ", " + city;
                 if (!city.isEmpty()) return city;
             }
@@ -284,9 +284,12 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     private String safe(String s) { return s == null ? "" : s.trim(); }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == LOCATION_REQ && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        if (requestCode == LOCATION_REQ && grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             startLiveLocation();
         } else {
             if (tvLocationName != null) tvLocationName.setText("Permission denied");

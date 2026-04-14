@@ -21,6 +21,7 @@ import com.example.towncrierbd.models.UserModel;
 import com.example.towncrierbd.utils.Constants;
 import com.google.android.gms.location.*;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.Calendar;
@@ -47,21 +48,30 @@ public class SignupActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        auth = FirebaseAuth.getInstance();
+
+        // ✅ Already logged in থাকলে Signup দেখাবে না
+        FirebaseUser currentUser = auth.getCurrentUser();
+        if (currentUser != null) {
+            startActivity(new Intent(this, GeneralFeedActivity.class));
+            finish();
+            return;
+        }
+
         setContentView(R.layout.activity_signup);
 
-        etName    = findViewById(R.id.etName);
-        etPhone   = findViewById(R.id.etPhone);
-        etEmail   = findViewById(R.id.etEmail);
+        etName     = findViewById(R.id.etName);
+        etPhone    = findViewById(R.id.etPhone);
+        etEmail    = findViewById(R.id.etEmail);
         etPassword = findViewById(R.id.etPassword);
-        etDob     = findViewById(R.id.etDob);
+        etDob      = findViewById(R.id.etDob);
 
         rbGeneral   = findViewById(R.id.rbGeneral);
         rbAnnouncer = findViewById(R.id.rbAnnouncer);
 
-        btnSignup    = findViewById(R.id.btnSignup);
-        tvGotoLogin  = findViewById(R.id.tvGotoLogin);
-
-        auth = FirebaseAuth.getInstance();
+        btnSignup   = findViewById(R.id.btnSignup);
+        tvGotoLogin = findViewById(R.id.tvGotoLogin);
 
         locationClient = LocationServices.getFusedLocationProviderClient(this);
         requestLocation();
@@ -72,12 +82,10 @@ public class SignupActivity extends AppCompatActivity {
     }
 
     private void requestLocation() {
-        if (ContextCompat.checkSelfPermission(this,
-                Manifest.permission.ACCESS_FINE_LOCATION)
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                    LOCATION_REQ);
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_REQ);
         } else {
             fetchLocation();
         }
@@ -90,8 +98,7 @@ public class SignupActivity extends AppCompatActivity {
                 .build();
 
         locationCallback = new LocationCallback() {
-            @Override
-            public void onLocationResult(@NonNull LocationResult result) {
+            @Override public void onLocationResult(@NonNull LocationResult result) {
                 Location loc = result.getLastLocation();
                 if (loc == null) return;
                 userLat = loc.getLatitude();
@@ -101,8 +108,7 @@ public class SignupActivity extends AppCompatActivity {
             }
         };
 
-        if (ActivityCompat.checkSelfPermission(this,
-                Manifest.permission.ACCESS_FINE_LOCATION)
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) return;
 
         locationClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper());
@@ -111,7 +117,8 @@ public class SignupActivity extends AppCompatActivity {
     private void resolveAddress(Location location) {
         try {
             Geocoder g = new Geocoder(this, Locale.getDefault());
-            List<Address> list = g.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
+            List<Address> list = g.getFromLocation(
+                    location.getLatitude(), location.getLongitude(), 1);
             if (list != null && !list.isEmpty()) {
                 Address a = list.get(0);
                 locationName = a.getLocality() + ", " + a.getCountryName();
@@ -124,9 +131,8 @@ public class SignupActivity extends AppCompatActivity {
                                            @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == LOCATION_REQ &&
-                grantResults.length > 0 &&
-                grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        if (requestCode == LOCATION_REQ && grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             fetchLocation();
         }
     }
@@ -142,9 +148,13 @@ public class SignupActivity extends AppCompatActivity {
             return;
         }
 
+        if (pass.length() < 6) {
+            toast("Password must be at least 6 characters");
+            return;
+        }
+
         String role = rbAnnouncer.isChecked()
-                ? Constants.ROLE_ANNOUNCER
-                : Constants.ROLE_USER;
+                ? Constants.ROLE_ANNOUNCER : Constants.ROLE_USER;
 
         btnSignup.setEnabled(false);
 
@@ -158,13 +168,11 @@ public class SignupActivity extends AppCompatActivity {
 
                     FirebaseDatabase db = FirebaseDatabase.getInstance();
 
-                    // ✅ Save user
                     db.getReference(Constants.DB_USERS)
                             .child(uid)
                             .setValue(user)
                             .addOnSuccessListener(v -> {
-
-                                // ✅ Save phone→email mapping (only if phone not empty)
+                                // ✅ phone_to_email mapping save করো
                                 if (!phone.isEmpty()) {
                                     String phoneKey = phone.replace("+", "").replace(".", "_");
                                     db.getReference(Constants.DB_PHONE_MAP)
@@ -174,11 +182,14 @@ public class SignupActivity extends AppCompatActivity {
 
                                 btnSignup.setEnabled(true);
 
+                                Intent intent;
                                 if (Constants.ROLE_ANNOUNCER.equals(role)) {
-                                    startActivity(new Intent(this, AnnouncerFeedActivity.class));
+                                    intent = new Intent(this, AnnouncerFeedActivity.class);
                                 } else {
-                                    startActivity(new Intent(this, GeneralFeedActivity.class));
+                                    intent = new Intent(this, GeneralFeedActivity.class);
                                 }
+                                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                startActivity(intent);
                                 finish();
                             });
                 })

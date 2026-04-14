@@ -33,6 +33,7 @@ public class LoginActivity extends AppCompatActivity {
 
         auth = FirebaseAuth.getInstance();
 
+        // ✅ Already logged in থাকলে সরাসরি Feed এ পাঠাও
         FirebaseUser currentUser = auth.getCurrentUser();
         if (currentUser != null) {
             routeUser();
@@ -79,35 +80,68 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void loginWithPhone(String phone, String pass) {
-        // phone key: +8801XXXXXXXX → 8801XXXXXXXX (remove + and .)
+        // ✅ phone_to_email map থেকে email বের করো
         String phoneKey = phone.replace("+", "").replace(".", "_");
 
-        DatabaseReference phoneMapRef = FirebaseDatabase.getInstance()
-                .getReference(Constants.DB_PHONE_MAP);
+        FirebaseDatabase.getInstance()
+                .getReference(Constants.DB_PHONE_MAP)
+                .child(phoneKey)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        String email = snapshot.getValue(String.class);
+                        if (email == null || email.isEmpty()) {
+                            // ✅ Fallback: পুরনো accounts এর জন্য users table search করো
+                            loginWithPhoneFallback(phone, pass);
+                            return;
+                        }
+                        auth.signInWithEmailAndPassword(email, pass)
+                                .addOnSuccessListener(res -> routeUser())
+                                .addOnFailureListener(e -> {
+                                    btnLogin.setEnabled(true);
+                                    toast("Wrong password");
+                                });
+                    }
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        btnLogin.setEnabled(true);
+                        toast("Login failed");
+                    }
+                });
+    }
 
-        phoneMapRef.child(phoneKey).addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                String email = snapshot.getValue(String.class);
-                if (email == null || email.isEmpty()) {
-                    btnLogin.setEnabled(true);
-                    toast("Phone number not found");
-                    return;
-                }
-                auth.signInWithEmailAndPassword(email, pass)
-                        .addOnSuccessListener(res -> routeUser())
-                        .addOnFailureListener(e -> {
+    // ✅ পুরনো accounts এর জন্য fallback
+    private void loginWithPhoneFallback(String phone, String pass) {
+        FirebaseDatabase.getInstance()
+                .getReference(Constants.DB_USERS)
+                .orderByChild("phone")
+                .equalTo(phone)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (!snapshot.exists()) {
                             btnLogin.setEnabled(true);
-                            toast("Wrong password");
-                        });
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                btnLogin.setEnabled(true);
-                toast("Login failed: " + error.getMessage());
-            }
-        });
+                            toast("Phone number not found");
+                            return;
+                        }
+                        for (DataSnapshot s : snapshot.getChildren()) {
+                            UserModel user = s.getValue(UserModel.class);
+                            if (user == null) continue;
+                            auth.signInWithEmailAndPassword(user.getEmail(), pass)
+                                    .addOnSuccessListener(res -> routeUser())
+                                    .addOnFailureListener(e -> {
+                                        btnLogin.setEnabled(true);
+                                        toast("Wrong password");
+                                    });
+                            break;
+                        }
+                    }
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        btnLogin.setEnabled(true);
+                        toast("Login failed");
+                    }
+                });
     }
 
     private void routeUser() {
@@ -117,35 +151,33 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
-        DatabaseReference userRef = FirebaseDatabase.getInstance()
-                .getReference(Constants.DB_USERS);
+        FirebaseDatabase.getInstance()
+                .getReference(Constants.DB_USERS)
+                .child(uid)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (btnLogin != null) btnLogin.setEnabled(true);
 
-        userRef.child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if (btnLogin != null) btnLogin.setEnabled(true);
+                        UserModel user = snapshot.getValue(UserModel.class);
+                        if (user == null) return;
 
-                UserModel user = snapshot.getValue(UserModel.class);
-                if (user == null) return;
-
-                Intent intent;
-                if (Constants.ROLE_ANNOUNCER.equals(user.getRole())) {
-                    intent = new Intent(LoginActivity.this, AnnouncerFeedActivity.class);
-                } else {
-                    intent = new Intent(LoginActivity.this, GeneralFeedActivity.class);
-                }
-
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                startActivity(intent);
-                finish();
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                if (btnLogin != null) btnLogin.setEnabled(true);
-                toast("Login failed");
-            }
-        });
+                        Intent intent;
+                        if (Constants.ROLE_ANNOUNCER.equals(user.getRole())) {
+                            intent = new Intent(LoginActivity.this, AnnouncerFeedActivity.class);
+                        } else {
+                            intent = new Intent(LoginActivity.this, GeneralFeedActivity.class);
+                        }
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        startActivity(intent);
+                        finish();
+                    }
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        if (btnLogin != null) btnLogin.setEnabled(true);
+                        toast("Login failed");
+                    }
+                });
     }
 
     private void toast(String msg) {

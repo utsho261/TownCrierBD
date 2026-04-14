@@ -43,14 +43,15 @@ import java.util.Locale;
 public class GeneralFeedActivity extends AppCompatActivity {
 
     private TextView tvWelcome, tvLocationName, tvRadius;
-
     private TextView tvToggleFilter;
     private View scrollChips;
     private ChipGroup chipGroup;
-
     private RecyclerView rvFeed;
     private FeedAdapter adapter;
     private FloatingActionButton fabAdd;
+
+    // ✅ Empty state
+    private View layoutEmpty;
 
     private DatabaseReference annRef, userRef;
     private FirebaseAuth auth;
@@ -66,7 +67,6 @@ public class GeneralFeedActivity extends AppCompatActivity {
     private ValueEventListener feedListener;
 
     private String selectedCategory = CategoryConfig.CAT_ALL;
-
     private String myRole = "";
     private String wantRole = "";
 
@@ -75,26 +75,26 @@ public class GeneralFeedActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_general_feed);
 
-        tvWelcome = findViewById(R.id.tvWelcome);
+        tvWelcome      = findViewById(R.id.tvWelcome);
         tvLocationName = findViewById(R.id.tvLocationName);
-        tvRadius = findViewById(R.id.tvRadius);
-
-        rvFeed = findViewById(R.id.rvFeed);
-        fabAdd = findViewById(R.id.fabAdd);
-
+        tvRadius       = findViewById(R.id.tvRadius);
+        rvFeed         = findViewById(R.id.rvFeed);
+        fabAdd         = findViewById(R.id.fabAdd);
         tvToggleFilter = findViewById(R.id.tvToggleFilter);
-        scrollChips = findViewById(R.id.scrollChips);
-        chipGroup = findViewById(R.id.chipGroup);
+        scrollChips    = findViewById(R.id.scrollChips);
+        chipGroup      = findViewById(R.id.chipGroup);
+        layoutEmpty    = findViewById(R.id.layoutEmpty);
 
         adapter = new FeedAdapter(this);
         rvFeed.setLayoutManager(new LinearLayoutManager(this));
         rvFeed.setAdapter(adapter);
 
-        auth = FirebaseAuth.getInstance();
-        annRef = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
+        auth    = FirebaseAuth.getInstance();
+        annRef  = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
         userRef = FirebaseDatabase.getInstance().getReference(Constants.DB_USERS);
 
-        fabAdd.setOnClickListener(v -> startActivity(new Intent(this, AddAnnouncementActivity.class)));
+        fabAdd.setOnClickListener(v ->
+                startActivity(new Intent(this, AddAnnouncementActivity.class)));
 
         if (tvRadius != null) tvRadius.setText("within " + Constants.FEED_RADIUS_KM + " km");
 
@@ -128,19 +128,23 @@ public class GeneralFeedActivity extends AppCompatActivity {
         }
 
         locationClient = LocationServices.getFusedLocationProviderClient(this);
-
         loadMyRoleThenStart();
+    }
+
+    // ✅ Back press করলে app minimize হবে, Login এ যাবে না
+    @Override
+    public void onBackPressed() {
+        moveTaskToBack(true);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         if (feedListener != null) annRef.removeEventListener(feedListener);
-        if (locationClient != null && locationCallback != null) locationClient.removeLocationUpdates(locationCallback);
+        if (locationClient != null && locationCallback != null)
+            locationClient.removeLocationUpdates(locationCallback);
         if (adapter != null) adapter.release();
     }
-
-    // ================= Step-5: Load my role =================
 
     private void loadMyRoleThenStart() {
         String uid = auth.getUid();
@@ -154,18 +158,15 @@ public class GeneralFeedActivity extends AppCompatActivity {
                 myRole = safe(u.getRole());
                 if (myRole.isEmpty()) myRole = Constants.ROLE_USER;
 
-                // opposite
                 wantRole = Constants.ROLE_ANNOUNCER.equals(myRole)
-                        ? Constants.ROLE_USER
-                        : Constants.ROLE_ANNOUNCER;
+                        ? Constants.ROLE_USER : Constants.ROLE_ANNOUNCER;
 
-                // welcome
-                if (u.getName() != null) tvWelcome.setText("Welcome Back, " + u.getName() + "!");
+                if (u.getName() != null)
+                    tvWelcome.setText("Welcome Back, " + u.getName() + "!");
 
                 attachFeedListenerOnce();
                 startLiveLocation();
             }
-
             @Override public void onCancelled(@NonNull DatabaseError error) {}
         });
     }
@@ -190,8 +191,6 @@ public class GeneralFeedActivity extends AppCompatActivity {
         annRef.addValueEventListener(feedListener);
     }
 
-    // ================= Step-5: FILTER CORE =================
-
     private void applyAndShow() {
         String myUid = auth.getUid();
         long now = System.currentTimeMillis();
@@ -200,8 +199,6 @@ public class GeneralFeedActivity extends AppCompatActivity {
         for (Announcement a : all) {
             if (a == null) continue;
             if (myUid != null && myUid.equals(a.getUserId())) continue;
-
-            // ✅ Expired বাদ
             if (a.getExpireAt() > 0 && now > a.getExpireAt()) continue;
 
             String postRole = safe(a.getUserRole());
@@ -219,11 +216,15 @@ public class GeneralFeedActivity extends AppCompatActivity {
 
         adapter.setData(out);
         if (locationReady) adapter.setMyLocation(myLat, myLng);
+
+        // ✅ Empty state
+        if (layoutEmpty != null) {
+            layoutEmpty.setVisibility(out.isEmpty() && locationReady ? View.VISIBLE : View.GONE);
+        }
     }
 
     private void buildCategoryChips() {
         chipGroup.removeAllViews();
-
         addChip(CategoryConfig.CAT_ALL, true);
         for (String c : CategoryConfig.MAIN) addChip(c, false);
 
@@ -244,8 +245,6 @@ public class GeneralFeedActivity extends AppCompatActivity {
         chipGroup.addView(chip);
     }
 
-    // ================= LIVE LOCATION =================
-
     private void startLiveLocation() {
         if (!isLocationEnabled()) {
             tvLocationName.setText("Turn ON GPS");
@@ -255,7 +254,8 @@ public class GeneralFeedActivity extends AppCompatActivity {
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_REQ);
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_REQ);
             return;
         }
 
@@ -276,7 +276,6 @@ public class GeneralFeedActivity extends AppCompatActivity {
                 tvLocationName.setText(nice);
 
                 updateUserLocationInFirebase(myLat, myLng, nice);
-
                 adapter.setMyLocation(myLat, myLng);
                 applyAndShow();
             }
@@ -291,12 +290,10 @@ public class GeneralFeedActivity extends AppCompatActivity {
             List<Address> list = g.getFromLocation(lat, lng, 1);
             if (list != null && !list.isEmpty()) {
                 Address a = list.get(0);
-
                 String subLocal = safe(a.getSubLocality());
-                String local = safe(a.getLocality());
+                String local    = safe(a.getLocality());
                 if (local.isEmpty()) local = safe(a.getSubAdminArea());
                 if (local.isEmpty()) local = safe(a.getAdminArea());
-
                 if (!subLocal.isEmpty() && !local.isEmpty()) return subLocal + ", " + local;
                 if (!local.isEmpty()) return local;
             }
@@ -313,18 +310,21 @@ public class GeneralFeedActivity extends AppCompatActivity {
         ref.child("locationName").setValue(name);
     }
 
-    private String safe(String s) { return s == null ? "" : s.trim(); }
-
     private boolean isLocationEnabled() {
         LocationManager lm = (LocationManager) getSystemService(LOCATION_SERVICE);
         return lm != null && (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)
                 || lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER));
     }
 
+    private String safe(String s) { return s == null ? "" : s.trim(); }
+
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == LOCATION_REQ && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        if (requestCode == LOCATION_REQ && grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             startLiveLocation();
         } else if (requestCode == LOCATION_REQ) {
             tvLocationName.setText("Permission denied");
