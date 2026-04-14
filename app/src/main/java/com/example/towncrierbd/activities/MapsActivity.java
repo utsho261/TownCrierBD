@@ -3,12 +3,12 @@ package com.example.towncrierbd.activities;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
 import android.location.Location;
 import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -26,7 +26,6 @@ import com.example.towncrierbd.models.Announcement;
 import com.example.towncrierbd.models.UserModel;
 import com.example.towncrierbd.utils.Constants;
 import com.example.towncrierbd.utils.DistanceUtil;
-import com.example.towncrierbd.utils.ImageBase64Util;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -37,12 +36,14 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.maps.model.Polyline;
-import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.*;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.HashMap;
 import java.util.Locale;
@@ -58,86 +59,79 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private double myLat = 0, myLng = 0;
     private boolean hasMyLoc = false;
 
-    // Firebase
     private FirebaseAuth auth;
     private DatabaseReference annRef, userRef;
 
     private String myRole = "";
-    private String wantRole = ""; // opposite role
+    private String wantRole = "";
 
-    // BottomSheet
-    private BottomSheetBehavior<android.view.View> sheetBehavior;
-    private android.view.View bottomSheet;
-    private ImageView ivCover, btnCloseSheet;
+    private BottomSheetBehavior<View> sheetBehavior;
+    private View bottomSheet;
+    private ImageView ivCover;
+    private ImageView btnCloseSheet;
+    private View coverPlaceholder;
     private TextView tvBadge, tvTitle, tvDesc, tvDistance;
     private Button btnDetails;
     private ImageButton btnChat, btnCall;
 
-    // Buttons
     private FloatingActionButton fabMyLoc, fabDirections;
 
-    // marker -> announcement
     private final Map<String, Announcement> markerMap = new HashMap<>();
-
-    // optional: drawn polyline (only if you later implement in-app)
-    private Polyline routeLine;
+    private Announcement lastSelected = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
 
-        auth = FirebaseAuth.getInstance();
+        auth     = FirebaseAuth.getInstance();
         fusedLoc = LocationServices.getFusedLocationProviderClient(this);
+        annRef   = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
+        userRef  = FirebaseDatabase.getInstance().getReference(Constants.DB_USERS);
 
-        annRef = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
-        userRef = FirebaseDatabase.getInstance().getReference(Constants.DB_USERS);
-
-        // bottom sheet views
-        bottomSheet = findViewById(R.id.bottomSheet);
+        bottomSheet   = findViewById(R.id.bottomSheet);
         sheetBehavior = BottomSheetBehavior.from(bottomSheet);
         sheetBehavior.setHideable(true);
         sheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
 
-        ivCover = findViewById(R.id.ivCover);
-        btnCloseSheet = findViewById(R.id.btnCloseSheet);
-        tvBadge = findViewById(R.id.tvBadge);
-        tvTitle = findViewById(R.id.tvTitle);
-        tvDesc = findViewById(R.id.tvDesc);
-        tvDistance = findViewById(R.id.tvDistance);
-        btnDetails = findViewById(R.id.btnDetails);
-        btnChat = findViewById(R.id.btnChat);
-        btnCall = findViewById(R.id.btnCall);
+        ivCover          = findViewById(R.id.ivCover);
+        btnCloseSheet    = findViewById(R.id.btnCloseSheet);
+        coverPlaceholder = findViewById(R.id.coverPlaceholder);
+        tvBadge          = findViewById(R.id.tvBadge);
+        tvTitle          = findViewById(R.id.tvTitle);
+        tvDesc           = findViewById(R.id.tvDesc);
+        tvDistance       = findViewById(R.id.tvDistance);
+        btnDetails       = findViewById(R.id.btnDetails);
+        btnChat          = findViewById(R.id.btnChat);
+        btnCall          = findViewById(R.id.btnCall);
+        fabMyLoc         = findViewById(R.id.fabMyLoc);
+        fabDirections    = findViewById(R.id.fabDirections);
 
-        btnCloseSheet.setOnClickListener(v -> sheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN));
-
-        fabMyLoc = findViewById(R.id.fabMyLoc);
-        fabDirections = findViewById(R.id.fabDirections);
+        btnCloseSheet.setOnClickListener(v ->
+                sheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN));
 
         fabMyLoc.setOnClickListener(v -> requestLocation());
-
-        // ✅ directions: open Google Maps app with navigation line (FREE)
         fabDirections.setOnClickListener(v -> openDirectionsToSelected());
 
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
+        SupportMapFragment mapFragment = (SupportMapFragment)
+                getSupportFragmentManager().findFragmentById(R.id.map);
         if (mapFragment != null) mapFragment.getMapAsync(this);
 
-        // 먼저 role load -> then location + markers
         loadMyRoleThenStart();
     }
 
     private void loadMyRoleThenStart() {
         String uid = auth.getUid();
         if (uid == null) {
-            myRole = Constants.ROLE_USER;
+            myRole   = Constants.ROLE_USER;
             wantRole = Constants.ROLE_ANNOUNCER;
             requestLocation();
             return;
         }
 
         userRef.child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
                 UserModel u = snapshot.getValue(UserModel.class);
                 myRole = safe(u == null ? "" : u.getRole());
                 if (myRole.isEmpty()) myRole = Constants.ROLE_USER;
@@ -146,11 +140,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         ? Constants.ROLE_USER
                         : Constants.ROLE_ANNOUNCER;
 
-                requestLocation(); // get location (or try)
+                requestLocation();
             }
 
-            @Override public void onCancelled(@NonNull DatabaseError error) {
-                myRole = Constants.ROLE_USER;
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                myRole   = Constants.ROLE_USER;
                 wantRole = Constants.ROLE_ANNOUNCER;
                 requestLocation();
             }
@@ -161,10 +156,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onMapReady(@NonNull GoogleMap googleMap) {
         mMap = googleMap;
 
-        // ✅ Remove compass + unwanted UI
-        mMap.getUiSettings().setCompassEnabled(false);      // remove that small icon you showed
-        mMap.getUiSettings().setMapToolbarEnabled(false);   // removes "Directions" toolbar sometimes
-        mMap.getUiSettings().setMyLocationButtonEnabled(false); // we use our own button
+        mMap.getUiSettings().setCompassEnabled(false);
+        mMap.getUiSettings().setMapToolbarEnabled(false);
+        mMap.getUiSettings().setMyLocationButtonEnabled(false);
 
         LatLng dhaka = new LatLng(23.8103, 90.4125);
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(dhaka, 12f));
@@ -184,8 +178,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         attachAnnouncementsListener();
     }
 
-    // -------------------- LOCATION --------------------
-
     private void requestLocation() {
         if (!isLocationEnabled()) {
             Toast.makeText(this, "Turn ON GPS", Toast.LENGTH_SHORT).show();
@@ -200,21 +192,19 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             return;
         }
 
-        fusedLoc.getLastLocation()
-                .addOnSuccessListener(loc -> {
-                    if (loc != null) {
-                        setMyLocation(loc);
-                    } else {
-                        Toast.makeText(this, "Location not ready yet", Toast.LENGTH_SHORT).show();
-                        // still show markers if map ready
-                        if (mMap != null) attachAnnouncementsListener();
-                    }
-                });
+        fusedLoc.getLastLocation().addOnSuccessListener(loc -> {
+            if (loc != null) {
+                setMyLocation(loc);
+            } else {
+                Toast.makeText(this, "Location not ready yet", Toast.LENGTH_SHORT).show();
+                if (mMap != null) attachAnnouncementsListener();
+            }
+        });
     }
 
     private void setMyLocation(Location loc) {
-        myLat = loc.getLatitude();
-        myLng = loc.getLongitude();
+        myLat    = loc.getLatitude();
+        myLng    = loc.getLongitude();
         hasMyLoc = true;
 
         if (mMap != null) {
@@ -226,9 +216,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             mMap.addMarker(new MarkerOptions()
                     .position(me)
                     .title("You")
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+                    .icon(BitmapDescriptorFactory.defaultMarker(
+                            BitmapDescriptorFactory.HUE_AZURE)));
 
-            attachAnnouncementsListener(); // reload markers around me
+            attachAnnouncementsListener();
         }
     }
 
@@ -239,7 +230,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == LOCATION_REQ && grantResults.length > 0
@@ -250,29 +242,28 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    // -------------------- MARKERS (ROLE FILTER + RADIUS) --------------------
-
     private void attachAnnouncementsListener() {
         if (annRef == null) return;
 
         annRef.addValueEventListener(new ValueEventListener() {
-            @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (mMap == null) return;
 
-                // redraw
                 mMap.clear();
                 markerMap.clear();
 
-                // re-add my marker
                 if (hasMyLoc) {
                     LatLng me = new LatLng(myLat, myLng);
                     mMap.addMarker(new MarkerOptions()
                             .position(me)
                             .title("You")
-                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+                            .icon(BitmapDescriptorFactory.defaultMarker(
+                                    BitmapDescriptorFactory.HUE_AZURE)));
                 }
 
                 String myUid = auth.getUid();
+                long now = System.currentTimeMillis();
 
                 for (DataSnapshot s : snapshot.getChildren()) {
                     Announcement a = s.getValue(Announcement.class);
@@ -281,14 +272,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     if (a.getId() == null || a.getId().trim().isEmpty()) a.setId(s.getKey());
                     if (a.getId() == null) continue;
 
-                    // ✅ own post map এ দেখাবে না (facebook style: own posts profile)
                     if (myUid != null && myUid.equals(a.getUserId())) continue;
+                    if (a.getExpireAt() > 0 && now > a.getExpireAt()) continue;
 
-                    // ✅ show only opposite role
                     String postRole = safe(a.getUserRole());
                     if (!wantRole.equals(postRole)) continue;
 
-                    // ✅ radius filter
                     if (hasMyLoc) {
                         double d = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
                         if (d > Constants.FEED_RADIUS_KM) continue;
@@ -298,7 +287,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     Marker m = mMap.addMarker(new MarkerOptions()
                             .position(pos)
                             .title(safe(a.getTitle()).isEmpty() ? "Announcement" : a.getTitle())
-                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_VIOLET)));
+                            .icon(BitmapDescriptorFactory.defaultMarker(
+                                    BitmapDescriptorFactory.HUE_VIOLET)));
 
                     if (m != null) {
                         m.setTag(a.getId());
@@ -307,13 +297,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 }
             }
 
-            @Override public void onCancelled(@NonNull DatabaseError error) {}
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
         });
     }
-
-    // -------------------- BOTTOM SHEET (NO GARBAGE IMAGE) --------------------
-
-    private Announcement lastSelected = null;
 
     private void showBottomSheet(Announcement a) {
         lastSelected = a;
@@ -333,18 +320,20 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             tvDistance.setText("Nearby");
         }
 
-        // ✅ Glide দিয়ে image load
+        // Image
         String imgUrl = safe(a.getImageUrl());
         if (!imgUrl.isEmpty()) {
-            ivCover.setVisibility(android.view.View.VISIBLE);
+            ivCover.setVisibility(View.VISIBLE);
+            if (coverPlaceholder != null) coverPlaceholder.setVisibility(View.GONE);
             Glide.with(this)
                     .load(imgUrl)
                     .centerCrop()
                     .placeholder(android.R.drawable.ic_menu_gallery)
                     .into(ivCover);
         } else {
-            ivCover.setVisibility(android.view.View.GONE);
+            ivCover.setVisibility(View.GONE);
             ivCover.setImageDrawable(null);
+            if (coverPlaceholder != null) coverPlaceholder.setVisibility(View.VISIBLE);
         }
 
         btnCall.setOnClickListener(v -> {
@@ -368,13 +357,27 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             startActivity(i);
         });
 
-        btnDetails.setOnClickListener(v ->
-                Toast.makeText(this, "Details screen later", Toast.LENGTH_SHORT).show());
+        // ✅ View Details
+        btnDetails.setOnClickListener(v -> {
+            String dist = "";
+            if (hasMyLoc) {
+                double d = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
+                dist = String.format(Locale.getDefault(), "%.1f km away", d);
+            }
+            Intent intent = new Intent(MapsActivity.this, AnnouncementDetailActivity.class);
+            intent.putExtra(AnnouncementDetailActivity.EXTRA_TITLE,     safe(a.getTitle()));
+            intent.putExtra(AnnouncementDetailActivity.EXTRA_DESC,      safe(a.getDescription()));
+            intent.putExtra(AnnouncementDetailActivity.EXTRA_CATEGORY,  safe(a.getDisplayCategoryLabel()));
+            intent.putExtra(AnnouncementDetailActivity.EXTRA_PHONE,     safe(a.getPhone()));
+            intent.putExtra(AnnouncementDetailActivity.EXTRA_IMAGE_URL, safe(a.getImageUrl()));
+            intent.putExtra(AnnouncementDetailActivity.EXTRA_USER_NAME, safe(a.getUserName()));
+            intent.putExtra(AnnouncementDetailActivity.EXTRA_DISTANCE,  dist);
+            intent.putExtra(AnnouncementDetailActivity.EXTRA_TIME,      getRelativeTime(a.getTime()));
+            startActivity(intent);
+        });
 
         sheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
     }
-
-    // -------------------- DIRECTIONS (FREE: OPEN GOOGLE MAPS) --------------------
 
     private void openDirectionsToSelected() {
         if (!hasMyLoc) {
@@ -389,20 +392,33 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         double dLat = lastSelected.getLat();
         double dLng = lastSelected.getLng();
 
-        // Google Maps navigation: shows live route line (Pathao/Uber style)
-        Uri gmmIntentUri = Uri.parse("google.navigation:q=" + dLat + "," + dLng + "&mode=d");
+        Uri gmmIntentUri = Uri.parse(
+                "google.navigation:q=" + dLat + "," + dLng + "&mode=d");
         Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
         mapIntent.setPackage("com.google.android.apps.maps");
 
         if (mapIntent.resolveActivity(getPackageManager()) != null) {
             startActivity(mapIntent);
         } else {
-            // fallback (no package)
             Uri web = Uri.parse("https://www.google.com/maps/dir/?api=1&destination="
                     + dLat + "," + dLng + "&travelmode=driving");
             startActivity(new Intent(Intent.ACTION_VIEW, web));
         }
     }
 
-    private String safe(String s) { return s == null ? "" : s.trim(); }
+    private String getRelativeTime(long timeMillis) {
+        if (timeMillis == 0) return "";
+        long diff    = System.currentTimeMillis() - timeMillis;
+        long minutes = diff / 60000;
+        long hours   = minutes / 60;
+        long days    = hours / 24;
+        if (minutes < 1)  return "Just now";
+        if (minutes < 60) return minutes + " min ago";
+        if (hours < 24)   return hours + " hr ago";
+        return days + " day" + (days > 1 ? "s" : "") + " ago";
+    }
+
+    private String safe(String s) {
+        return s == null ? "" : s.trim();
+    }
 }

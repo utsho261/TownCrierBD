@@ -65,7 +65,7 @@
             android:textColor="#666666"
             android:textSize="15sp" />
 
-        <!-- ✅ Time -->
+        <!-- Time -->
         <TextView
             android:id="@+id/tvTime"
             android:layout_width="wrap_content"
@@ -124,14 +124,14 @@
 
         </LinearLayout>
 
-        <!-- Buttons -->
+        <!-- Action Buttons -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="12dp"
             android:orientation="horizontal"
             android:gravity="center"
-            android:weightSum="3">
+            android:weightSum="4">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnListen"
@@ -170,6 +170,52 @@
                 android:textSize="16sp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp" />
+        </LinearLayout>
+
+        <!-- Edit/Delete  -->
+        <LinearLayout
+            android:id="@+id/layoutEditDelete"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:layout_marginBottom="12dp"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEdit"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="Edit"
+                android:textAllCaps="false"
+                android:layout_marginEnd="8dp"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDelete"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="Delete"
+                android:textAllCaps="false"
+                android:backgroundTint="#F44336"
+                android:textColor="@android:color/white"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDetails"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="Details"
+                android:textAllCaps="false"
+                android:textSize="14sp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:layout_marginEnd="8dp"/>
+
         </LinearLayout>
 
     </LinearLayout>

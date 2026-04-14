@@ -36,7 +36,6 @@ public class SignupActivity extends AppCompatActivity {
 
     private FirebaseAuth auth;
 
-    // 🔥 Location
     private static final int LOCATION_REQ = 101;
     private FusedLocationProviderClient locationClient;
     private LocationCallback locationCallback;
@@ -45,44 +44,37 @@ public class SignupActivity extends AppCompatActivity {
     private double userLng = 0.0;
     private String locationName = "Unknown";
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_signup);
 
-        etName = findViewById(R.id.etName);
-        etPhone = findViewById(R.id.etPhone);
-        etEmail = findViewById(R.id.etEmail);
+        etName    = findViewById(R.id.etName);
+        etPhone   = findViewById(R.id.etPhone);
+        etEmail   = findViewById(R.id.etEmail);
         etPassword = findViewById(R.id.etPassword);
-        etDob = findViewById(R.id.etDob);
+        etDob     = findViewById(R.id.etDob);
 
-        rbGeneral = findViewById(R.id.rbGeneral);
+        rbGeneral   = findViewById(R.id.rbGeneral);
         rbAnnouncer = findViewById(R.id.rbAnnouncer);
 
-        btnSignup = findViewById(R.id.btnSignup);
-        tvGotoLogin = findViewById(R.id.tvGotoLogin);
+        btnSignup    = findViewById(R.id.btnSignup);
+        tvGotoLogin  = findViewById(R.id.tvGotoLogin);
 
         auth = FirebaseAuth.getInstance();
 
-        // 📍 Location init
         locationClient = LocationServices.getFusedLocationProviderClient(this);
         requestLocation();
 
-        // 📅 DOB picker
         etDob.setOnClickListener(v -> openDatePicker());
-
         btnSignup.setOnClickListener(v -> doSignup());
         tvGotoLogin.setOnClickListener(v -> finish());
     }
-
-    // ================= LOCATION =================
 
     private void requestLocation() {
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
-
             ActivityCompat.requestPermissions(this,
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
                     LOCATION_REQ);
@@ -92,10 +84,8 @@ public class SignupActivity extends AppCompatActivity {
     }
 
     private void fetchLocation() {
-
         LocationRequest request = new LocationRequest.Builder(
-                Priority.PRIORITY_HIGH_ACCURACY, 3000
-        )
+                Priority.PRIORITY_HIGH_ACCURACY, 3000)
                 .setMinUpdateIntervalMillis(2000)
                 .build();
 
@@ -104,39 +94,24 @@ public class SignupActivity extends AppCompatActivity {
             public void onLocationResult(@NonNull LocationResult result) {
                 Location loc = result.getLastLocation();
                 if (loc == null) return;
-
                 userLat = loc.getLatitude();
                 userLng = loc.getLongitude();
-
                 resolveAddress(loc);
-
-                // ✅ stop updates safely
                 locationClient.removeLocationUpdates(locationCallback);
             }
         };
 
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-        ) != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
+        if (ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) return;
 
-        locationClient.requestLocationUpdates(
-                request,
-                locationCallback,
-                Looper.getMainLooper()
-        );
+        locationClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper());
     }
 
     private void resolveAddress(Location location) {
         try {
             Geocoder g = new Geocoder(this, Locale.getDefault());
-            List<Address> list = g.getFromLocation(
-                    location.getLatitude(),
-                    location.getLongitude(),
-                    1
-            );
+            List<Address> list = g.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
             if (list != null && !list.isEmpty()) {
                 Address a = list.get(0);
                 locationName = a.getLocality() + ", " + a.getCountryName();
@@ -149,7 +124,6 @@ public class SignupActivity extends AppCompatActivity {
                                            @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
         if (requestCode == LOCATION_REQ &&
                 grantResults.length > 0 &&
                 grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -157,13 +131,11 @@ public class SignupActivity extends AppCompatActivity {
         }
     }
 
-    // ================= SIGNUP =================
-
     private void doSignup() {
-        String name = etName.getText().toString().trim();
+        String name  = etName.getText().toString().trim();
         String phone = etPhone.getText().toString().trim();
         String email = etEmail.getText().toString().trim();
-        String pass = etPassword.getText().toString().trim();
+        String pass  = etPassword.getText().toString().trim();
 
         if (name.isEmpty() || email.isEmpty() || pass.isEmpty()) {
             toast("Name, Email, Password required");
@@ -182,21 +154,24 @@ public class SignupActivity extends AppCompatActivity {
                     if (uid == null) return;
 
                     UserModel user = new UserModel(
-                            uid,
-                            name,
-                            email,
-                            phone,
-                            role,
-                            locationName,
-                            userLat,
-                            userLng
-                    );
+                            uid, name, email, phone, role, locationName, userLat, userLng);
 
-                    FirebaseDatabase.getInstance()
-                            .getReference(Constants.DB_USERS)
+                    FirebaseDatabase db = FirebaseDatabase.getInstance();
+
+                    // ✅ Save user
+                    db.getReference(Constants.DB_USERS)
                             .child(uid)
                             .setValue(user)
                             .addOnSuccessListener(v -> {
+
+                                // ✅ Save phone→email mapping (only if phone not empty)
+                                if (!phone.isEmpty()) {
+                                    String phoneKey = phone.replace("+", "").replace(".", "_");
+                                    db.getReference(Constants.DB_PHONE_MAP)
+                                            .child(phoneKey)
+                                            .setValue(email);
+                                }
+
                                 btnSignup.setEnabled(true);
 
                                 if (Constants.ROLE_ANNOUNCER.equals(role)) {
@@ -212,8 +187,6 @@ public class SignupActivity extends AppCompatActivity {
                     toast(e.getMessage());
                 });
     }
-
-    // ================= DOB =================
 
     private void openDatePicker() {
         Calendar c = Calendar.getInstance();

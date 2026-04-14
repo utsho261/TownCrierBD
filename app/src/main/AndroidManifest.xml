@@ -37,6 +37,7 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyDgQGXgka5fGudt2MzHx_2tBhGEXlay54U"/>
 
+        <activity android:name="com.example.towncrierbd.activities.AnnouncementDetailActivity"/>
         <activity android:name="com.example.towncrierbd.activities.AddAnnouncementActivity"/>
         <activity android:name="com.example.towncrierbd.activities.MapsActivity"/>
         <activity android:name="com.example.towncrierbd.activities.ProfileActivity"/>

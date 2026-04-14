@@ -25,7 +25,6 @@ public class LoginActivity extends AppCompatActivity {
     private TextView tvGotoSignup;
 
     private FirebaseAuth auth;
-    private DatabaseReference userRef;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,11 +33,10 @@ public class LoginActivity extends AppCompatActivity {
 
         auth = FirebaseAuth.getInstance();
 
-        // ✅ Already logged in থাকলে সরাসরি Feed এ যাও
         FirebaseUser currentUser = auth.getCurrentUser();
         if (currentUser != null) {
             routeUser();
-            return; // onCreate বাকি execute করবে না
+            return;
         }
 
         setContentView(R.layout.activity_login);
@@ -48,14 +46,10 @@ public class LoginActivity extends AppCompatActivity {
         btnLogin     = findViewById(R.id.btnLogin);
         tvGotoSignup = findViewById(R.id.tvGotoSignup);
 
-        userRef = FirebaseDatabase.getInstance().getReference(Constants.DB_USERS);
-
         btnLogin.setOnClickListener(v -> login());
         tvGotoSignup.setOnClickListener(v ->
                 startActivity(new Intent(this, SignupActivity.class)));
     }
-
-    // ================= LOGIN =================
 
     private void login() {
         String input = etEmail.getText().toString().trim();
@@ -85,33 +79,35 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void loginWithPhone(String phone, String pass) {
-        userRef.orderByChild("phone").equalTo(phone)
-                .addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        if (!snapshot.exists()) {
+        // phone key: +8801XXXXXXXX → 8801XXXXXXXX (remove + and .)
+        String phoneKey = phone.replace("+", "").replace(".", "_");
+
+        DatabaseReference phoneMapRef = FirebaseDatabase.getInstance()
+                .getReference(Constants.DB_PHONE_MAP);
+
+        phoneMapRef.child(phoneKey).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                String email = snapshot.getValue(String.class);
+                if (email == null || email.isEmpty()) {
+                    btnLogin.setEnabled(true);
+                    toast("Phone number not found");
+                    return;
+                }
+                auth.signInWithEmailAndPassword(email, pass)
+                        .addOnSuccessListener(res -> routeUser())
+                        .addOnFailureListener(e -> {
                             btnLogin.setEnabled(true);
-                            toast("Phone number not found");
-                            return;
-                        }
-                        for (DataSnapshot s : snapshot.getChildren()) {
-                            UserModel user = s.getValue(UserModel.class);
-                            if (user == null) continue;
-                            auth.signInWithEmailAndPassword(user.getEmail(), pass)
-                                    .addOnSuccessListener(res -> routeUser())
-                                    .addOnFailureListener(e -> {
-                                        btnLogin.setEnabled(true);
-                                        toast("Wrong password");
-                                    });
-                            break;
-                        }
-                    }
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
-                        btnLogin.setEnabled(true);
-                        toast("Login failed");
-                    }
-                });
+                            toast("Wrong password");
+                        });
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                btnLogin.setEnabled(true);
+                toast("Login failed: " + error.getMessage());
+            }
+        });
     }
 
     private void routeUser() {
@@ -139,7 +135,6 @@ public class LoginActivity extends AppCompatActivity {
                     intent = new Intent(LoginActivity.this, GeneralFeedActivity.class);
                 }
 
-                // ✅ Back press করলে Login এ ফিরে যাবে না
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 startActivity(intent);
                 finish();

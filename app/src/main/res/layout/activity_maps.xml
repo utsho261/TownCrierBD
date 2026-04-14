@@ -83,6 +83,14 @@
             android:layout_width="match_parent"
             android:layout_height="170dp">
 
+            <!-- ✅ placeholder আগে (নিচে) -->
+            <View
+                android:id="@+id/coverPlaceholder"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="#D9D9D9" />
+
+            <!-- ✅ image পরে (উপরে) -->
             <ImageView
                 android:id="@+id/ivCover"
                 android:layout_width="match_parent"
@@ -90,12 +98,6 @@
                 android:scaleType="centerCrop"
                 android:visibility="gone"
                 android:contentDescription="@string/app_name" />
-
-            <View
-                android:id="@+id/coverPlaceholder"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="#D9D9D9" />
 
             <TextView
                 android:id="@+id/tvBadge"
@@ -181,7 +183,7 @@
 
     </LinearLayout>
 
-    <!-- ✅ FABs (Always on top) : placed AFTER bottomSheet + has elevation -->
+    <!-- FABs -->
     <LinearLayout
         android:id="@+id/fabRow"
         android:layout_width="wrap_content"

@@ -37,20 +37,23 @@ public class ProfileActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
 
-        tvName = findViewById(R.id.tvName);
-        tvRole = findViewById(R.id.tvRole);
-        tvEmail = findViewById(R.id.tvEmail);
-        tvPhone = findViewById(R.id.tvPhone);
+        tvName    = findViewById(R.id.tvName);
+        tvRole    = findViewById(R.id.tvRole);
+        tvEmail   = findViewById(R.id.tvEmail);
+        tvPhone   = findViewById(R.id.tvPhone);
         btnLogout = findViewById(R.id.btnLogout);
-
         rvMyPosts = findViewById(R.id.rvMyPosts);
+
+        // ✅ Profile mode: edit/delete দেখাবে, card click disable
         myPostsAdapter = new FeedAdapter(this);
+        myPostsAdapter.setShowEditDelete(true);
+        myPostsAdapter.setDisableCardClick(true);
         rvMyPosts.setLayoutManager(new LinearLayoutManager(this));
         rvMyPosts.setAdapter(myPostsAdapter);
 
-        auth = FirebaseAuth.getInstance();
+        auth    = FirebaseAuth.getInstance();
         userRef = FirebaseDatabase.getInstance().getReference(Constants.DB_USERS);
-        annRef = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
+        annRef  = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
 
         btnLogout.setOnClickListener(v -> {
             auth.signOut();
@@ -75,7 +78,8 @@ public class ProfileActivity extends AppCompatActivity {
         if (uid == null) return;
 
         userRef.child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
                 UserModel u = snapshot.getValue(UserModel.class);
                 if (u == null) return;
 
@@ -84,11 +88,11 @@ public class ProfileActivity extends AppCompatActivity {
                 tvEmail.setText("Email: " + safe(u.getEmail()));
                 tvPhone.setText("Phone: " + safe(u.getPhone()));
 
-                // distance calc purpose
                 myPostsAdapter.setMyLocation(u.getLat(), u.getLng());
             }
 
-            @Override public void onCancelled(@NonNull DatabaseError error) {}
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
         });
     }
 
@@ -96,21 +100,23 @@ public class ProfileActivity extends AppCompatActivity {
         String uid = auth.getUid();
         if (uid == null) return;
 
-        // ✅ only my posts
         annRef.orderByChild("userId").equalTo(uid)
                 .addValueEventListener(new ValueEventListener() {
-                    @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
                         List<Announcement> list = new ArrayList<>();
                         for (DataSnapshot s : snapshot.getChildren()) {
                             Announcement a = s.getValue(Announcement.class);
                             if (a == null) continue;
-                            if (a.getId() == null || a.getId().trim().isEmpty()) a.setId(s.getKey());
+                            if (a.getId() == null || a.getId().trim().isEmpty())
+                                a.setId(s.getKey());
                             list.add(a);
                         }
                         myPostsAdapter.setData(list);
                     }
 
-                    @Override public void onCancelled(@NonNull DatabaseError error) {}
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {}
                 });
     }
 
