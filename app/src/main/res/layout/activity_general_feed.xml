@@ -12,6 +12,21 @@
         android:background="@android:color/transparent"
         android:fitsSystemWindows="true">
 
+        <!-- ✅ No Internet Banner -->
+        <TextView
+            android:id="@+id/bannerNoInternet"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⚠️  No internet connection"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:gravity="center"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"
+            android:background="#D32F2F"
+            android:visibility="gone"/>
+
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/headerCard"
             android:layout_width="match_parent"
@@ -93,7 +108,7 @@
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- ✅ Search Bar -->
+        <!-- Search Bar -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -164,7 +179,7 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
-    <!-- ✅ SwipeRefreshLayout wraps RecyclerView -->
+    <!-- SwipeRefreshLayout wraps RecyclerView -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipeRefresh"
         android:layout_width="match_parent"

@@ -7,6 +7,7 @@ import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
 import android.provider.Settings;
@@ -33,6 +34,7 @@ import com.example.towncrierbd.models.UserModel;
 import com.example.towncrierbd.utils.CategoryConfig;
 import com.example.towncrierbd.utils.Constants;
 import com.example.towncrierbd.utils.DistanceUtil;
+import com.example.towncrierbd.utils.NetworkMonitor;
 import com.google.android.gms.location.*;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.chip.Chip;
@@ -57,11 +59,14 @@ public class GeneralFeedActivity extends AppCompatActivity {
     private View layoutEmpty;
     private SwipeRefreshLayout swipeRefresh;
     private EditText etSearch;
+    private View bannerNoInternet;          // ✅ NEW: internet banner
 
     private DatabaseReference annRef, userRef;
     private FirebaseAuth auth;
 
-    private static final int LOCATION_REQ = 900;
+    private static final int LOCATION_REQ     = 900;
+    private static final int NOTIFICATION_REQ = 901;    // ✅ NEW
+
     private FusedLocationProviderClient locationClient;
     private LocationCallback locationCallback;
 
@@ -77,22 +82,25 @@ public class GeneralFeedActivity extends AppCompatActivity {
     private String searchQuery = "";
     private double selectedRadius = Constants.FEED_RADIUS_KM;
 
+    private NetworkMonitor networkMonitor;   // ✅ NEW
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_general_feed);
 
-        tvWelcome      = findViewById(R.id.tvWelcome);
-        tvLocationName = findViewById(R.id.tvLocationName);
-        tvRadius       = findViewById(R.id.tvRadius);
-        rvFeed         = findViewById(R.id.rvFeed);
-        fabAdd         = findViewById(R.id.fabAdd);
-        tvToggleFilter = findViewById(R.id.tvToggleFilter);
-        scrollChips    = findViewById(R.id.scrollChips);
-        chipGroup      = findViewById(R.id.chipGroup);
-        layoutEmpty    = findViewById(R.id.layoutEmpty);
-        swipeRefresh   = findViewById(R.id.swipeRefresh);
-        etSearch       = findViewById(R.id.etSearch);
+        tvWelcome       = findViewById(R.id.tvWelcome);
+        tvLocationName  = findViewById(R.id.tvLocationName);
+        tvRadius        = findViewById(R.id.tvRadius);
+        rvFeed          = findViewById(R.id.rvFeed);
+        fabAdd          = findViewById(R.id.fabAdd);
+        tvToggleFilter  = findViewById(R.id.tvToggleFilter);
+        scrollChips     = findViewById(R.id.scrollChips);
+        chipGroup       = findViewById(R.id.chipGroup);
+        layoutEmpty     = findViewById(R.id.layoutEmpty);
+        swipeRefresh    = findViewById(R.id.swipeRefresh);
+        etSearch        = findViewById(R.id.etSearch);
+        bannerNoInternet = findViewById(R.id.bannerNoInternet);  // ✅ NEW
 
         adapter = new FeedAdapter(this);
         rvFeed.setLayoutManager(new LinearLayoutManager(this));
@@ -159,7 +167,68 @@ public class GeneralFeedActivity extends AppCompatActivity {
         }
 
         locationClient = LocationServices.getFusedLocationProviderClient(this);
+
+        // ✅ Request notification permission (Android 13+)
+        requestNotificationPermission();
+
+        // ✅ Start internet monitoring
+        startNetworkMonitoring();
+
         loadMyRoleThenStart();
+    }
+
+    // ✅ Notification permission for Android 13+
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this,
+                    Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+
+                if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                        Manifest.permission.POST_NOTIFICATIONS)) {
+                    new AlertDialog.Builder(this)
+                            .setTitle("Enable Notifications")
+                            .setMessage("Town Crier BD sends notifications when new announcements are nearby. Allow notifications to stay updated.")
+                            .setPositiveButton("Allow", (d, w) ->
+                                    ActivityCompat.requestPermissions(this,
+                                            new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                                            NOTIFICATION_REQ))
+                            .setNegativeButton("Not now", null)
+                            .show();
+                } else {
+                    ActivityCompat.requestPermissions(this,
+                            new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                            NOTIFICATION_REQ);
+                }
+            }
+        }
+    }
+
+    // ✅ Internet banner monitoring
+    private void startNetworkMonitoring() {
+        networkMonitor = new NetworkMonitor(this);
+
+        // Show banner immediately if offline at start
+        if (!networkMonitor.isConnected()) {
+            showNoBanner(true);
+        }
+
+        networkMonitor.startMonitoring(new NetworkMonitor.NetworkCallback() {
+            @Override
+            public void onAvailable() {
+                showNoBanner(false);
+            }
+            @Override
+            public void onLost() {
+                showNoBanner(true);
+            }
+        });
+    }
+
+    private void showNoBanner(boolean show) {
+        if (bannerNoInternet != null) {
+            bannerNoInternet.setVisibility(show ? View.VISIBLE : View.GONE);
+        }
     }
 
     @Override
@@ -175,6 +244,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
         if (locationClient != null && locationCallback != null)
             locationClient.removeLocationUpdates(locationCallback);
         if (adapter != null) adapter.release();
+        if (networkMonitor != null) networkMonitor.stopMonitoring();  // ✅ NEW
     }
 
     private void showRadiusDialog() {
@@ -400,5 +470,6 @@ public class GeneralFeedActivity extends AppCompatActivity {
             tvLocationName.setText("Permission denied");
             Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show();
         }
+        // NOTIFICATION_REQ: no action needed — system handles it
     }
 }

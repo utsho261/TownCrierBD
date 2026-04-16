@@ -7,6 +7,7 @@ import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
 import android.provider.Settings;
@@ -32,6 +33,7 @@ import com.example.towncrierbd.models.Announcement;
 import com.example.towncrierbd.models.UserModel;
 import com.example.towncrierbd.utils.Constants;
 import com.example.towncrierbd.utils.DistanceUtil;
+import com.example.towncrierbd.utils.NetworkMonitor;
 import com.google.android.gms.location.*;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -49,11 +51,14 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     private View layoutEmpty;
     private SwipeRefreshLayout swipeRefresh;
     private EditText etSearch;
+    private View bannerNoInternet;            // ✅ NEW
 
     private FirebaseAuth auth;
     private DatabaseReference annRef, userRef;
 
-    private static final int LOCATION_REQ = 900;
+    private static final int LOCATION_REQ     = 900;
+    private static final int NOTIFICATION_REQ = 901;   // ✅ NEW
+
     private FusedLocationProviderClient locationClient;
     private LocationCallback locationCallback;
 
@@ -69,19 +74,22 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     private String searchQuery = "";
     private double selectedRadius = Constants.FEED_RADIUS_KM;
 
+    private NetworkMonitor networkMonitor;     // ✅ NEW
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_announcer_feed);
 
-        tvWelcome      = findViewById(R.id.tvWelcome);
-        tvLocationName = findViewById(R.id.tvLocationName);
-        tvRadius       = findViewById(R.id.tvRadius);
-        rvFeed         = findViewById(R.id.rvFeed);
-        fabAdd         = findViewById(R.id.fabAdd);
-        layoutEmpty    = findViewById(R.id.layoutEmpty);
-        swipeRefresh   = findViewById(R.id.swipeRefresh);
-        etSearch       = findViewById(R.id.etSearch);
+        tvWelcome       = findViewById(R.id.tvWelcome);
+        tvLocationName  = findViewById(R.id.tvLocationName);
+        tvRadius        = findViewById(R.id.tvRadius);
+        rvFeed          = findViewById(R.id.rvFeed);
+        fabAdd          = findViewById(R.id.fabAdd);
+        layoutEmpty     = findViewById(R.id.layoutEmpty);
+        swipeRefresh    = findViewById(R.id.swipeRefresh);
+        etSearch        = findViewById(R.id.etSearch);
+        bannerNoInternet = findViewById(R.id.bannerNoInternet);  // ✅ NEW
 
         adapter = new FeedAdapter(this);
         rvFeed.setLayoutManager(new LinearLayoutManager(this));
@@ -134,9 +142,59 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         }
 
         locationClient = LocationServices.getFusedLocationProviderClient(this);
+
+        // ✅ Request notification permission (Android 13+)
+        requestNotificationPermission();
+
+        // ✅ Start internet monitoring
+        startNetworkMonitoring();
+
         loadUser();
         attachFeedListenerOnce();
         startLiveLocation();
+    }
+
+    // ✅ Notification permission for Android 13+
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this,
+                    Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+
+                if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                        Manifest.permission.POST_NOTIFICATIONS)) {
+                    new AlertDialog.Builder(this)
+                            .setTitle("Enable Notifications")
+                            .setMessage("Town Crier BD sends notifications when new announcements are nearby. Allow notifications to stay updated.")
+                            .setPositiveButton("Allow", (d, w) ->
+                                    ActivityCompat.requestPermissions(this,
+                                            new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                                            NOTIFICATION_REQ))
+                            .setNegativeButton("Not now", null)
+                            .show();
+                } else {
+                    ActivityCompat.requestPermissions(this,
+                            new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                            NOTIFICATION_REQ);
+                }
+            }
+        }
+    }
+
+    // ✅ Internet banner monitoring
+    private void startNetworkMonitoring() {
+        networkMonitor = new NetworkMonitor(this);
+        if (!networkMonitor.isConnected()) showNoBanner(true);
+
+        networkMonitor.startMonitoring(new NetworkMonitor.NetworkCallback() {
+            @Override public void onAvailable() { showNoBanner(false); }
+            @Override public void onLost()      { showNoBanner(true);  }
+        });
+    }
+
+    private void showNoBanner(boolean show) {
+        if (bannerNoInternet != null)
+            bannerNoInternet.setVisibility(show ? View.VISIBLE : View.GONE);
     }
 
     @Override
@@ -152,12 +210,12 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         if (locationClient != null && locationCallback != null)
             locationClient.removeLocationUpdates(locationCallback);
         if (adapter != null) adapter.release();
+        if (networkMonitor != null) networkMonitor.stopMonitoring(); // ✅ NEW
     }
 
     private void showRadiusDialog() {
         String[] options = {"1 km", "3 km", "5 km", "10 km"};
         double[] values  = {1.0, 3.0, 5.0, 10.0};
-
         new AlertDialog.Builder(this)
                 .setTitle("Select Radius")
                 .setItems(options, (d, which) -> {
@@ -262,20 +320,21 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
 
         if (!roleFetching.contains(uid)) {
             roleFetching.add(uid);
-            userRef.child(uid).child("role").addListenerForSingleValueEvent(new ValueEventListener() {
-                @Override
-                public void onDataChange(@NonNull DataSnapshot snapshot) {
-                    String rr = safe(snapshot.getValue(String.class));
-                    if (rr.isEmpty()) rr = Constants.ROLE_USER;
-                    roleCache.put(uid, rr);
-                    roleFetching.remove(uid);
-                    applyAndShow();
-                }
-                @Override
-                public void onCancelled(@NonNull DatabaseError error) {
-                    roleFetching.remove(uid);
-                }
-            });
+            userRef.child(uid).child("role").addListenerForSingleValueEvent(
+                    new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot snapshot) {
+                            String rr = safe(snapshot.getValue(String.class));
+                            if (rr.isEmpty()) rr = Constants.ROLE_USER;
+                            roleCache.put(uid, rr);
+                            roleFetching.remove(uid);
+                            applyAndShow();
+                        }
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError error) {
+                            roleFetching.remove(uid);
+                        }
+                    });
         }
         return "";
     }
@@ -363,7 +422,7 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         if (requestCode == LOCATION_REQ && grantResults.length > 0
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             startLiveLocation();
-        } else {
+        } else if (requestCode == LOCATION_REQ) {
             if (tvLocationName != null) tvLocationName.setText("Permission denied");
             Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show();
         }

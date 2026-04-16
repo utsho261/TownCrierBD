@@ -55,6 +55,7 @@
         <activity android:name="com.example.towncrierbd.activities.AnnouncerFeedActivity"/>
         <activity android:name="com.example.towncrierbd.activities.GeneralFeedActivity"/>
         <activity android:name="com.example.towncrierbd.activities.SignupActivity"/>
+        <activity android:name="com.example.towncrierbd.activities.ChatActivity"/>
 
         <activity
             android:name="com.example.towncrierbd.activities.LoginActivity"

@@ -20,9 +20,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.example.towncrierbd.R;
 import com.example.towncrierbd.activities.AnnouncementDetailActivity;
+import com.example.towncrierbd.activities.ChatActivity;
 import com.example.towncrierbd.models.Announcement;
 import com.example.towncrierbd.utils.Constants;
 import com.example.towncrierbd.utils.DistanceUtil;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.ArrayList;
@@ -104,6 +106,27 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         // Time
         h.tvTime.setText(getRelativeTime(a.getTime()));
 
+        // ✅ Expiry countdown
+        if (h.tvExpiry != null) {
+            String expiry = getExpiryText(a.getExpireAt());
+            if (expiry.isEmpty()) {
+                h.tvExpiry.setVisibility(View.GONE);
+            } else {
+                h.tvExpiry.setVisibility(View.VISIBLE);
+                h.tvExpiry.setText(expiry);
+                // Color: red if < 1hr, orange if < 6hr, green otherwise
+                long remaining = a.getExpireAt() - System.currentTimeMillis();
+                long hours = remaining / 3600000L;
+                if (hours < 1) {
+                    h.tvExpiry.setTextColor(0xFFD32F2F); // red
+                } else if (hours < 6) {
+                    h.tvExpiry.setTextColor(0xFFF57C00); // orange
+                } else {
+                    h.tvExpiry.setTextColor(0xFF388E3C); // green
+                }
+            }
+        }
+
         // Image
         String imgUrl = safe(a.getImageUrl());
         if (!imgUrl.isEmpty()) {
@@ -128,12 +151,12 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
 
         // ✅ Profile mode: Edit/Delete দেখাও, Listen/Chat/Call লুকাও
         if (showEditDelete) {
-            if (h.btnListen != null) h.btnListen.setVisibility(View.GONE);
-            if (h.btnChat != null) h.btnChat.setVisibility(View.GONE);
-            if (h.btnCall != null) h.btnCall.setVisibility(View.GONE);
+            if (h.btnListen != null)       h.btnListen.setVisibility(View.GONE);
+            if (h.btnChat != null)         h.btnChat.setVisibility(View.GONE);
+            if (h.btnCall != null)         h.btnCall.setVisibility(View.GONE);
             if (h.layoutEditDelete != null) h.layoutEditDelete.setVisibility(View.VISIBLE);
 
-            if (h.btnEdit != null) h.btnEdit.setOnClickListener(v -> showEditDialog(a, pos));
+            if (h.btnEdit != null)   h.btnEdit.setOnClickListener(v -> showEditDialog(a, pos));
             if (h.btnDelete != null) {
                 h.btnDelete.setOnClickListener(v ->
                         new AlertDialog.Builder(context)
@@ -150,9 +173,9 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
 
         } else {
             // Feed mode
-            if (h.btnListen != null) h.btnListen.setVisibility(View.VISIBLE);
-            if (h.btnChat != null) h.btnChat.setVisibility(View.VISIBLE);
-            if (h.btnCall != null) h.btnCall.setVisibility(View.VISIBLE);
+            if (h.btnListen != null)       h.btnListen.setVisibility(View.VISIBLE);
+            if (h.btnChat != null)         h.btnChat.setVisibility(View.VISIBLE);
+            if (h.btnCall != null)         h.btnCall.setVisibility(View.VISIBLE);
             if (h.layoutEditDelete != null) h.layoutEditDelete.setVisibility(View.GONE);
 
             if (h.btnCall != null) {
@@ -162,20 +185,30 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                         Toast.makeText(context, "No phone number", Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    context.startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + phone)));
+                    context.startActivity(new Intent(Intent.ACTION_DIAL,
+                            Uri.parse("tel:" + phone)));
                 });
             }
 
+            // ✅ In-App Chat (replaces SMS)
             if (h.btnChat != null) {
                 h.btnChat.setOnClickListener(v -> {
-                    String phone = safe(a.getPhone());
-                    if (phone.isEmpty()) {
-                        Toast.makeText(context, "No phone number", Toast.LENGTH_SHORT).show();
+                    String postOwnerUid = safe(a.getUserId());
+                    String myUid = safe(FirebaseAuth.getInstance().getUid());
+
+                    if (postOwnerUid.isEmpty()) {
+                        Toast.makeText(context, "Cannot start chat", Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    Intent i = new Intent(Intent.ACTION_SENDTO);
-                    i.setData(Uri.parse("smsto:" + phone));
-                    i.putExtra("sms_body", "Hello! I'm interested in: " + safe(a.getTitle()));
+                    if (myUid.equals(postOwnerUid)) {
+                        Toast.makeText(context, "Cannot chat with yourself",
+                                Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    Intent i = new Intent(context, ChatActivity.class);
+                    i.putExtra(ChatActivity.EXTRA_OTHER_UID,  postOwnerUid);
+                    i.putExtra(ChatActivity.EXTRA_OTHER_NAME, safe(a.getUserName()));
                     context.startActivity(i);
                 });
             }
@@ -183,7 +216,8 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             if (h.btnListen != null) {
                 h.btnListen.setOnClickListener(v -> {
                     String speak = safe(a.getTitle()) + ". " + safe(a.getDescription());
-                    if (tts != null) tts.speak(speak, TextToSpeech.QUEUE_FLUSH, null, "tc_announce");
+                    if (tts != null)
+                        tts.speak(speak, TextToSpeech.QUEUE_FLUSH, null, "tc_announce");
                 });
             }
         }
@@ -193,6 +227,27 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             h.itemView.setOnClickListener(v -> openDetail(a));
         } else {
             h.itemView.setOnClickListener(null);
+        }
+    }
+
+    // ✅ Expiry countdown text
+    private String getExpiryText(long expireAt) {
+        if (expireAt <= 0) return "";
+        long remaining = expireAt - System.currentTimeMillis();
+        if (remaining <= 0) return "Expired";
+
+        long hours   = remaining / 3600000L;
+        long minutes = (remaining % 3600000L) / 60000L;
+
+        if (hours >= 24) {
+            long days = hours / 24;
+            return "⏳ Expires in " + days + " day" + (days > 1 ? "s" : "");
+        } else if (hours >= 1) {
+            return "⏳ Expires in " + hours + " hr" + (hours > 1 ? "s" : "");
+        } else if (minutes >= 1) {
+            return "⏳ Expires in " + minutes + " min";
+        } else {
+            return "⏳ Expiring soon";
         }
     }
 
@@ -245,17 +300,16 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                     String newTitle = etNewTitle.getText().toString().trim();
                     String newDesc  = etNewDesc.getText().toString().trim();
                     if (newTitle.isEmpty()) {
-                        Toast.makeText(context, "Title cannot be empty", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(context, "Title cannot be empty",
+                                Toast.LENGTH_SHORT).show();
                         return;
                     }
                     FirebaseDatabase.getInstance()
                             .getReference(Constants.DB_ANNOUNCEMENTS)
-                            .child(a.getId())
-                            .child("title").setValue(newTitle);
+                            .child(a.getId()).child("title").setValue(newTitle);
                     FirebaseDatabase.getInstance()
                             .getReference(Constants.DB_ANNOUNCEMENTS)
-                            .child(a.getId())
-                            .child("description").setValue(newDesc);
+                            .child(a.getId()).child("description").setValue(newDesc);
                     a.setTitle(newTitle);
                     a.setDescription(newDesc);
                     notifyItemChanged(pos);
@@ -301,6 +355,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
     public static class VH extends RecyclerView.ViewHolder {
         ImageView ivPhoto;
         TextView tvBadge, tvTitle, tvDesc, tvAvatar, tvName, tvDistance, tvTime;
+        TextView tvExpiry;   // ✅ NEW
         View btnListen, btnChat, btnCall;
         View layoutEditDelete;
         android.widget.Button btnEdit, btnDelete, btnDetails;
@@ -315,6 +370,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             tvName           = itemView.findViewById(R.id.tvName);
             tvDistance       = itemView.findViewById(R.id.tvDistance);
             tvTime           = itemView.findViewById(R.id.tvTime);
+            tvExpiry         = itemView.findViewById(R.id.tvExpiry);  // ✅ NEW
             btnListen        = itemView.findViewById(R.id.btnListen);
             btnChat          = itemView.findViewById(R.id.btnChat);
             btnCall          = itemView.findViewById(R.id.btnCall);
