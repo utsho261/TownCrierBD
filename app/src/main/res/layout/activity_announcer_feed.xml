@@ -78,10 +78,12 @@
                             android:id="@+id/tvRadius"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="within 3.0 km"
+                            android:text="within 3 km  ▾"
                             android:textColor="#D6E7FF"
                             android:textSize="14sp"
-                            android:layout_marginTop="2dp"/>
+                            android:layout_marginTop="2dp"
+                            android:clickable="true"
+                            android:focusable="true"/>
                     </LinearLayout>
 
                 </com.google.android.material.card.MaterialCardView>
@@ -89,17 +91,50 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- ✅ Search Bar -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="14dp"
+            android:layout_marginBottom="8dp"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="3dp">
+
+            <EditText
+                android:id="@+id/etSearch"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:hint="Search by title, category..."
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:background="@android:color/white"
+                android:textSize="14sp"
+                android:inputType="text"
+                android:imeOptions="actionSearch"
+                android:drawableStart="@android:drawable/ic_menu_search"/>
+
+        </androidx.cardview.widget.CardView>
+
     </com.google.android.material.appbar.AppBarLayout>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvFeed"
+    <!-- ✅ SwipeRefreshLayout -->
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeRefresh"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:clipToPadding="false"
-        android:paddingBottom="90dp"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior"/>
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-    <!-- ✅ Empty State -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvFeed"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingBottom="90dp"/>
+
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+    <!-- Empty State -->
     <LinearLayout
         android:id="@+id/layoutEmpty"
         android:layout_width="match_parent"

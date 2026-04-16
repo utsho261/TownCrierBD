@@ -10,16 +10,21 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Looper;
 import android.provider.Settings;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.example.towncrierbd.R;
 import com.example.towncrierbd.adapters.FeedAdapter;
@@ -49,9 +54,9 @@ public class GeneralFeedActivity extends AppCompatActivity {
     private RecyclerView rvFeed;
     private FeedAdapter adapter;
     private FloatingActionButton fabAdd;
-
-    // ✅ Empty state
     private View layoutEmpty;
+    private SwipeRefreshLayout swipeRefresh;
+    private EditText etSearch;
 
     private DatabaseReference annRef, userRef;
     private FirebaseAuth auth;
@@ -69,6 +74,8 @@ public class GeneralFeedActivity extends AppCompatActivity {
     private String selectedCategory = CategoryConfig.CAT_ALL;
     private String myRole = "";
     private String wantRole = "";
+    private String searchQuery = "";
+    private double selectedRadius = Constants.FEED_RADIUS_KM;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,6 +91,8 @@ public class GeneralFeedActivity extends AppCompatActivity {
         scrollChips    = findViewById(R.id.scrollChips);
         chipGroup      = findViewById(R.id.chipGroup);
         layoutEmpty    = findViewById(R.id.layoutEmpty);
+        swipeRefresh   = findViewById(R.id.swipeRefresh);
+        etSearch       = findViewById(R.id.etSearch);
 
         adapter = new FeedAdapter(this);
         rvFeed.setLayoutManager(new LinearLayoutManager(this));
@@ -96,7 +105,11 @@ public class GeneralFeedActivity extends AppCompatActivity {
         fabAdd.setOnClickListener(v ->
                 startActivity(new Intent(this, AddAnnouncementActivity.class)));
 
-        if (tvRadius != null) tvRadius.setText("within " + Constants.FEED_RADIUS_KM + " km");
+        updateRadiusText();
+
+        if (tvRadius != null) {
+            tvRadius.setOnClickListener(v -> showRadiusDialog());
+        }
 
         if (tvToggleFilter != null && scrollChips != null) {
             tvToggleFilter.setOnClickListener(v -> {
@@ -111,6 +124,24 @@ public class GeneralFeedActivity extends AppCompatActivity {
         }
 
         if (chipGroup != null) buildCategoryChips();
+
+        if (etSearch != null) {
+            etSearch.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
+                @Override public void afterTextChanged(Editable s) {}
+                @Override public void onTextChanged(CharSequence s, int st, int b, int c) {
+                    searchQuery = s.toString().trim().toLowerCase();
+                    applyAndShow();
+                }
+            });
+        }
+
+        if (swipeRefresh != null) {
+            swipeRefresh.setOnRefreshListener(() -> {
+                applyAndShow();
+                swipeRefresh.setRefreshing(false);
+            });
+        }
 
         BottomNavigationView nav = findViewById(R.id.bottomNav);
         if (nav != null) {
@@ -131,9 +162,9 @@ public class GeneralFeedActivity extends AppCompatActivity {
         loadMyRoleThenStart();
     }
 
-    // ✅ Back press করলে app minimize হবে, Login এ যাবে না
     @Override
     public void onBackPressed() {
+        super.onBackPressed();
         moveTaskToBack(true);
     }
 
@@ -146,12 +177,32 @@ public class GeneralFeedActivity extends AppCompatActivity {
         if (adapter != null) adapter.release();
     }
 
+    private void showRadiusDialog() {
+        String[] options = {"1 km", "3 km", "5 km", "10 km"};
+        double[] values  = {1.0, 3.0, 5.0, 10.0};
+
+        new AlertDialog.Builder(this)
+                .setTitle("Select Radius")
+                .setItems(options, (d, which) -> {
+                    selectedRadius = values[which];
+                    updateRadiusText();
+                    applyAndShow();
+                })
+                .show();
+    }
+
+    private void updateRadiusText() {
+        if (tvRadius != null)
+            tvRadius.setText("within " + (int) selectedRadius + " km  ▾");
+    }
+
     private void loadMyRoleThenStart() {
         String uid = auth.getUid();
         if (uid == null) return;
 
         userRef.child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
                 UserModel u = snapshot.getValue(UserModel.class);
                 if (u == null) return;
 
@@ -167,7 +218,11 @@ public class GeneralFeedActivity extends AppCompatActivity {
                 attachFeedListenerOnce();
                 startLiveLocation();
             }
-            @Override public void onCancelled(@NonNull DatabaseError error) {}
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(GeneralFeedActivity.this,
+                        "Failed to load profile. Check internet.", Toast.LENGTH_SHORT).show();
+            }
         });
     }
 
@@ -175,7 +230,8 @@ public class GeneralFeedActivity extends AppCompatActivity {
         if (feedListener != null) return;
 
         feedListener = new ValueEventListener() {
-            @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
                 all.clear();
                 for (DataSnapshot s : snapshot.getChildren()) {
                     Announcement a = s.getValue(Announcement.class);
@@ -185,7 +241,11 @@ public class GeneralFeedActivity extends AppCompatActivity {
                 }
                 applyAndShow();
             }
-            @Override public void onCancelled(@NonNull DatabaseError error) {}
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(GeneralFeedActivity.this,
+                        "Failed to load feed: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+            }
         };
 
         annRef.addValueEventListener(feedListener);
@@ -209,15 +269,23 @@ public class GeneralFeedActivity extends AppCompatActivity {
                 if (!selectedCategory.equals(c)) continue;
             }
 
+            if (!searchQuery.isEmpty()) {
+                String title = safe(a.getTitle()).toLowerCase();
+                String desc  = safe(a.getDescription()).toLowerCase();
+                String cat   = safe(a.getCategory()).toLowerCase();
+                if (!title.contains(searchQuery) &&
+                        !desc.contains(searchQuery) &&
+                        !cat.contains(searchQuery)) continue;
+            }
+
             if (!locationReady) continue;
             double dist = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
-            if (dist <= Constants.FEED_RADIUS_KM) out.add(a);
+            if (dist <= selectedRadius) out.add(a);
         }
 
         adapter.setData(out);
         if (locationReady) adapter.setMyLocation(myLat, myLng);
 
-        // ✅ Empty state
         if (layoutEmpty != null) {
             layoutEmpty.setVisibility(out.isEmpty() && locationReady ? View.VISIBLE : View.GONE);
         }
@@ -259,12 +327,14 @@ public class GeneralFeedActivity extends AppCompatActivity {
             return;
         }
 
-        LocationRequest req = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000)
-                .setMinUpdateIntervalMillis(1500)
+        LocationRequest req = new LocationRequest.Builder(
+                Priority.PRIORITY_BALANCED_POWER_ACCURACY, 10000)
+                .setMinUpdateIntervalMillis(5000)
                 .build();
 
         locationCallback = new LocationCallback() {
-            @Override public void onLocationResult(@NonNull LocationResult result) {
+            @Override
+            public void onLocationResult(@NonNull LocationResult result) {
                 Location loc = result.getLastLocation();
                 if (loc == null) return;
 

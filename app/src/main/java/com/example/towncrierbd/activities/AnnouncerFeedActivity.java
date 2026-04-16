@@ -10,16 +10,21 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Looper;
 import android.provider.Settings;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.example.towncrierbd.R;
 import com.example.towncrierbd.adapters.FeedAdapter;
@@ -41,9 +46,9 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     private RecyclerView rvFeed;
     private FeedAdapter adapter;
     private FloatingActionButton fabAdd;
-
-    // ✅ Empty state
     private View layoutEmpty;
+    private SwipeRefreshLayout swipeRefresh;
+    private EditText etSearch;
 
     private FirebaseAuth auth;
     private DatabaseReference annRef, userRef;
@@ -61,6 +66,9 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     private final Map<String, String> roleCache = new HashMap<>();
     private final Set<String> roleFetching = new HashSet<>();
 
+    private String searchQuery = "";
+    private double selectedRadius = Constants.FEED_RADIUS_KM;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -72,6 +80,8 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         rvFeed         = findViewById(R.id.rvFeed);
         fabAdd         = findViewById(R.id.fabAdd);
         layoutEmpty    = findViewById(R.id.layoutEmpty);
+        swipeRefresh   = findViewById(R.id.swipeRefresh);
+        etSearch       = findViewById(R.id.etSearch);
 
         adapter = new FeedAdapter(this);
         rvFeed.setLayoutManager(new LinearLayoutManager(this));
@@ -81,7 +91,29 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         annRef  = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
         userRef = FirebaseDatabase.getInstance().getReference(Constants.DB_USERS);
 
-        if (tvRadius != null) tvRadius.setText("within " + Constants.FEED_RADIUS_KM + " km");
+        updateRadiusText();
+
+        if (tvRadius != null) {
+            tvRadius.setOnClickListener(v -> showRadiusDialog());
+        }
+
+        if (etSearch != null) {
+            etSearch.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
+                @Override public void afterTextChanged(Editable s) {}
+                @Override public void onTextChanged(CharSequence s, int st, int b, int c) {
+                    searchQuery = s.toString().trim().toLowerCase();
+                    applyAndShow();
+                }
+            });
+        }
+
+        if (swipeRefresh != null) {
+            swipeRefresh.setOnRefreshListener(() -> {
+                applyAndShow();
+                swipeRefresh.setRefreshing(false);
+            });
+        }
 
         fabAdd.setOnClickListener(v ->
                 startActivity(new Intent(this, AddAnnouncementActivity.class)));
@@ -102,15 +134,14 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         }
 
         locationClient = LocationServices.getFusedLocationProviderClient(this);
-
         loadUser();
         attachFeedListenerOnce();
         startLiveLocation();
     }
 
-    // ✅ Back press করলে app minimize হবে
     @Override
     public void onBackPressed() {
+        super.onBackPressed();
         moveTaskToBack(true);
     }
 
@@ -123,16 +154,40 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         if (adapter != null) adapter.release();
     }
 
+    private void showRadiusDialog() {
+        String[] options = {"1 km", "3 km", "5 km", "10 km"};
+        double[] values  = {1.0, 3.0, 5.0, 10.0};
+
+        new AlertDialog.Builder(this)
+                .setTitle("Select Radius")
+                .setItems(options, (d, which) -> {
+                    selectedRadius = values[which];
+                    updateRadiusText();
+                    applyAndShow();
+                })
+                .show();
+    }
+
+    private void updateRadiusText() {
+        if (tvRadius != null)
+            tvRadius.setText("within " + (int) selectedRadius + " km  ▾");
+    }
+
     private void loadUser() {
         String uid = auth.getUid();
         if (uid == null) return;
         userRef.child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
                 UserModel u = snapshot.getValue(UserModel.class);
                 if (u != null && u.getName() != null)
                     tvWelcome.setText("Welcome Back, " + u.getName() + "!");
             }
-            @Override public void onCancelled(@NonNull DatabaseError error) {}
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(AnnouncerFeedActivity.this,
+                        "Failed to load profile.", Toast.LENGTH_SHORT).show();
+            }
         });
     }
 
@@ -140,7 +195,8 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         if (feedListener != null) return;
 
         feedListener = new ValueEventListener() {
-            @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
                 all.clear();
                 for (DataSnapshot s : snapshot.getChildren()) {
                     Announcement a = s.getValue(Announcement.class);
@@ -150,7 +206,11 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
                 }
                 applyAndShow();
             }
-            @Override public void onCancelled(@NonNull DatabaseError error) {}
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(AnnouncerFeedActivity.this,
+                        "Failed to load feed: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+            }
         };
 
         annRef.addValueEventListener(feedListener);
@@ -169,15 +229,23 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
             String postRole = resolvePostRole(a);
             if (!Constants.ROLE_USER.equals(postRole)) continue;
 
+            if (!searchQuery.isEmpty()) {
+                String title = safe(a.getTitle()).toLowerCase();
+                String desc  = safe(a.getDescription()).toLowerCase();
+                String cat   = safe(a.getCategory()).toLowerCase();
+                if (!title.contains(searchQuery) &&
+                        !desc.contains(searchQuery) &&
+                        !cat.contains(searchQuery)) continue;
+            }
+
             if (!locationReady) continue;
             double dist = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
-            if (dist <= Constants.FEED_RADIUS_KM) out.add(a);
+            if (dist <= selectedRadius) out.add(a);
         }
 
         adapter.setData(out);
         if (locationReady) adapter.setMyLocation(myLat, myLng);
 
-        // ✅ Empty state
         if (layoutEmpty != null) {
             layoutEmpty.setVisibility(out.isEmpty() && locationReady ? View.VISIBLE : View.GONE);
         }
@@ -195,14 +263,16 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         if (!roleFetching.contains(uid)) {
             roleFetching.add(uid);
             userRef.child(uid).child("role").addListenerForSingleValueEvent(new ValueEventListener() {
-                @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snapshot) {
                     String rr = safe(snapshot.getValue(String.class));
                     if (rr.isEmpty()) rr = Constants.ROLE_USER;
                     roleCache.put(uid, rr);
                     roleFetching.remove(uid);
                     applyAndShow();
                 }
-                @Override public void onCancelled(@NonNull DatabaseError error) {
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {
                     roleFetching.remove(uid);
                 }
             });
@@ -224,12 +294,14 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
             return;
         }
 
-        LocationRequest req = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000)
-                .setMinUpdateIntervalMillis(1500)
+        LocationRequest req = new LocationRequest.Builder(
+                Priority.PRIORITY_BALANCED_POWER_ACCURACY, 10000)
+                .setMinUpdateIntervalMillis(5000)
                 .build();
 
         locationCallback = new LocationCallback() {
-            @Override public void onLocationResult(@NonNull LocationResult result) {
+            @Override
+            public void onLocationResult(@NonNull LocationResult result) {
                 Location loc = result.getLastLocation();
                 if (loc == null) return;
 
