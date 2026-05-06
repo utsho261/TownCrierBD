@@ -33,6 +33,7 @@ import com.example.towncrierbd.models.Announcement;
 import com.example.towncrierbd.models.UserModel;
 import com.example.towncrierbd.utils.Constants;
 import com.example.towncrierbd.utils.DistanceUtil;
+import com.example.towncrierbd.utils.ExpiredPostCleaner;
 import com.example.towncrierbd.utils.NetworkMonitor;
 import com.google.android.gms.location.*;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -51,13 +52,13 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     private View layoutEmpty;
     private SwipeRefreshLayout swipeRefresh;
     private EditText etSearch;
-    private View bannerNoInternet;            // ✅ NEW
+    private View bannerNoInternet;
 
     private FirebaseAuth auth;
     private DatabaseReference annRef, userRef;
 
     private static final int LOCATION_REQ     = 900;
-    private static final int NOTIFICATION_REQ = 901;   // ✅ NEW
+    private static final int NOTIFICATION_REQ = 901;
 
     private FusedLocationProviderClient locationClient;
     private LocationCallback locationCallback;
@@ -74,7 +75,7 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     private String searchQuery = "";
     private double selectedRadius = Constants.FEED_RADIUS_KM;
 
-    private NetworkMonitor networkMonitor;     // ✅ NEW
+    private NetworkMonitor networkMonitor;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,7 +90,7 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         layoutEmpty     = findViewById(R.id.layoutEmpty);
         swipeRefresh    = findViewById(R.id.swipeRefresh);
         etSearch        = findViewById(R.id.etSearch);
-        bannerNoInternet = findViewById(R.id.bannerNoInternet);  // ✅ NEW
+        bannerNoInternet = findViewById(R.id.bannerNoInternet);
 
         adapter = new FeedAdapter(this);
         rvFeed.setLayoutManager(new LinearLayoutManager(this));
@@ -98,6 +99,9 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         auth    = FirebaseAuth.getInstance();
         annRef  = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
         userRef = FirebaseDatabase.getInstance().getReference(Constants.DB_USERS);
+
+        // ✅ FIXED: Clean expired posts (also deletes Firebase Storage audio)
+        ExpiredPostCleaner.cleanExpired();
 
         updateRadiusText();
 
@@ -118,6 +122,7 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
 
         if (swipeRefresh != null) {
             swipeRefresh.setOnRefreshListener(() -> {
+                ExpiredPostCleaner.cleanExpired(); // ✅ Also clean on manual refresh
                 applyAndShow();
                 swipeRefresh.setRefreshing(false);
             });
@@ -143,18 +148,13 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
 
         locationClient = LocationServices.getFusedLocationProviderClient(this);
 
-        // ✅ Request notification permission (Android 13+)
         requestNotificationPermission();
-
-        // ✅ Start internet monitoring
         startNetworkMonitoring();
-
         loadUser();
         attachFeedListenerOnce();
         startLiveLocation();
     }
 
-    // ✅ Notification permission for Android 13+
     private void requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this,
@@ -181,7 +181,6 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         }
     }
 
-    // ✅ Internet banner monitoring
     private void startNetworkMonitoring() {
         networkMonitor = new NetworkMonitor(this);
         if (!networkMonitor.isConnected()) showNoBanner(true);
@@ -210,7 +209,7 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         if (locationClient != null && locationCallback != null)
             locationClient.removeLocationUpdates(locationCallback);
         if (adapter != null) adapter.release();
-        if (networkMonitor != null) networkMonitor.stopMonitoring(); // ✅ NEW
+        if (networkMonitor != null) networkMonitor.stopMonitoring();
     }
 
     private void showRadiusDialog() {

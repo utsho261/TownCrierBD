@@ -34,6 +34,7 @@ import com.example.towncrierbd.models.UserModel;
 import com.example.towncrierbd.utils.CategoryConfig;
 import com.example.towncrierbd.utils.Constants;
 import com.example.towncrierbd.utils.DistanceUtil;
+import com.example.towncrierbd.utils.ExpiredPostCleaner;
 import com.example.towncrierbd.utils.NetworkMonitor;
 import com.google.android.gms.location.*;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -59,13 +60,13 @@ public class GeneralFeedActivity extends AppCompatActivity {
     private View layoutEmpty;
     private SwipeRefreshLayout swipeRefresh;
     private EditText etSearch;
-    private View bannerNoInternet;          // ✅ NEW: internet banner
+    private View bannerNoInternet;
 
     private DatabaseReference annRef, userRef;
     private FirebaseAuth auth;
 
     private static final int LOCATION_REQ     = 900;
-    private static final int NOTIFICATION_REQ = 901;    // ✅ NEW
+    private static final int NOTIFICATION_REQ = 901;
 
     private FusedLocationProviderClient locationClient;
     private LocationCallback locationCallback;
@@ -82,7 +83,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
     private String searchQuery = "";
     private double selectedRadius = Constants.FEED_RADIUS_KM;
 
-    private NetworkMonitor networkMonitor;   // ✅ NEW
+    private NetworkMonitor networkMonitor;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -100,7 +101,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
         layoutEmpty     = findViewById(R.id.layoutEmpty);
         swipeRefresh    = findViewById(R.id.swipeRefresh);
         etSearch        = findViewById(R.id.etSearch);
-        bannerNoInternet = findViewById(R.id.bannerNoInternet);  // ✅ NEW
+        bannerNoInternet = findViewById(R.id.bannerNoInternet);
 
         adapter = new FeedAdapter(this);
         rvFeed.setLayoutManager(new LinearLayoutManager(this));
@@ -109,6 +110,9 @@ public class GeneralFeedActivity extends AppCompatActivity {
         auth    = FirebaseAuth.getInstance();
         annRef  = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
         userRef = FirebaseDatabase.getInstance().getReference(Constants.DB_USERS);
+
+        // ✅ FIXED: Clean expired posts on feed open so Firebase Storage audio is also deleted
+        ExpiredPostCleaner.cleanExpired();
 
         fabAdd.setOnClickListener(v ->
                 startActivity(new Intent(this, AddAnnouncementActivity.class)));
@@ -146,6 +150,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
 
         if (swipeRefresh != null) {
             swipeRefresh.setOnRefreshListener(() -> {
+                ExpiredPostCleaner.cleanExpired(); // ✅ Also clean on manual refresh
                 applyAndShow();
                 swipeRefresh.setRefreshing(false);
             });
@@ -168,16 +173,11 @@ public class GeneralFeedActivity extends AppCompatActivity {
 
         locationClient = LocationServices.getFusedLocationProviderClient(this);
 
-        // ✅ Request notification permission (Android 13+)
         requestNotificationPermission();
-
-        // ✅ Start internet monitoring
         startNetworkMonitoring();
-
         loadMyRoleThenStart();
     }
 
-    // ✅ Notification permission for Android 13+
     private void requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this,
@@ -204,24 +204,13 @@ public class GeneralFeedActivity extends AppCompatActivity {
         }
     }
 
-    // ✅ Internet banner monitoring
     private void startNetworkMonitoring() {
         networkMonitor = new NetworkMonitor(this);
-
-        // Show banner immediately if offline at start
-        if (!networkMonitor.isConnected()) {
-            showNoBanner(true);
-        }
+        if (!networkMonitor.isConnected()) showNoBanner(true);
 
         networkMonitor.startMonitoring(new NetworkMonitor.NetworkCallback() {
-            @Override
-            public void onAvailable() {
-                showNoBanner(false);
-            }
-            @Override
-            public void onLost() {
-                showNoBanner(true);
-            }
+            @Override public void onAvailable() { showNoBanner(false); }
+            @Override public void onLost()      { showNoBanner(true);  }
         });
     }
 
@@ -244,7 +233,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
         if (locationClient != null && locationCallback != null)
             locationClient.removeLocationUpdates(locationCallback);
         if (adapter != null) adapter.release();
-        if (networkMonitor != null) networkMonitor.stopMonitoring();  // ✅ NEW
+        if (networkMonitor != null) networkMonitor.stopMonitoring();
     }
 
     private void showRadiusDialog() {
@@ -470,6 +459,5 @@ public class GeneralFeedActivity extends AppCompatActivity {
             tvLocationName.setText("Permission denied");
             Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show();
         }
-        // NOTIFICATION_REQ: no action needed — system handles it
     }
 }

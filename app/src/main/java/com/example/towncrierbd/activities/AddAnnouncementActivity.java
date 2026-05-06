@@ -67,6 +67,15 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         tvImageStatus = findViewById(R.id.tvImageStatus);
         ivPreview     = findViewById(R.id.ivPreview);
 
+        // ✅ FIXED: btnRecordAudio is in layout but NOT handled here (free tier = no audio upload)
+        // Hide it so user doesn't see a non-functional button
+        View btnRecordAudio = findViewById(R.id.btnRecordAudio);
+        if (btnRecordAudio != null) btnRecordAudio.setVisibility(View.GONE);
+
+        // Also hide audio status text
+        TextView tvAudioStatus = findViewById(R.id.tvAudioStatus);
+        if (tvAudioStatus != null) tvAudioStatus.setVisibility(View.GONE);
+
         auth    = FirebaseAuth.getInstance();
         annRef  = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
         userRef = FirebaseDatabase.getInstance().getReference(Constants.DB_USERS);
@@ -196,8 +205,11 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         String custom   = etCustomSub.getText().toString().trim();
         String hoursStr = etHours.getText().toString().trim();
         long hoursValue = 24;
-        try { if (!hoursStr.isEmpty()) hoursValue = Long.parseLong(hoursStr); }
-        catch (Exception ignored) {}
+        try { if (!hoursStr.isEmpty()) hoursValue = Long.parseLong(hoursStr); } catch (Exception ignored) {}
+
+        // ✅ Validate hours range (1 to 168 = 1 week)
+        if (hoursValue < 1) hoursValue = 1;
+        if (hoursValue > 168) hoursValue = 168;
 
         if (title.isEmpty() || desc.isEmpty()) {
             toast("Title & Description required");
@@ -219,18 +231,24 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 UserModel u = snapshot.getValue(UserModel.class);
                 if (u == null) {
                     btnPublish.setEnabled(true);
+                    if (tvImageStatus != null) tvImageStatus.setText("");
                     toast("User not found");
                     return;
                 }
 
                 if (u.getLat() == 0.0 && u.getLng() == 0.0) {
                     btnPublish.setEnabled(true);
+                    if (tvImageStatus != null) tvImageStatus.setText("");
                     toast("Location not detected. Open Feed once and try again.");
                     return;
                 }
 
                 String id = annRef.push().getKey();
-                if (id == null) { btnPublish.setEnabled(true); return; }
+                if (id == null) {
+                    btnPublish.setEnabled(true);
+                    if (tvImageStatus != null) tvImageStatus.setText("");
+                    return;
+                }
 
                 long now      = System.currentTimeMillis();
                 long expireAt = now + (fHours * 60L * 60L * 1000L);
@@ -252,6 +270,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 a.setLng(u.getLng());
                 a.setTime(now);
                 a.setExpireAt(expireAt);
+                a.setAudioUrl(""); // ✅ No audio on free tier
 
                 if (selectedBitmap != null) {
                     if (tvImageStatus != null) tvImageStatus.setText("Uploading image...");
@@ -261,49 +280,47 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                             new CloudinaryUploader.UploadListener() {
                                 @Override public void onSuccess(String imageUrl) {
                                     a.setImageUrl(imageUrl);
-                                    saveAnnouncement(a, id, u);
+                                    saveAnnouncement(a, u);
                                 }
                                 @Override public void onError(String message) {
                                     a.setImageUrl("");
-                                    saveAnnouncement(a, id, u);
+                                    saveAnnouncement(a, u);
                                     toast("Image upload failed, posting without image");
                                 }
                             }
                     );
                 } else {
                     a.setImageUrl("");
-                    saveAnnouncement(a, id, u);
+                    saveAnnouncement(a, u);
                 }
             }
 
             @Override public void onCancelled(@NonNull DatabaseError error) {
                 btnPublish.setEnabled(true);
-                toast("Failed");
+                if (tvImageStatus != null) tvImageStatus.setText("");
+                toast("Failed: " + error.getMessage());
             }
         });
     }
 
-    private void saveAnnouncement(Announcement a, String id, UserModel u) {
-        annRef.child(id).setValue(a)
+    private void saveAnnouncement(Announcement a, UserModel u) {
+        annRef.child(a.getId()).setValue(a)
                 .addOnSuccessListener(v -> {
                     toast("Published ✅");
-
-                    // ✅ Notification পাঠাও
                     NotificationSender.sendAnnouncementNotification(
-                            id,
+                            a.getId(),
                             a.getTitle(),
                             a.getDescription(),
                             u.getLat(),
                             u.getLng(),
                             a.getUserId()
                     );
-
                     finish();
                 })
                 .addOnFailureListener(e -> {
                     btnPublish.setEnabled(true);
                     if (tvImageStatus != null) tvImageStatus.setText("");
-                    toast("Save failed");
+                    toast("Save failed: " + e.getMessage());
                 });
     }
 

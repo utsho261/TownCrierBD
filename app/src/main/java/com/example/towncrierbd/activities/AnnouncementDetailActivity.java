@@ -1,6 +1,7 @@
 package com.example.towncrierbd.activities;
 
 import android.content.Intent;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
@@ -21,11 +22,13 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
     public static final String EXTRA_CATEGORY   = "category";
     public static final String EXTRA_PHONE      = "phone";
     public static final String EXTRA_IMAGE_URL  = "imageUrl";
+    public static final String EXTRA_AUDIO_URL  = "audioUrl";   // ✅ FIXED: was missing
     public static final String EXTRA_USER_NAME  = "userName";
     public static final String EXTRA_DISTANCE   = "distance";
     public static final String EXTRA_TIME       = "time";
-    // ✅ FIX: need otherUid for in-app chat
     public static final String EXTRA_OTHER_UID  = "otherUid";
+
+    private MediaPlayer mediaPlayer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,10 +52,10 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
         String category = getIntent().getStringExtra(EXTRA_CATEGORY);
         String phone    = getIntent().getStringExtra(EXTRA_PHONE);
         String imageUrl = getIntent().getStringExtra(EXTRA_IMAGE_URL);
+        String audioUrl = getIntent().getStringExtra(EXTRA_AUDIO_URL); // ✅ FIXED
         String userName = getIntent().getStringExtra(EXTRA_USER_NAME);
         String distance = getIntent().getStringExtra(EXTRA_DISTANCE);
         String time     = getIntent().getStringExtra(EXTRA_TIME);
-        // ✅ FIX: read otherUid
         String otherUid = getIntent().getStringExtra(EXTRA_OTHER_UID);
 
         tvCategory.setText(safe(category));
@@ -87,7 +90,6 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
             startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + phone)));
         });
 
-        // ✅ FIX: Use in-app ChatActivity instead of SMS
         btnChat.setOnClickListener(v -> {
             if (otherUid == null || otherUid.isEmpty()) {
                 Toast.makeText(this, "Cannot start chat", Toast.LENGTH_SHORT).show();
@@ -98,6 +100,19 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
             i.putExtra(ChatActivity.EXTRA_OTHER_NAME, safe(userName));
             startActivity(i);
         });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // ✅ Release MediaPlayer to avoid leaks
+        if (mediaPlayer != null) {
+            try {
+                mediaPlayer.stop();
+                mediaPlayer.release();
+            } catch (Exception ignored) {}
+            mediaPlayer = null;
+        }
     }
 
     private String safe(String s) { return s == null ? "" : s.trim(); }

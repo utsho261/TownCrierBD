@@ -3,7 +3,7 @@ package com.example.towncrierbd.activities;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -15,7 +15,6 @@ public class ForgotPasswordActivity extends AppCompatActivity {
 
     private EditText etEmail;
     private Button btnSendOTP;
-    private ImageView btnBack;
     private FirebaseAuth auth;
 
     @Override
@@ -26,6 +25,12 @@ public class ForgotPasswordActivity extends AppCompatActivity {
         auth       = FirebaseAuth.getInstance();
         etEmail    = findViewById(R.id.etEmail);
         btnSendOTP = findViewById(R.id.btnSendOTP);
+
+        // ✅ FIXED: tvBackToLogin click listener was missing
+        TextView tvBackToLogin = findViewById(R.id.tvBackToLogin);
+        if (tvBackToLogin != null) {
+            tvBackToLogin.setOnClickListener(v -> finish());
+        }
 
         btnSendOTP.setOnClickListener(v -> sendResetEmail());
     }
