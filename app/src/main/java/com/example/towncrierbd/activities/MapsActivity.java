@@ -62,7 +62,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private FirebaseAuth auth;
     private DatabaseReference annRef, userRef;
 
-    private String myRole = "";
+    private String myRole   = "";
     private String wantRole = "";
 
     private BottomSheetBehavior<View> sheetBehavior;
@@ -78,6 +78,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private final Map<String, Announcement> markerMap = new HashMap<>();
     private Announcement lastSelected = null;
+
+    // ✅ FIX: keep single reference to announcements listener to avoid duplicates
+    private ValueEventListener annListener = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -118,6 +121,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (mapFragment != null) mapFragment.getMapAsync(this);
 
         loadMyRoleThenStart();
+    }
+
+    // ✅ FIX: Remove listener on destroy to prevent leaks
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (annListener != null && annRef != null) {
+            annRef.removeEventListener(annListener);
+            annListener = null;
+        }
     }
 
     private void loadMyRoleThenStart() {
@@ -175,7 +188,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             return false;
         });
 
-        attachAnnouncementsListener();
+        // ✅ FIX: attach listener only once here if role already known
+        if (!wantRole.isEmpty()) {
+            attachAnnouncementsListener();
+        }
     }
 
     private void requestLocation() {
@@ -197,7 +213,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 setMyLocation(loc);
             } else {
                 Toast.makeText(this, "Location not ready yet", Toast.LENGTH_SHORT).show();
-                if (mMap != null) attachAnnouncementsListener();
+                attachAnnouncementsListener();
             }
         });
     }
@@ -208,17 +224,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         hasMyLoc = true;
 
         if (mMap != null) {
-            mMap.clear();
-            markerMap.clear();
-
+            // ✅ FIX: Don't clear map here — listener's onDataChange handles redraw
             LatLng me = new LatLng(myLat, myLng);
             mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(me, 15f));
-            mMap.addMarker(new MarkerOptions()
-                    .position(me)
-                    .title("You")
-                    .icon(BitmapDescriptorFactory.defaultMarker(
-                            BitmapDescriptorFactory.HUE_AZURE)));
-
+            // Trigger listener refresh (it will clear + redraw everything)
             attachAnnouncementsListener();
         }
     }
@@ -242,10 +251,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
+    // ✅ FIX: Only attach ONE listener; remove old one before adding new
     private void attachAnnouncementsListener() {
         if (annRef == null) return;
 
-        annRef.addValueEventListener(new ValueEventListener() {
+        // Remove previous listener if any
+        if (annListener != null) {
+            annRef.removeEventListener(annListener);
+        }
+
+        annListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (mMap == null) return;
@@ -273,6 +288,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     if (a.getId() == null) continue;
 
                     if (myUid != null && myUid.equals(a.getUserId())) continue;
+                    // ✅ FIX: filter expired posts on map too
                     if (a.getExpireAt() > 0 && now > a.getExpireAt()) continue;
 
                     String postRole = safe(a.getUserRole());
@@ -299,7 +315,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
-        });
+        };
+
+        annRef.addValueEventListener(annListener);
     }
 
     private void showBottomSheet(Announcement a) {
@@ -320,7 +338,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             tvDistance.setText("Nearby");
         }
 
-        // Image
         String imgUrl = safe(a.getImageUrl());
         if (!imgUrl.isEmpty()) {
             ivCover.setVisibility(View.VISIBLE);
@@ -345,19 +362,24 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + phone)));
         });
 
+        // ✅ FIX: in-app chat from map bottom sheet too
         btnChat.setOnClickListener(v -> {
-            String phone = safe(a.getPhone());
-            if (phone.isEmpty()) {
-                Toast.makeText(this, "No phone number", Toast.LENGTH_SHORT).show();
+            String postOwnerUid = safe(a.getUserId());
+            String myUidNow     = safe(auth.getUid());
+            if (postOwnerUid.isEmpty()) {
+                Toast.makeText(this, "Cannot start chat", Toast.LENGTH_SHORT).show();
                 return;
             }
-            Intent i = new Intent(Intent.ACTION_SENDTO);
-            i.setData(Uri.parse("smsto:" + phone));
-            i.putExtra("sms_body", "Hello! I'm interested in: " + safe(a.getTitle()));
+            if (myUidNow.equals(postOwnerUid)) {
+                Toast.makeText(this, "Cannot chat with yourself", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Intent i = new Intent(this, ChatActivity.class);
+            i.putExtra(ChatActivity.EXTRA_OTHER_UID,  postOwnerUid);
+            i.putExtra(ChatActivity.EXTRA_OTHER_NAME, safe(a.getUserName()));
             startActivity(i);
         });
 
-        // ✅ View Details
         btnDetails.setOnClickListener(v -> {
             String dist = "";
             if (hasMyLoc) {
@@ -373,6 +395,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             intent.putExtra(AnnouncementDetailActivity.EXTRA_USER_NAME, safe(a.getUserName()));
             intent.putExtra(AnnouncementDetailActivity.EXTRA_DISTANCE,  dist);
             intent.putExtra(AnnouncementDetailActivity.EXTRA_TIME,      getRelativeTime(a.getTime()));
+            // ✅ FIX: pass otherUid for in-app chat from detail screen
+            intent.putExtra(AnnouncementDetailActivity.EXTRA_OTHER_UID, safe(a.getUserId()));
             startActivity(intent);
         });
 

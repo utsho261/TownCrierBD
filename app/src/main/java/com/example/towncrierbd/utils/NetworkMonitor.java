@@ -22,9 +22,15 @@ public class NetworkMonitor {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private NetworkCallback listener;
 
+    // ✅ FIX: debounce state so rapid onAvailable/onLost calls don't cause banner flicker
+    private boolean lastKnownConnected = true;
+    private Runnable pendingCallback = null;
+    private static final long DEBOUNCE_MS = 500;
+
     public NetworkMonitor(Context context) {
         connectivityManager = (ConnectivityManager)
                 context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        lastKnownConnected = isConnected();
     }
 
     public boolean isConnected() {
@@ -48,15 +54,24 @@ public class NetworkMonitor {
         networkCallback = new ConnectivityManager.NetworkCallback() {
             @Override
             public void onAvailable(@NonNull Network network) {
-                mainHandler.post(() -> {
-                    if (listener != null) listener.onAvailable();
+                // ✅ FIX: debounce and only fire if state actually changed
+                postDebounced(() -> {
+                    if (!lastKnownConnected) {
+                        lastKnownConnected = true;
+                        if (listener != null) listener.onAvailable();
+                    }
                 });
             }
 
             @Override
             public void onLost(@NonNull Network network) {
-                mainHandler.post(() -> {
-                    if (listener != null) listener.onLost();
+                // ✅ FIX: debounce — device may switch networks briefly
+                postDebounced(() -> {
+                    // Re-check actual connectivity before declaring lost
+                    if (!isConnected() && lastKnownConnected) {
+                        lastKnownConnected = false;
+                        if (listener != null) listener.onLost();
+                    }
                 });
             }
         };
@@ -66,7 +81,17 @@ public class NetworkMonitor {
         } catch (Exception ignored) {}
     }
 
+    private void postDebounced(Runnable action) {
+        if (pendingCallback != null) mainHandler.removeCallbacks(pendingCallback);
+        pendingCallback = action;
+        mainHandler.postDelayed(pendingCallback, DEBOUNCE_MS);
+    }
+
     public void stopMonitoring() {
+        if (pendingCallback != null) {
+            mainHandler.removeCallbacks(pendingCallback);
+            pendingCallback = null;
+        }
         if (networkCallback != null) {
             try {
                 connectivityManager.unregisterNetworkCallback(networkCallback);

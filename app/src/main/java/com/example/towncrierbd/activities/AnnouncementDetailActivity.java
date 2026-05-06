@@ -16,14 +16,16 @@ import com.example.towncrierbd.R;
 
 public class AnnouncementDetailActivity extends AppCompatActivity {
 
-    public static final String EXTRA_TITLE     = "title";
-    public static final String EXTRA_DESC      = "desc";
-    public static final String EXTRA_CATEGORY  = "category";
-    public static final String EXTRA_PHONE     = "phone";
-    public static final String EXTRA_IMAGE_URL = "imageUrl";
-    public static final String EXTRA_USER_NAME = "userName";
-    public static final String EXTRA_DISTANCE  = "distance";
-    public static final String EXTRA_TIME      = "time";
+    public static final String EXTRA_TITLE      = "title";
+    public static final String EXTRA_DESC       = "desc";
+    public static final String EXTRA_CATEGORY   = "category";
+    public static final String EXTRA_PHONE      = "phone";
+    public static final String EXTRA_IMAGE_URL  = "imageUrl";
+    public static final String EXTRA_USER_NAME  = "userName";
+    public static final String EXTRA_DISTANCE   = "distance";
+    public static final String EXTRA_TIME       = "time";
+    // ✅ FIX: need otherUid for in-app chat
+    public static final String EXTRA_OTHER_UID  = "otherUid";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,6 +52,8 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
         String userName = getIntent().getStringExtra(EXTRA_USER_NAME);
         String distance = getIntent().getStringExtra(EXTRA_DISTANCE);
         String time     = getIntent().getStringExtra(EXTRA_TIME);
+        // ✅ FIX: read otherUid
+        String otherUid = getIntent().getStringExtra(EXTRA_OTHER_UID);
 
         tvCategory.setText(safe(category));
         tvTitle.setText(safe(title));
@@ -58,12 +62,10 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
         tvDistance.setText(safe(distance));
         tvTime.setText(safe(time));
 
-        // Avatar first letter
         String nm = safe(userName);
         tvAvatar.setText(nm.isEmpty() ? "U" :
                 String.valueOf(Character.toUpperCase(nm.charAt(0))));
 
-        // Image
         if (imageUrl != null && !imageUrl.isEmpty()) {
             ivPhoto.setVisibility(View.VISIBLE);
             Glide.with(this)
@@ -85,14 +87,15 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
             startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + phone)));
         });
 
+        // ✅ FIX: Use in-app ChatActivity instead of SMS
         btnChat.setOnClickListener(v -> {
-            if (phone == null || phone.isEmpty()) {
-                Toast.makeText(this, "No phone number", Toast.LENGTH_SHORT).show();
+            if (otherUid == null || otherUid.isEmpty()) {
+                Toast.makeText(this, "Cannot start chat", Toast.LENGTH_SHORT).show();
                 return;
             }
-            Intent i = new Intent(Intent.ACTION_SENDTO);
-            i.setData(Uri.parse("smsto:" + phone));
-            i.putExtra("sms_body", "Hello! I'm interested in: " + safe(title));
+            Intent i = new Intent(this, ChatActivity.class);
+            i.putExtra(ChatActivity.EXTRA_OTHER_UID,  otherUid);
+            i.putExtra(ChatActivity.EXTRA_OTHER_NAME, safe(userName));
             startActivity(i);
         });
     }

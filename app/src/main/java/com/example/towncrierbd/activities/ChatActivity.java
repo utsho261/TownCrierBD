@@ -37,6 +37,8 @@ public class ChatActivity extends AppCompatActivity {
     private EditText etMessage;
     private View btnSend;
     private TextView tvOtherName;
+    // ✅ FIX: added avatar TextView reference
+    private TextView tvHeaderAvatar;
     private ImageView btnBack;
 
     private ChatAdapter adapter;
@@ -66,18 +68,25 @@ public class ChatActivity extends AppCompatActivity {
         myUid = FirebaseAuth.getInstance().getUid();
         if (myUid == null) { finish(); return; }
 
-        // Build a stable chat room ID (alphabetical sort so both sides get same id)
+        // Stable chat room ID (alphabetical so both sides match)
         chatRoomId = myUid.compareTo(otherUid) < 0
                 ? myUid + "_" + otherUid
                 : otherUid + "_" + myUid;
 
-        rvMessages  = findViewById(R.id.rvMessages);
-        etMessage   = findViewById(R.id.etMessage);
-        btnSend     = findViewById(R.id.btnSend);
-        tvOtherName = findViewById(R.id.tvOtherName);
-        btnBack     = findViewById(R.id.btnBack);
+        rvMessages    = findViewById(R.id.rvMessages);
+        etMessage     = findViewById(R.id.etMessage);
+        btnSend       = findViewById(R.id.btnSend);
+        tvOtherName   = findViewById(R.id.tvOtherName);
+        tvHeaderAvatar = findViewById(R.id.tvHeaderAvatar); // ✅ FIX: bind avatar
+        btnBack       = findViewById(R.id.btnBack);
 
         tvOtherName.setText(otherName != null ? otherName : "Chat");
+
+        // ✅ FIX: Set avatar first letter
+        String nm = (otherName != null && !otherName.trim().isEmpty()) ? otherName.trim() : "?";
+        if (tvHeaderAvatar != null) {
+            tvHeaderAvatar.setText(String.valueOf(Character.toUpperCase(nm.charAt(0))));
+        }
 
         adapter = new ChatAdapter(myUid);
         LinearLayoutManager lm = new LinearLayoutManager(this);
@@ -157,6 +166,7 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        // ✅ FIX: proper null checks before removing listener
         if (chatListener != null && chatRef != null) {
             chatRef.removeEventListener(chatListener);
         }

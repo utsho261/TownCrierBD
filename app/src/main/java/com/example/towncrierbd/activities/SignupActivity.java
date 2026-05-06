@@ -22,7 +22,10 @@ import com.example.towncrierbd.utils.Constants;
 import com.google.android.gms.location.*;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.Calendar;
 import java.util.List;
@@ -51,11 +54,10 @@ public class SignupActivity extends AppCompatActivity {
 
         auth = FirebaseAuth.getInstance();
 
-        // ✅ Already logged in থাকলে Signup দেখাবে না
+        // ✅ FIX: already logged-in → check role and route correctly (not always GeneralFeed)
         FirebaseUser currentUser = auth.getCurrentUser();
         if (currentUser != null) {
-            startActivity(new Intent(this, GeneralFeedActivity.class));
-            finish();
+            routeLoggedInUser(currentUser.getUid());
             return;
         }
 
@@ -79,6 +81,35 @@ public class SignupActivity extends AppCompatActivity {
         etDob.setOnClickListener(v -> openDatePicker());
         btnSignup.setOnClickListener(v -> doSignup());
         tvGotoLogin.setOnClickListener(v -> finish());
+    }
+
+    // ✅ FIX: fetch role then route
+    private void routeLoggedInUser(String uid) {
+        FirebaseDatabase.getInstance()
+                .getReference(Constants.DB_USERS)
+                .child(uid)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        UserModel u = snapshot.getValue(UserModel.class);
+                        Class<?> dest = GeneralFeedActivity.class;
+                        if (u != null && Constants.ROLE_ANNOUNCER.equals(u.getRole())) {
+                            dest = AnnouncerFeedActivity.class;
+                        }
+                        Intent intent = new Intent(SignupActivity.this, dest);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        startActivity(intent);
+                        finish();
+                    }
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        // Fallback to GeneralFeed
+                        Intent intent = new Intent(SignupActivity.this, GeneralFeedActivity.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        startActivity(intent);
+                        finish();
+                    }
+                });
     }
 
     private void requestLocation() {
@@ -172,7 +203,6 @@ public class SignupActivity extends AppCompatActivity {
                             .child(uid)
                             .setValue(user)
                             .addOnSuccessListener(v -> {
-                                // ✅ phone_to_email mapping save করো
                                 if (!phone.isEmpty()) {
                                     String phoneKey = phone.replace("+", "").replace(".", "_");
                                     db.getReference(Constants.DB_PHONE_MAP)
@@ -182,12 +212,11 @@ public class SignupActivity extends AppCompatActivity {
 
                                 btnSignup.setEnabled(true);
 
-                                Intent intent;
-                                if (Constants.ROLE_ANNOUNCER.equals(role)) {
-                                    intent = new Intent(this, AnnouncerFeedActivity.class);
-                                } else {
-                                    intent = new Intent(this, GeneralFeedActivity.class);
-                                }
+                                // ✅ role-aware routing after signup
+                                Class<?> dest = Constants.ROLE_ANNOUNCER.equals(role)
+                                        ? AnnouncerFeedActivity.class
+                                        : GeneralFeedActivity.class;
+                                Intent intent = new Intent(this, dest);
                                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                                 startActivity(intent);
                                 finish();

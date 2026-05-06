@@ -33,7 +33,7 @@ public class LoginActivity extends AppCompatActivity {
 
         auth = FirebaseAuth.getInstance();
 
-        // ✅ Already logged in থাকলে সরাসরি Feed এ পাঠাও
+        // ✅ FIX: Already logged-in user gets role-aware redirect (not always GeneralFeed)
         FirebaseUser currentUser = auth.getCurrentUser();
         if (currentUser != null) {
             routeUser();
@@ -80,7 +80,6 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void loginWithPhone(String phone, String pass) {
-        // ✅ phone_to_email map থেকে email বের করো
         String phoneKey = phone.replace("+", "").replace(".", "_");
 
         FirebaseDatabase.getInstance()
@@ -91,7 +90,6 @@ public class LoginActivity extends AppCompatActivity {
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         String email = snapshot.getValue(String.class);
                         if (email == null || email.isEmpty()) {
-                            // ✅ Fallback: পুরনো accounts এর জন্য users table search করো
                             loginWithPhoneFallback(phone, pass);
                             return;
                         }
@@ -110,7 +108,6 @@ public class LoginActivity extends AppCompatActivity {
                 });
     }
 
-    // ✅ পুরনো accounts এর জন্য fallback
     private void loginWithPhoneFallback(String phone, String pass) {
         FirebaseDatabase.getInstance()
                 .getReference(Constants.DB_USERS)
@@ -160,17 +157,18 @@ public class LoginActivity extends AppCompatActivity {
                         if (btnLogin != null) btnLogin.setEnabled(true);
 
                         UserModel user = snapshot.getValue(UserModel.class);
-                        if (user == null) return;
-
-                        Intent intent;
-                        if (Constants.ROLE_ANNOUNCER.equals(user.getRole())) {
-                            intent = new Intent(LoginActivity.this, AnnouncerFeedActivity.class);
-                        } else {
-                            intent = new Intent(LoginActivity.this, GeneralFeedActivity.class);
+                        if (user == null) {
+                            // User data missing — go to GeneralFeed as safe fallback
+                            goTo(GeneralFeedActivity.class);
+                            return;
                         }
-                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                        startActivity(intent);
-                        finish();
+
+                        // ✅ FIX: role-aware routing works for both login and auto-login
+                        if (Constants.ROLE_ANNOUNCER.equals(user.getRole())) {
+                            goTo(AnnouncerFeedActivity.class);
+                        } else {
+                            goTo(GeneralFeedActivity.class);
+                        }
                     }
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
@@ -178,6 +176,13 @@ public class LoginActivity extends AppCompatActivity {
                         toast("Login failed");
                     }
                 });
+    }
+
+    private void goTo(Class<?> cls) {
+        Intent intent = new Intent(LoginActivity.this, cls);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 
     private void toast(String msg) {

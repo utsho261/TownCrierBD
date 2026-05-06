@@ -35,6 +35,8 @@ public class ProfileActivity extends AppCompatActivity {
     private FirebaseAuth auth;
     private DatabaseReference userRef, annRef;
     private ValueEventListener postsListener;
+    // ✅ FIX: keep a query reference so we can remove the listener properly
+    private Query postsQuery;
     private UserModel currentUser = null;
 
     @Override
@@ -85,12 +87,9 @@ public class ProfileActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (postsListener != null && annRef != null) {
-            String uid = auth.getUid();
-            if (uid != null) {
-                annRef.orderByChild("userId").equalTo(uid)
-                        .removeEventListener(postsListener);
-            }
+        // ✅ FIX: use stored query reference to remove listener cleanly
+        if (postsListener != null && postsQuery != null) {
+            postsQuery.removeEventListener(postsListener);
         }
         if (myPostsAdapter != null) myPostsAdapter.release();
     }
@@ -124,11 +123,17 @@ public class ProfileActivity extends AppCompatActivity {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 List<Announcement> list = new ArrayList<>();
+                long now = System.currentTimeMillis();
+
                 for (DataSnapshot s : snapshot.getChildren()) {
                     Announcement a = s.getValue(Announcement.class);
                     if (a == null) continue;
                     if (a.getId() == null || a.getId().trim().isEmpty())
                         a.setId(s.getKey());
+
+                    // ✅ FIX: filter expired posts in My Posts too
+                    if (a.getExpireAt() > 0 && now > a.getExpireAt()) continue;
+
                     list.add(a);
                 }
                 myPostsAdapter.setData(list);
@@ -137,8 +142,9 @@ public class ProfileActivity extends AppCompatActivity {
             public void onCancelled(@NonNull DatabaseError error) {}
         };
 
-        annRef.orderByChild("userId").equalTo(uid)
-                .addValueEventListener(postsListener);
+        // ✅ FIX: save query reference for clean removal in onDestroy
+        postsQuery = annRef.orderByChild("userId").equalTo(uid);
+        postsQuery.addValueEventListener(postsListener);
     }
 
     private void showEditProfileDialog() {

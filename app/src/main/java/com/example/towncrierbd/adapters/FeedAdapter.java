@@ -38,7 +38,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
 
     private double myLat = 0, myLng = 0;
     private boolean hasMyLoc = false;
-    private boolean showEditDelete = false;
+    private boolean showEditDelete  = false;
     private boolean disableCardClick = false;
 
     private TextToSpeech tts;
@@ -114,15 +114,14 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             } else {
                 h.tvExpiry.setVisibility(View.VISIBLE);
                 h.tvExpiry.setText(expiry);
-                // Color: red if < 1hr, orange if < 6hr, green otherwise
                 long remaining = a.getExpireAt() - System.currentTimeMillis();
                 long hours = remaining / 3600000L;
                 if (hours < 1) {
-                    h.tvExpiry.setTextColor(0xFFD32F2F); // red
+                    h.tvExpiry.setTextColor(0xFFD32F2F);
                 } else if (hours < 6) {
-                    h.tvExpiry.setTextColor(0xFFF57C00); // orange
+                    h.tvExpiry.setTextColor(0xFFF57C00);
                 } else {
-                    h.tvExpiry.setTextColor(0xFF388E3C); // green
+                    h.tvExpiry.setTextColor(0xFF388E3C);
                 }
             }
         }
@@ -149,20 +148,20 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             h.tvDistance.setText("Nearby");
         }
 
-        // ✅ Profile mode: Edit/Delete দেখাও, Listen/Chat/Call লুকাও
         if (showEditDelete) {
-            if (h.btnListen != null)       h.btnListen.setVisibility(View.GONE);
-            if (h.btnChat != null)         h.btnChat.setVisibility(View.GONE);
-            if (h.btnCall != null)         h.btnCall.setVisibility(View.GONE);
+            // Profile mode
+            if (h.btnListen != null)        h.btnListen.setVisibility(View.GONE);
+            if (h.btnChat != null)          h.btnChat.setVisibility(View.GONE);
+            if (h.btnCall != null)          h.btnCall.setVisibility(View.GONE);
             if (h.layoutEditDelete != null) h.layoutEditDelete.setVisibility(View.VISIBLE);
 
-            if (h.btnEdit != null)   h.btnEdit.setOnClickListener(v -> showEditDialog(a, pos));
+            if (h.btnEdit != null)   h.btnEdit.setOnClickListener(v -> showEditDialog(a, h.getAdapterPosition()));
             if (h.btnDelete != null) {
                 h.btnDelete.setOnClickListener(v ->
                         new AlertDialog.Builder(context)
                                 .setTitle("Delete Post")
                                 .setMessage("Are you sure?")
-                                .setPositiveButton("Delete", (d, w) -> deletePost(a, pos))
+                                .setPositiveButton("Delete", (d, w) -> deletePost(a, h.getAdapterPosition()))
                                 .setNegativeButton("Cancel", null)
                                 .show()
                 );
@@ -173,9 +172,9 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
 
         } else {
             // Feed mode
-            if (h.btnListen != null)       h.btnListen.setVisibility(View.VISIBLE);
-            if (h.btnChat != null)         h.btnChat.setVisibility(View.VISIBLE);
-            if (h.btnCall != null)         h.btnCall.setVisibility(View.VISIBLE);
+            if (h.btnListen != null)        h.btnListen.setVisibility(View.VISIBLE);
+            if (h.btnChat != null)          h.btnChat.setVisibility(View.VISIBLE);
+            if (h.btnCall != null)          h.btnCall.setVisibility(View.VISIBLE);
             if (h.layoutEditDelete != null) h.layoutEditDelete.setVisibility(View.GONE);
 
             if (h.btnCall != null) {
@@ -190,7 +189,6 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                 });
             }
 
-            // ✅ In-App Chat (replaces SMS)
             if (h.btnChat != null) {
                 h.btnChat.setOnClickListener(v -> {
                     String postOwnerUid = safe(a.getUserId());
@@ -222,7 +220,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             }
         }
 
-        // ✅ Card click → Detail (Profile mode তে disable)
+        // Card click → Detail (disabled in profile mode)
         if (!disableCardClick) {
             h.itemView.setOnClickListener(v -> openDetail(a));
         } else {
@@ -230,7 +228,6 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         }
     }
 
-    // ✅ Expiry countdown text
     private String getExpiryText(long expireAt) {
         if (expireAt <= 0) return "";
         long remaining = expireAt - System.currentTimeMillis();
@@ -266,6 +263,8 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         intent.putExtra(AnnouncementDetailActivity.EXTRA_USER_NAME, safe(a.getUserName()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_DISTANCE,  dist);
         intent.putExtra(AnnouncementDetailActivity.EXTRA_TIME,      getRelativeTime(a.getTime()));
+        // ✅ FIX: pass otherUid so detail screen can open in-app chat
+        intent.putExtra(AnnouncementDetailActivity.EXTRA_OTHER_UID, safe(a.getUserId()));
         context.startActivity(intent);
     }
 
@@ -312,7 +311,9 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                             .child(a.getId()).child("description").setValue(newDesc);
                     a.setTitle(newTitle);
                     a.setDescription(newDesc);
-                    notifyItemChanged(pos);
+                    // ✅ FIX: use current adapter position, not stale pos from lambda capture
+                    int currentPos = items.indexOf(a);
+                    if (currentPos >= 0) notifyItemChanged(currentPos);
                     Toast.makeText(context, "Updated ✅", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Cancel", null)
@@ -321,15 +322,21 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
 
     private void deletePost(Announcement a, int pos) {
         if (a.getId() == null) return;
+
+        // ✅ FIX: validate position before removing to prevent index mismatch crash
+        if (pos == RecyclerView.NO_ID || pos < 0 || pos >= items.size()) return;
+
         FirebaseDatabase.getInstance()
                 .getReference(Constants.DB_ANNOUNCEMENTS)
                 .child(a.getId())
                 .removeValue()
                 .addOnSuccessListener(v -> {
-                    if (pos < items.size()) {
-                        items.remove(pos);
-                        notifyItemRemoved(pos);
-                        notifyItemRangeChanged(pos, items.size());
+                    // ✅ FIX: find item by object reference, not stale index
+                    int currentPos = items.indexOf(a);
+                    if (currentPos >= 0) {
+                        items.remove(currentPos);
+                        notifyItemRemoved(currentPos);
+                        notifyItemRangeChanged(currentPos, items.size());
                     }
                     Toast.makeText(context, "Deleted ✅", Toast.LENGTH_SHORT).show();
                 })
@@ -355,7 +362,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
     public static class VH extends RecyclerView.ViewHolder {
         ImageView ivPhoto;
         TextView tvBadge, tvTitle, tvDesc, tvAvatar, tvName, tvDistance, tvTime;
-        TextView tvExpiry;   // ✅ NEW
+        TextView tvExpiry;
         View btnListen, btnChat, btnCall;
         View layoutEditDelete;
         android.widget.Button btnEdit, btnDelete, btnDetails;
@@ -370,7 +377,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             tvName           = itemView.findViewById(R.id.tvName);
             tvDistance       = itemView.findViewById(R.id.tvDistance);
             tvTime           = itemView.findViewById(R.id.tvTime);
-            tvExpiry         = itemView.findViewById(R.id.tvExpiry);  // ✅ NEW
+            tvExpiry         = itemView.findViewById(R.id.tvExpiry);
             btnListen        = itemView.findViewById(R.id.btnListen);
             btnChat          = itemView.findViewById(R.id.btnChat);
             btnCall          = itemView.findViewById(R.id.btnCall);
