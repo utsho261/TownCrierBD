@@ -28,20 +28,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * InboxActivity — WhatsApp-style inbox showing only MY conversations.
- *
- * Chat room ID format: sorted(uid1, uid2) joined by "_"
- * Since Firebase UIDs contain only alphanumeric + "-", splitting by "_" is safe
- * because each room has exactly: uid1 + "_" + uid2 where both UIDs have no underscores.
- *
- * Each user only sees rooms where THEIR uid appears in the room key.
- * Privacy: Firebase Security Rules should restrict /chats/{roomId} to only
- * the two users whose UIDs form the roomId.
- */
 public class InboxActivity extends AppCompatActivity {
 
-    // ── Conversation model ───────────────────────────────────────────────────
     public static class Conversation {
         public String roomId;
         public String otherUid;
@@ -60,7 +48,6 @@ public class InboxActivity extends AppCompatActivity {
         }
     }
 
-    // ── Adapter ─────────────────────────────────────────────────────────────
     private static class InboxAdapter extends RecyclerView.Adapter<InboxAdapter.VH> {
 
         private final List<Conversation> items = new ArrayList<>();
@@ -86,9 +73,7 @@ public class InboxActivity extends AppCompatActivity {
             Conversation c = items.get(pos);
             String name = c.otherName.isEmpty() ? "User" : c.otherName;
 
-            // Avatar initial
             h.tvAvatar.setText(String.valueOf(Character.toUpperCase(name.charAt(0))));
-
             h.tvName.setText(name);
             h.tvPreview.setText(c.lastMessage.isEmpty() ? "Tap to chat" : c.lastMessage);
 
@@ -99,7 +84,6 @@ public class InboxActivity extends AppCompatActivity {
                 h.tvTime.setVisibility(View.GONE);
             }
 
-            // Unread badge
             if (c.unreadCount > 0) {
                 h.tvUnreadBadge.setVisibility(View.VISIBLE);
                 h.tvUnreadBadge.setText(c.unreadCount > 99 ? "99+" : String.valueOf(c.unreadCount));
@@ -145,10 +129,9 @@ public class InboxActivity extends AppCompatActivity {
         }
     }
 
-    // ── Activity ─────────────────────────────────────────────────────────────
     private RecyclerView rv;
     private InboxAdapter adapter;
-    private TextView tvEmpty;
+    private View tvEmpty;  // ✅ FIX: TextView থেকে View এ পরিবর্তন করা হয়েছে
     private String myUid;
     private final List<Conversation> conversations = new ArrayList<>();
     private ValueEventListener inboxListener;
@@ -162,7 +145,7 @@ public class InboxActivity extends AppCompatActivity {
         if (myUid == null) { finish(); return; }
 
         rv = findViewById(R.id.rvInbox);
-        tvEmpty = findViewById(R.id.tvEmpty);
+        tvEmpty = findViewById(R.id.tvEmpty);  // ✅ FIX: এখন View হিসেবে সঠিকভাবে cast হবে
         rv.setLayoutManager(new LinearLayoutManager(this));
         adapter = new InboxAdapter(myUid);
         rv.setAdapter(adapter);
@@ -183,10 +166,6 @@ public class InboxActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Real-time listener — updates immediately when messages arrive.
-     * Only loads rooms where my UID is part of the room key.
-     */
     private void listenToInbox() {
         inboxListener = new ValueEventListener() {
             @Override
@@ -197,11 +176,8 @@ public class InboxActivity extends AppCompatActivity {
                     String roomId = roomSnap.getKey();
                     if (roomId == null) continue;
 
-                    // Room key = uid1 + "_" + uid2 (both UIDs are alphanumeric + "-" only)
-                    // Check if myUid is part of this room
                     if (!isMyRoom(roomId)) continue;
 
-                    // Derive the other user's UID
                     String otherUid = getOtherUid(roomId);
                     if (otherUid == null || otherUid.isEmpty()) continue;
 
@@ -221,7 +197,6 @@ public class InboxActivity extends AppCompatActivity {
                             lastText = msg.getText() != null ? msg.getText() : "";
                         }
 
-                        // Count unread messages sent TO me that I haven't read
                         if (otherUid.equals(msg.getSenderId()) && !msg.isRead()) {
                             unreadCount++;
                         }
@@ -233,7 +208,6 @@ public class InboxActivity extends AppCompatActivity {
                     conversations.add(conv);
                 }
 
-                // Sort: most recent first
                 Collections.sort(conversations,
                         (a, b) -> Long.compare(b.lastTimestamp, a.lastTimestamp));
 
@@ -249,14 +223,7 @@ public class InboxActivity extends AppCompatActivity {
                 .addValueEventListener(inboxListener);
     }
 
-    /**
-     * Check if myUid is part of the room.
-     * Room format: uid1_uid2 where uid1 < uid2 (lexicographically)
-     */
     private boolean isMyRoom(String roomId) {
-        // Room = uid1 + "_" + uid2
-        // Since Firebase UIDs contain only [a-zA-Z0-9] and "-",
-        // the single "_" separator is unambiguous.
         int sepIdx = roomId.indexOf('_');
         if (sepIdx < 0) return false;
         String part1 = roomId.substring(0, sepIdx);
@@ -264,9 +231,6 @@ public class InboxActivity extends AppCompatActivity {
         return myUid.equals(part1) || myUid.equals(part2);
     }
 
-    /**
-     * Get the other user's UID from the room ID.
-     */
     private String getOtherUid(String roomId) {
         int sepIdx = roomId.indexOf('_');
         if (sepIdx < 0) return null;
