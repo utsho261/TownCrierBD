@@ -39,8 +39,8 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
     private final List<Announcement> items = new ArrayList<>();
 
     private double myLat = 0, myLng = 0;
-    private boolean hasMyLoc       = false;
-    private boolean showEditDelete  = false;
+    private boolean hasMyLoc        = false;
+    private boolean showEditDelete   = false;
     private boolean disableCardClick = false;
 
     private TextToSpeech tts;
@@ -57,8 +57,8 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
     public void setDisableCardClick(boolean disable) { this.disableCardClick = disable; notifyDataSetChanged(); }
 
     public void release() {
-        try { if (tts != null)         { tts.stop();         tts.shutdown();  tts = null;         } } catch (Exception ignored) {}
-        try { if (mediaPlayer != null) { mediaPlayer.stop(); mediaPlayer.release(); mediaPlayer = null; } } catch (Exception ignored) {}
+        try { if (tts != null)         { tts.stop();         tts.shutdown();          tts = null;         } } catch (Exception ignored) {}
+        try { if (mediaPlayer != null) { mediaPlayer.stop(); mediaPlayer.release();   mediaPlayer = null; } } catch (Exception ignored) {}
     }
 
     public void setMyLocation(double lat, double lng) {
@@ -108,13 +108,13 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                 h.tvExpiry.setText(expiry);
                 long remaining = a.getExpireAt() - System.currentTimeMillis();
                 long hours = remaining / 3600000L;
-                if (hours < 1)       h.tvExpiry.setTextColor(0xFFD32F2F);
-                else if (hours < 6)  h.tvExpiry.setTextColor(0xFFF57C00);
-                else                 h.tvExpiry.setTextColor(0xFF388E3C);
+                if (hours < 1)      h.tvExpiry.setTextColor(0xFFD32F2F);
+                else if (hours < 6) h.tvExpiry.setTextColor(0xFFF57C00);
+                else                h.tvExpiry.setTextColor(0xFF388E3C);
             }
         }
 
-        // Audio indicator
+        // ✅ FIXED: tvAudioBadge এখন layout এ আছে তাই null crash হবে না
         if (h.tvAudioBadge != null) {
             boolean hasAudio = a.getAudioUrl() != null && !a.getAudioUrl().isEmpty();
             h.tvAudioBadge.setVisibility(hasAudio ? View.VISIBLE : View.GONE);
@@ -153,11 +153,12 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                 h.btnDelete.setOnClickListener(v ->
                         new AlertDialog.Builder(context)
                                 .setTitle("Delete Post")
-                                .setMessage("Are you sure?")
+                                .setMessage("Are you sure you want to delete this post?")
                                 .setPositiveButton("Delete", (d, w) -> deletePost(a, h.getAdapterPosition()))
                                 .setNegativeButton("Cancel", null)
                                 .show());
             }
+
             if (h.btnDetails != null) h.btnDetails.setOnClickListener(v -> openDetail(a));
 
         } else {
@@ -216,9 +217,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
 
     private void playAudioOrTts(Announcement a) {
         String audioUrl = safe(a.getAudioUrl());
-
         if (!audioUrl.isEmpty()) {
-            // Play recorded audio from Firebase Storage
             playRemoteAudio(audioUrl);
         } else {
             // Fallback: TTS reads title + description
@@ -288,7 +287,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         intent.putExtra(AnnouncementDetailActivity.EXTRA_CATEGORY,  safe(a.getDisplayCategoryLabel()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_PHONE,     safe(a.getPhone()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_IMAGE_URL, safe(a.getImageUrl()));
-        intent.putExtra(AnnouncementDetailActivity.EXTRA_AUDIO_URL, safe(a.getAudioUrl()));
+        intent.putExtra(AnnouncementDetailActivity.EXTRA_AUDIO_URL, safe(a.getAudioUrl())); // ✅ pass audio url
         intent.putExtra(AnnouncementDetailActivity.EXTRA_USER_NAME, safe(a.getUserName()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_DISTANCE,  dist);
         intent.putExtra(AnnouncementDetailActivity.EXTRA_TIME,      getRelativeTime(a.getTime()));
@@ -352,7 +351,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         if (a.getId() == null) return;
         if (pos == RecyclerView.NO_ID || pos < 0 || pos >= items.size()) return;
 
-        // Delete audio from storage if exists
+        // Delete audio from Firebase Storage if exists
         if (a.getAudioUrl() != null && !a.getAudioUrl().isEmpty()) {
             AudioRecorderHelper.deleteAudio(a.getId());
         }
@@ -393,10 +392,10 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
     public static class VH extends RecyclerView.ViewHolder {
         ImageView ivPhoto;
         TextView tvBadge, tvTitle, tvDesc, tvAvatar, tvName, tvDistance, tvTime;
-        TextView tvExpiry, tvAudioBadge;
+        TextView tvExpiry, tvAudioBadge; // ✅ FIXED: tvAudioBadge এখন layout এ আছে
         View btnListen, btnChat, btnCall;
         View layoutEditDelete;
-        android.widget.Button btnEdit, btnDelete, btnDetails;
+        com.google.android.material.button.MaterialButton btnEdit, btnDelete, btnDetails;
 
         public VH(@NonNull View itemView) {
             super(itemView);
@@ -409,7 +408,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             tvDistance       = itemView.findViewById(R.id.tvDistance);
             tvTime           = itemView.findViewById(R.id.tvTime);
             tvExpiry         = itemView.findViewById(R.id.tvExpiry);
-            tvAudioBadge     = itemView.findViewById(R.id.tvAudioBadge);
+            tvAudioBadge     = itemView.findViewById(R.id.tvAudioBadge); // ✅ FIXED
             btnListen        = itemView.findViewById(R.id.btnListen);
             btnChat          = itemView.findViewById(R.id.btnChat);
             btnCall          = itemView.findViewById(R.id.btnCall);

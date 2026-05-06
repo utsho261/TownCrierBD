@@ -23,7 +23,7 @@
             android:visibility="gone"
             android:contentDescription="@string/app_name" />
 
-        <!-- Badge + Expiry row -->
+        <!-- Badge + Audio Badge + Expiry row -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -47,12 +47,29 @@
                 android:textStyle="bold"
                 android:textSize="13sp" />
 
+            <!-- ✅ FIXED: tvAudioBadge এখন আছে -->
+            <TextView
+                android:id="@+id/tvAudioBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="🔊 Audio"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="#A21CAF"
+                android:visibility="gone"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:background="#F5E6FF"/>
+
             <View
                 android:layout_width="0dp"
                 android:layout_height="1dp"
                 android:layout_weight="1"/>
 
-            <!-- ✅ Expiry Countdown -->
+            <!-- Expiry Countdown -->
             <TextView
                 android:id="@+id/tvExpiry"
                 android:layout_width="wrap_content"
@@ -154,14 +171,14 @@
 
         </LinearLayout>
 
-        <!-- Action Buttons -->
+        <!-- Feed mode: Listen / Chat / Call buttons -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="12dp"
             android:orientation="horizontal"
             android:gravity="center"
-            android:weightSum="4">
+            android:weightSum="3">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnListen"
@@ -176,7 +193,6 @@
                 android:insetBottom="0dp"
                 android:layout_marginEnd="6dp"/>
 
-            <!-- ✅ Chat button now opens in-app chat -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnChat"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
@@ -203,7 +219,7 @@
                 android:insetBottom="0dp" />
         </LinearLayout>
 
-        <!-- Edit/Delete  -->
+        <!-- Profile mode: Edit / Delete / Details buttons -->
         <LinearLayout
             android:id="@+id/layoutEditDelete"
             android:layout_width="match_parent"
@@ -232,7 +248,8 @@
                 android:text="Delete"
                 android:textAllCaps="false"
                 android:backgroundTint="#F44336"
-                android:textColor="@android:color/white"/>
+                android:textColor="@android:color/white"
+                android:layout_marginEnd="8dp"/>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnDetails"
@@ -244,8 +261,7 @@
                 android:textAllCaps="false"
                 android:textSize="14sp"
                 android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:layout_marginEnd="8dp"/>
+                android:insetBottom="0dp"/>
 
         </LinearLayout>
 

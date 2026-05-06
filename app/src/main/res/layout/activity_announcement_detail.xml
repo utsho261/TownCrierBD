@@ -92,6 +92,18 @@
                     android:textSize="16sp"
                     android:lineSpacingMultiplier="1.4"/>
 
+                <!-- ✅ FIXED: Audio play button — এখন কাজ করবে -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPlayAudio"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="12dp"
+                    android:text="🔊 Play Audio"
+                    android:textAllCaps="false"
+                    android:textSize="14sp"
+                    android:visibility="gone"/>
+
                 <!-- Divider -->
                 <View
                     android:layout_width="match_parent"
@@ -160,7 +172,7 @@
                     android:layout_marginBottom="16dp"
                     android:background="#E0E0E0"/>
 
-                <!-- Buttons -->
+                <!-- Call + Chat Buttons -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

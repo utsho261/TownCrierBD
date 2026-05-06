@@ -14,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.bumptech.glide.Glide;
 import com.example.towncrierbd.R;
+import com.google.android.material.button.MaterialButton;
 
 public class AnnouncementDetailActivity extends AppCompatActivity {
 
@@ -22,37 +23,41 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
     public static final String EXTRA_CATEGORY   = "category";
     public static final String EXTRA_PHONE      = "phone";
     public static final String EXTRA_IMAGE_URL  = "imageUrl";
-    public static final String EXTRA_AUDIO_URL  = "audioUrl";   // ✅ FIXED: was missing
+    public static final String EXTRA_AUDIO_URL  = "audioUrl";
     public static final String EXTRA_USER_NAME  = "userName";
     public static final String EXTRA_DISTANCE   = "distance";
     public static final String EXTRA_TIME       = "time";
     public static final String EXTRA_OTHER_UID  = "otherUid";
 
+    // ✅ FIXED: MediaPlayer এখন সত্যিই ব্যবহার হচ্ছে
     private MediaPlayer mediaPlayer;
+    private boolean isPlaying = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_announcement_detail);
 
-        ImageView ivPhoto   = findViewById(R.id.ivPhoto);
-        TextView tvCategory = findViewById(R.id.tvCategory);
-        TextView tvTitle    = findViewById(R.id.tvTitle);
-        TextView tvDesc     = findViewById(R.id.tvDesc);
-        TextView tvAvatar   = findViewById(R.id.tvAvatar);
-        TextView tvUserName = findViewById(R.id.tvUserName);
-        TextView tvDistance = findViewById(R.id.tvDistance);
-        TextView tvTime     = findViewById(R.id.tvTime);
-        Button btnCall      = findViewById(R.id.btnCall);
-        Button btnChat      = findViewById(R.id.btnChat);
-        ImageView btnBack   = findViewById(R.id.btnBack);
+        ImageView ivPhoto        = findViewById(R.id.ivPhoto);
+        TextView tvCategory      = findViewById(R.id.tvCategory);
+        TextView tvTitle         = findViewById(R.id.tvTitle);
+        TextView tvDesc          = findViewById(R.id.tvDesc);
+        TextView tvAvatar        = findViewById(R.id.tvAvatar);
+        TextView tvUserName      = findViewById(R.id.tvUserName);
+        TextView tvDistance      = findViewById(R.id.tvDistance);
+        TextView tvTime          = findViewById(R.id.tvTime);
+        Button btnCall           = findViewById(R.id.btnCall);
+        Button btnChat           = findViewById(R.id.btnChat);
+        ImageView btnBack        = findViewById(R.id.btnBack);
+        // ✅ FIXED: btnPlayAudio এখন layout এ আছে এবং কাজ করছে
+        MaterialButton btnPlayAudio = findViewById(R.id.btnPlayAudio);
 
         String title    = getIntent().getStringExtra(EXTRA_TITLE);
         String desc     = getIntent().getStringExtra(EXTRA_DESC);
         String category = getIntent().getStringExtra(EXTRA_CATEGORY);
         String phone    = getIntent().getStringExtra(EXTRA_PHONE);
         String imageUrl = getIntent().getStringExtra(EXTRA_IMAGE_URL);
-        String audioUrl = getIntent().getStringExtra(EXTRA_AUDIO_URL); // ✅ FIXED
+        String audioUrl = getIntent().getStringExtra(EXTRA_AUDIO_URL); // ✅ FIXED: এখন ব্যবহার হচ্ছে
         String userName = getIntent().getStringExtra(EXTRA_USER_NAME);
         String distance = getIntent().getStringExtra(EXTRA_DISTANCE);
         String time     = getIntent().getStringExtra(EXTRA_TIME);
@@ -80,6 +85,14 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
             ivPhoto.setVisibility(View.GONE);
         }
 
+        // ✅ FIXED: Audio play button — audioUrl থাকলে button দেখাও
+        if (audioUrl != null && !audioUrl.isEmpty()) {
+            if (btnPlayAudio != null) {
+                btnPlayAudio.setVisibility(View.VISIBLE);
+                btnPlayAudio.setOnClickListener(v -> toggleAudio(audioUrl, btnPlayAudio));
+            }
+        }
+
         btnBack.setOnClickListener(v -> finish());
 
         btnCall.setOnClickListener(v -> {
@@ -102,17 +115,76 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
         });
     }
 
+    // ✅ FIXED: Audio toggle — play/pause/stop logic
+    private void toggleAudio(String url, MaterialButton btn) {
+        if (isPlaying) {
+            // চলছে — stop করো
+            stopAudio();
+            btn.setText("🔊 Play Audio");
+            isPlaying = false;
+        } else {
+            // শুরু করো
+            btn.setText("⏹ Stop Audio");
+            btn.setEnabled(false);
+            Toast.makeText(this, "Loading audio...", Toast.LENGTH_SHORT).show();
+
+            releasePlayer();
+            mediaPlayer = new MediaPlayer();
+            try {
+                mediaPlayer.setDataSource(url);
+                mediaPlayer.setOnPreparedListener(mp -> {
+                    mp.start();
+                    isPlaying = true;
+                    runOnUiThread(() -> {
+                        btn.setEnabled(true);
+                        Toast.makeText(this, "▶ Playing", Toast.LENGTH_SHORT).show();
+                    });
+                });
+                mediaPlayer.setOnCompletionListener(mp -> {
+                    isPlaying = false;
+                    runOnUiThread(() -> btn.setText("🔊 Play Audio"));
+                    releasePlayer();
+                });
+                mediaPlayer.setOnErrorListener((mp, what, extra) -> {
+                    isPlaying = false;
+                    runOnUiThread(() -> {
+                        btn.setText("🔊 Play Audio");
+                        btn.setEnabled(true);
+                        Toast.makeText(this, "Playback error", Toast.LENGTH_SHORT).show();
+                    });
+                    releasePlayer();
+                    return true;
+                });
+                mediaPlayer.prepareAsync();
+            } catch (Exception e) {
+                btn.setText("🔊 Play Audio");
+                btn.setEnabled(true);
+                Toast.makeText(this, "Cannot play audio", Toast.LENGTH_SHORT).show();
+                releasePlayer();
+            }
+        }
+    }
+
+    private void stopAudio() {
+        if (mediaPlayer != null) {
+            try {
+                if (mediaPlayer.isPlaying()) mediaPlayer.stop();
+            } catch (Exception ignored) {}
+            releasePlayer();
+        }
+    }
+
+    private void releasePlayer() {
+        if (mediaPlayer != null) {
+            try { mediaPlayer.release(); } catch (Exception ignored) {}
+            mediaPlayer = null;
+        }
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // ✅ Release MediaPlayer to avoid leaks
-        if (mediaPlayer != null) {
-            try {
-                mediaPlayer.stop();
-                mediaPlayer.release();
-            } catch (Exception ignored) {}
-            mediaPlayer = null;
-        }
+        stopAudio();
     }
 
     private String safe(String s) { return s == null ? "" : s.trim(); }
