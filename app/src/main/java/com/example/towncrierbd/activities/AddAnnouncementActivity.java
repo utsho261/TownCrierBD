@@ -21,6 +21,7 @@ import androidx.core.content.ContextCompat;
 import com.example.towncrierbd.R;
 import com.example.towncrierbd.models.Announcement;
 import com.example.towncrierbd.models.UserModel;
+import com.example.towncrierbd.utils.AudioRecorderHelper;
 import com.example.towncrierbd.utils.CategoryConfig;
 import com.example.towncrierbd.utils.CloudinaryUploader;
 import com.example.towncrierbd.utils.Constants;
@@ -38,15 +39,20 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     private EditText etCustomSub, etTitle, etDesc, etHours;
     private Button btnCancel, btnPublish;
     private ImageView btnClose, ivPreview;
-    private View btnAddImage;
-    private TextView tvImageStatus;
+    private View btnAddImage, btnRecordAudio;
+    private TextView tvImageStatus, tvAudioStatus;
 
     private FirebaseAuth auth;
     private DatabaseReference annRef, userRef;
 
     private Bitmap selectedBitmap = null;
 
-    private ActivityResultLauncher<Intent> galleryLauncher;
+    // ── Audio ──────────────────────────────────────────────────────────────
+    private AudioRecorderHelper audioRecorder;
+    private String recordedAudioPath = null;   // local .m4a path after recording
+    private boolean isRecording      = false;
+
+    private ActivityResultLauncher<Intent>   galleryLauncher;
     private ActivityResultLauncher<String[]> permissionLauncher;
 
     @Override
@@ -64,17 +70,17 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         btnPublish    = findViewById(R.id.btnPublish);
         btnClose      = findViewById(R.id.btnClose);
         btnAddImage   = findViewById(R.id.btnAddImage);
+        btnRecordAudio = findViewById(R.id.btnRecordAudio);
         tvImageStatus = findViewById(R.id.tvImageStatus);
+        tvAudioStatus = findViewById(R.id.tvAudioStatus);
         ivPreview     = findViewById(R.id.ivPreview);
 
-        // ✅ FIXED: btnRecordAudio is in layout but NOT handled here (free tier = no audio upload)
-        // Hide it so user doesn't see a non-functional button
-        View btnRecordAudio = findViewById(R.id.btnRecordAudio);
-        if (btnRecordAudio != null) btnRecordAudio.setVisibility(View.GONE);
+        // Audio recorder শুরু করো
+        audioRecorder = new AudioRecorderHelper(this);
 
-        // Also hide audio status text
-        TextView tvAudioStatus = findViewById(R.id.tvAudioStatus);
-        if (tvAudioStatus != null) tvAudioStatus.setVisibility(View.GONE);
+        // Audio button দেখাও (আগে GONE ছিল, এখন VISIBLE)
+        if (btnRecordAudio != null) btnRecordAudio.setVisibility(View.VISIBLE);
+        if (tvAudioStatus  != null) tvAudioStatus.setVisibility(View.VISIBLE);
 
         auth    = FirebaseAuth.getInstance();
         annRef  = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
@@ -87,12 +93,100 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         btnCancel.setOnClickListener(v -> finish());
         if (btnClose != null) btnClose.setOnClickListener(v -> finish());
         btnPublish.setOnClickListener(v -> publish());
-        if (btnAddImage != null) btnAddImage.setOnClickListener(v -> showImageChooser());
+        if (btnAddImage    != null) btnAddImage.setOnClickListener(v -> showImageChooser());
+        if (btnRecordAudio != null) btnRecordAudio.setOnClickListener(v -> handleAudioToggle());
     }
+
+    // ── Audio recording toggle ─────────────────────────────────────────────
+
+    private void handleAudioToggle() {
+        if (!isRecording) {
+            startAudioRecording();
+        } else {
+            stopAudioRecording();
+        }
+    }
+
+    private void startAudioRecording() {
+        // RECORD_AUDIO permission check
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            permissionLauncher.launch(new String[]{Manifest.permission.RECORD_AUDIO});
+            return;
+        }
+
+        // আগের recording থাকলে reset করো
+        recordedAudioPath = null;
+
+        audioRecorder.startRecording(new AudioRecorderHelper.RecordListener() {
+            @Override public void onRecordStarted() {
+                isRecording = true;
+                runOnUiThread(() -> {
+                    updateAudioButton(true);
+                    if (tvAudioStatus != null)
+                        tvAudioStatus.setText("🔴 Recording... (tap again to stop)");
+                });
+            }
+            @Override public void onRecordStopped(String localPath) { /* stopRecording handles this */ }
+            @Override public void onError(String message) {
+                isRecording = false;
+                runOnUiThread(() -> {
+                    updateAudioButton(false);
+                    if (tvAudioStatus != null) tvAudioStatus.setText("❌ Error: " + message);
+                    toast("Recording error: " + message);
+                });
+            }
+        });
+    }
+
+    private void stopAudioRecording() {
+        audioRecorder.stopRecording(new AudioRecorderHelper.RecordListener() {
+            @Override public void onRecordStarted() {}
+            @Override public void onRecordStopped(String localPath) {
+                isRecording = false;
+                recordedAudioPath = localPath;
+                runOnUiThread(() -> {
+                    updateAudioButton(false);
+                    if (tvAudioStatus != null)
+                        tvAudioStatus.setText("✅ Audio recorded — will upload on Publish");
+                });
+            }
+            @Override public void onError(String message) {
+                isRecording = false;
+                runOnUiThread(() -> {
+                    updateAudioButton(false);
+                    if (tvAudioStatus != null) tvAudioStatus.setText("❌ Stop failed: " + message);
+                });
+            }
+        });
+    }
+
+    /** Audio button UI toggle helper */
+    private void updateAudioButton(boolean recording) {
+        if (btnRecordAudio == null) return;
+        // btnRecordAudio এর ভেতরে TextView খোঁজো
+        if (btnRecordAudio instanceof LinearLayout) {
+            LinearLayout ll = (LinearLayout) btnRecordAudio;
+            for (int i = 0; i < ll.getChildCount(); i++) {
+                View child = ll.getChildAt(i);
+                if (child instanceof TextView) {
+                    ((TextView) child).setText(recording ? "Stop Recording" : "Record Audio");
+                }
+            }
+        }
+    }
+
+    // ── Permission setup ───────────────────────────────────────────────────
 
     private void setupPermissions() {
         permissionLauncher = registerForActivityResult(
-                new ActivityResultContracts.RequestMultiplePermissions(), result -> {});
+                new ActivityResultContracts.RequestMultiplePermissions(), result -> {
+                    // RECORD_AUDIO permission granted হলে recording শুরু করো
+                    Boolean audioGranted = result.get(Manifest.permission.RECORD_AUDIO);
+                    if (Boolean.TRUE.equals(audioGranted)) {
+                        startAudioRecording();
+                    }
+                });
     }
 
     private void requestImagePermissionsIfNeeded() {
@@ -108,6 +202,8 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         }
         if (!need.isEmpty()) permissionLauncher.launch(need.toArray(new String[0]));
     }
+
+    // ── Gallery launcher ───────────────────────────────────────────────────
 
     private void setupLaunchers() {
         galleryLauncher = registerForActivityResult(
@@ -146,6 +242,8 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         i.setType("image/*");
         galleryLauncher.launch(i);
     }
+
+    // ── Category UI ────────────────────────────────────────────────────────
 
     private void setupCategoryUI() {
         List<String> cats = new ArrayList<>(CategoryConfig.MAIN);
@@ -196,7 +294,15 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         return o == null ? "" : o.toString().trim();
     }
 
+    // ── Publish ────────────────────────────────────────────────────────────
+
     private void publish() {
+        // Recording চলছে থাকলে আগে stop করো
+        if (isRecording) {
+            toast("Please stop recording first");
+            return;
+        }
+
         String title    = etTitle.getText().toString().trim();
         String desc     = etDesc.getText().toString().trim();
         String cat      = getSelected(spCategory);
@@ -207,8 +313,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         long hoursValue = 24;
         try { if (!hoursStr.isEmpty()) hoursValue = Long.parseLong(hoursStr); } catch (Exception ignored) {}
 
-        // ✅ Validate hours range (1 to 168 = 1 week)
-        if (hoursValue < 1) hoursValue = 1;
+        if (hoursValue < 1)   hoursValue = 1;
         if (hoursValue > 168) hoursValue = 168;
 
         if (title.isEmpty() || desc.isEmpty()) {
@@ -222,9 +327,9 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         btnPublish.setEnabled(false);
         if (tvImageStatus != null) tvImageStatus.setText("Please wait...");
 
-        final String fCat = cat, fSub = subSel, fCustom = custom,
-                fTitle = title, fDesc = desc;
-        final long fHours = hoursValue;
+        final String fCat    = cat,  fSub   = subSel, fCustom = custom;
+        final String fTitle  = title, fDesc  = desc;
+        final long   fHours  = hoursValue;
 
         userRef.child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -270,8 +375,8 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 a.setLng(u.getLng());
                 a.setTime(now);
                 a.setExpireAt(expireAt);
-                a.setAudioUrl(""); // ✅ No audio on free tier
 
+                // ── Step 1: Image upload (optional) ──────────────────────
                 if (selectedBitmap != null) {
                     if (tvImageStatus != null) tvImageStatus.setText("Uploading image...");
                     CloudinaryUploader.uploadBitmap(
@@ -280,21 +385,20 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                             new CloudinaryUploader.UploadListener() {
                                 @Override public void onSuccess(String imageUrl) {
                                     a.setImageUrl(imageUrl);
-                                    saveAnnouncement(a, u);
+                                    uploadAudioThenSave(a, u, id);
                                 }
                                 @Override public void onError(String message) {
                                     a.setImageUrl("");
-                                    saveAnnouncement(a, u);
                                     toast("Image upload failed, posting without image");
+                                    uploadAudioThenSave(a, u, id);
                                 }
                             }
                     );
                 } else {
                     a.setImageUrl("");
-                    saveAnnouncement(a, u);
+                    uploadAudioThenSave(a, u, id);
                 }
             }
-
             @Override public void onCancelled(@NonNull DatabaseError error) {
                 btnPublish.setEnabled(true);
                 if (tvImageStatus != null) tvImageStatus.setText("");
@@ -303,18 +407,54 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Step 2: Audio upload (optional) → তারপর Firebase এ save করো
+     */
+    private void uploadAudioThenSave(Announcement a, UserModel u, String annId) {
+        if (recordedAudioPath != null && !recordedAudioPath.isEmpty()) {
+            if (tvImageStatus != null) tvImageStatus.setText("Uploading audio...");
+
+            AudioRecorderHelper.uploadAudio(
+                    recordedAudioPath,
+                    annId,
+                    new AudioRecorderHelper.UploadListener() {
+                        @Override public void onProgress(int percent) {
+                            runOnUiThread(() -> {
+                                if (tvImageStatus != null)
+                                    tvImageStatus.setText("Uploading audio... " + percent + "%");
+                            });
+                        }
+                        @Override public void onSuccess(String downloadUrl) {
+                            a.setAudioUrl(downloadUrl);
+                            runOnUiThread(() -> saveAnnouncement(a, u));
+                        }
+                        @Override public void onError(String message) {
+                            // Audio upload fail হলেও post করো (audio ছাড়া)
+                            a.setAudioUrl("");
+                            runOnUiThread(() -> {
+                                toast("Audio upload failed, posting without audio");
+                                saveAnnouncement(a, u);
+                            });
+                        }
+                    }
+            );
+        } else {
+            // কোনো audio নেই
+            a.setAudioUrl("");
+            saveAnnouncement(a, u);
+        }
+    }
+
+    /**
+     * Step 3: Firebase Realtime DB তে announcement save করো
+     */
     private void saveAnnouncement(Announcement a, UserModel u) {
+        if (tvImageStatus != null) tvImageStatus.setText("Publishing...");
         annRef.child(a.getId()).setValue(a)
                 .addOnSuccessListener(v -> {
                     toast("Published ✅");
-                    NotificationSender.sendAnnouncementNotification(
-                            a.getId(),
-                            a.getTitle(),
-                            a.getDescription(),
-                            u.getLat(),
-                            u.getLng(),
-                            a.getUserId()
-                    );
+                    // Firebase Functions নিজেই notification পাঠাবে
+                    // NotificationSender এর call এখানে নেই — duplicate avoid করতে
                     finish();
                 })
                 .addOnFailureListener(e -> {
@@ -322,6 +462,17 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                     if (tvImageStatus != null) tvImageStatus.setText("");
                     toast("Save failed: " + e.getMessage());
                 });
+    }
+
+    // ── Lifecycle ──────────────────────────────────────────────────────────
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Activity destroy হলে recording চলছে থাকলে cancel করো
+        if (audioRecorder != null && isRecording) {
+            audioRecorder.cancelRecording();
+        }
     }
 
     private void toast(String s) {
