@@ -47,10 +47,9 @@ public class AddAnnouncementActivity extends AppCompatActivity {
 
     private Bitmap selectedBitmap = null;
 
-    // ── Audio ──────────────────────────────────────────────────────────────
     private AudioRecorderHelper audioRecorder;
-    private String recordedAudioPath = null;   // local .m4a path after recording
-    private boolean isRecording      = false;
+    private String recordedAudioPath = null;
+    private boolean isRecording = false;
 
     private ActivityResultLauncher<Intent>   galleryLauncher;
     private ActivityResultLauncher<String[]> permissionLauncher;
@@ -75,10 +74,8 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         tvAudioStatus = findViewById(R.id.tvAudioStatus);
         ivPreview     = findViewById(R.id.ivPreview);
 
-        // Audio recorder শুরু করো
         audioRecorder = new AudioRecorderHelper(this);
 
-        // Audio button দেখাও (আগে GONE ছিল, এখন VISIBLE)
         if (btnRecordAudio != null) btnRecordAudio.setVisibility(View.VISIBLE);
         if (tvAudioStatus  != null) tvAudioStatus.setVisibility(View.VISIBLE);
 
@@ -108,14 +105,12 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     }
 
     private void startAudioRecording() {
-        // RECORD_AUDIO permission check
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {
             permissionLauncher.launch(new String[]{Manifest.permission.RECORD_AUDIO});
             return;
         }
 
-        // আগের recording থাকলে reset করো
         recordedAudioPath = null;
 
         audioRecorder.startRecording(new AudioRecorderHelper.RecordListener() {
@@ -127,7 +122,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                         tvAudioStatus.setText("🔴 Recording... (tap again to stop)");
                 });
             }
-            @Override public void onRecordStopped(String localPath) { /* stopRecording handles this */ }
+            @Override public void onRecordStopped(String localPath) {}
             @Override public void onError(String message) {
                 isRecording = false;
                 runOnUiThread(() -> {
@@ -161,10 +156,8 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         });
     }
 
-    /** Audio button UI toggle helper */
     private void updateAudioButton(boolean recording) {
         if (btnRecordAudio == null) return;
-        // btnRecordAudio এর ভেতরে TextView খোঁজো
         if (btnRecordAudio instanceof LinearLayout) {
             LinearLayout ll = (LinearLayout) btnRecordAudio;
             for (int i = 0; i < ll.getChildCount(); i++) {
@@ -181,7 +174,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     private void setupPermissions() {
         permissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestMultiplePermissions(), result -> {
-                    // RECORD_AUDIO permission granted হলে recording শুরু করো
                     Boolean audioGranted = result.get(Manifest.permission.RECORD_AUDIO);
                     if (Boolean.TRUE.equals(audioGranted)) {
                         startAudioRecording();
@@ -297,7 +289,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     // ── Publish ────────────────────────────────────────────────────────────
 
     private void publish() {
-        // Recording চলছে থাকলে আগে stop করো
         if (isRecording) {
             toast("Please stop recording first");
             return;
@@ -408,7 +399,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     }
 
     /**
-     * Step 2: Audio upload (optional) → তারপর Firebase এ save করো
+     * Step 2: Audio upload to Cloudinary (optional) → তারপর Firebase এ save করো
      */
     private void uploadAudioThenSave(Announcement a, UserModel u, String annId) {
         if (recordedAudioPath != null && !recordedAudioPath.isEmpty()) {
@@ -429,7 +420,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                             runOnUiThread(() -> saveAnnouncement(a, u));
                         }
                         @Override public void onError(String message) {
-                            // Audio upload fail হলেও post করো (audio ছাড়া)
                             a.setAudioUrl("");
                             runOnUiThread(() -> {
                                 toast("Audio upload failed, posting without audio");
@@ -439,7 +429,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                     }
             );
         } else {
-            // কোনো audio নেই
             a.setAudioUrl("");
             saveAnnouncement(a, u);
         }
@@ -447,14 +436,22 @@ public class AddAnnouncementActivity extends AppCompatActivity {
 
     /**
      * Step 3: Firebase Realtime DB তে announcement save করো
+     * ✅ FIXED: NotificationSender এখন call হচ্ছে
      */
     private void saveAnnouncement(Announcement a, UserModel u) {
         if (tvImageStatus != null) tvImageStatus.setText("Publishing...");
         annRef.child(a.getId()).setValue(a)
                 .addOnSuccessListener(v -> {
+                    // ✅ FIXED: notification পাঠাও (আগে এটা missing ছিল)
+                    NotificationSender.sendAnnouncementNotification(
+                            a.getId(),
+                            a.getTitle(),
+                            a.getDescription(),
+                            a.getLat(),
+                            a.getLng(),
+                            a.getUserId()
+                    );
                     toast("Published ✅");
-                    // Firebase Functions নিজেই notification পাঠাবে
-                    // NotificationSender এর call এখানে নেই — duplicate avoid করতে
                     finish();
                 })
                 .addOnFailureListener(e -> {
@@ -469,7 +466,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Activity destroy হলে recording চলছে থাকলে cancel করো
         if (audioRecorder != null && isRecording) {
             audioRecorder.cancelRecording();
         }

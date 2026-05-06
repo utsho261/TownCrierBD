@@ -4,12 +4,15 @@ import android.content.Context;
 import android.media.MediaRecorder;
 import android.os.Build;
 
-import com.google.firebase.storage.FirebaseStorage;
-import com.google.firebase.storage.StorageReference;
-import com.google.firebase.storage.UploadTask;
+import org.json.JSONObject;
 
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 public class AudioRecorderHelper {
 
@@ -99,60 +102,128 @@ public class AudioRecorderHelper {
     }
 
     /**
-     * Upload recorded audio to Firebase Storage.
-     * Path: announcement_audio/{announcementId}.m4a
+     * Upload recorded audio to Cloudinary (resource_type=video handles .m4a/.mp3/.ogg).
+     * Uses unsigned upload with the same preset as images.
+     * Runs on a background thread — callbacks are delivered on the CALLING thread
+     * (wrap in runOnUiThread if coming from an Activity).
      */
-    public static void uploadAudio(String localPath, String announcementId,
+    public static void uploadAudio(String localPath,
+                                   String announcementId,
                                    UploadListener listener) {
         if (localPath == null || localPath.isEmpty()) {
             if (listener != null) listener.onError("No audio file");
             return;
         }
-
         File file = new File(localPath);
         if (!file.exists()) {
             if (listener != null) listener.onError("Audio file not found");
             return;
         }
 
-        StorageReference ref = FirebaseStorage.getInstance()
-                .getReference()
-                .child(Constants.STORAGE_AUDIO_FOLDER)
-                .child(announcementId + ".m4a");
+        new Thread(() -> {
+            String boundary = "------CloudinaryBoundary" + System.currentTimeMillis();
+            HttpURLConnection conn = null;
+            try {
+                // Cloudinary endpoint for audio (resource_type=video)
+                String uploadUrl = "https://api.cloudinary.com/v1_1/"
+                        + Constants.CLOUDINARY_CLOUD_NAME
+                        + "/video/upload";
 
-        UploadTask task = ref.putFile(android.net.Uri.fromFile(file));
+                URL url = new URL(uploadUrl);
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setDoOutput(true);
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type",
+                        "multipart/form-data; boundary=" + boundary);
+                conn.setConnectTimeout(30_000);
+                conn.setReadTimeout(60_000);
 
-        task.addOnProgressListener(snapshot -> {
-            if (listener == null) return;
-            long total = snapshot.getTotalByteCount();
-            long transferred = snapshot.getBytesTransferred();
-            int pct = total > 0 ? (int) (100 * transferred / total) : 0;
-            listener.onProgress(pct);
-        });
+                // ── Write multipart body ────────────────────────────────
+                DataOutputStream out = new DataOutputStream(conn.getOutputStream());
 
-        task.continueWithTask(t -> {
-            if (!t.isSuccessful() && t.getException() != null)
-                throw t.getException();
-            return ref.getDownloadUrl();
-        }).addOnSuccessListener(uri -> {
-            file.delete(); // clean up local temp file
-            if (listener != null) listener.onSuccess(uri.toString());
-        }).addOnFailureListener(e -> {
-            if (listener != null) listener.onError(e.getMessage() != null
-                    ? e.getMessage() : "Upload failed");
-        });
+                // upload_preset field
+                writeField(out, boundary, "upload_preset",
+                        Constants.CLOUDINARY_UPLOAD_PRESET);
+
+                // public_id (optional but keeps names predictable)
+                writeField(out, boundary, "public_id",
+                        Constants.STORAGE_AUDIO_FOLDER + "/" + announcementId);
+
+                // File part
+                out.writeBytes("--" + boundary + "\r\n");
+                out.writeBytes("Content-Disposition: form-data; name=\"file\"; "
+                        + "filename=\"" + file.getName() + "\"\r\n");
+                out.writeBytes("Content-Type: audio/mp4\r\n\r\n");
+
+                long fileSize = file.length();
+                long bytesWritten = 0;
+                byte[] buf = new byte[4096];
+                int read;
+                try (FileInputStream fis = new FileInputStream(file)) {
+                    while ((read = fis.read(buf)) != -1) {
+                        out.write(buf, 0, read);
+                        bytesWritten += read;
+                        if (listener != null && fileSize > 0) {
+                            int pct = (int) (100 * bytesWritten / fileSize);
+                            listener.onProgress(pct);
+                        }
+                    }
+                }
+                out.writeBytes("\r\n--" + boundary + "--\r\n");
+                out.flush();
+                out.close();
+
+                // ── Read response ───────────────────────────────────────
+                int responseCode = conn.getResponseCode();
+                InputStream is = responseCode == 200
+                        ? conn.getInputStream()
+                        : conn.getErrorStream();
+
+                StringBuilder sb = new StringBuilder();
+                byte[] tmp = new byte[4096];
+                int n;
+                while ((n = is.read(tmp)) != -1) sb.append(new String(tmp, 0, n));
+                is.close();
+
+                if (responseCode == 200) {
+                    JSONObject json = new JSONObject(sb.toString());
+                    String secureUrl = json.optString("secure_url", "");
+                    file.delete(); // clean up local cache file
+                    if (listener != null) listener.onSuccess(secureUrl);
+                } else {
+                    if (listener != null)
+                        listener.onError("Cloudinary error " + responseCode + ": " + sb);
+                }
+
+            } catch (Exception e) {
+                if (listener != null)
+                    listener.onError(e.getMessage() != null ? e.getMessage() : "Upload failed");
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+        }).start();
     }
 
     /**
-     * Delete audio from Firebase Storage when post expires or is deleted.
+     * Delete audio from Cloudinary.
+     * NOTE: Cloudinary unsigned presets cannot delete. Use your backend/Cloud Function
+     * or the Admin API with your api_key+api_secret to delete assets.
+     * For now this is a no-op stub — audio files will be overwritten by the same
+     * public_id if re-uploaded, and the free quota is generous.
      */
     public static void deleteAudio(String announcementId) {
-        if (announcementId == null || announcementId.isEmpty()) return;
-        FirebaseStorage.getInstance()
-                .getReference()
-                .child(Constants.STORAGE_AUDIO_FOLDER)
-                .child(announcementId + ".m4a")
-                .delete()
-                .addOnFailureListener(e -> { /* ignore — file may not exist */ });
+        // Deletion requires signed API calls (api_key + api_secret).
+        // Implement via your Render.com server endpoint if needed:
+        // POST /delete-audio  { "public_id": "announcement_audio/<announcementId>" }
+    }
+
+    // ── Multipart helper ─────────────────────────────────────────────────────
+    private static void writeField(DataOutputStream out,
+                                   String boundary,
+                                   String name,
+                                   String value) throws IOException {
+        out.writeBytes("--" + boundary + "\r\n");
+        out.writeBytes("Content-Disposition: form-data; name=\"" + name + "\"\r\n\r\n");
+        out.writeBytes(value + "\r\n");
     }
 }
