@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.towncrierbd.R;
+import com.example.towncrierbd.models.ChatMessage;
 import com.example.towncrierbd.utils.Constants;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
@@ -28,25 +29,26 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * InboxActivity — shows all chat conversations for the current user.
+ * InboxActivity — WhatsApp-style inbox showing only MY conversations.
  *
- * Data model:
- *   DB_CHATS / {roomId} / {msgId}
- *   roomId = sorted(uid1, uid2) joined by "_"
+ * Chat room ID format: sorted(uid1, uid2) joined by "_"
+ * Since Firebase UIDs contain only alphanumeric + "-", splitting by "_" is safe
+ * because each room has exactly: uid1 + "_" + uid2 where both UIDs have no underscores.
  *
- * We scan every room whose key contains our UID, grab the last message,
- * then look up the other user's name from DB_USERS.
+ * Each user only sees rooms where THEIR uid appears in the room key.
+ * Privacy: Firebase Security Rules should restrict /chats/{roomId} to only
+ * the two users whose UIDs form the roomId.
  */
 public class InboxActivity extends AppCompatActivity {
 
-    // ── Simple conversation data class ──────────────────────────────────────
+    // ── Conversation model ───────────────────────────────────────────────────
     public static class Conversation {
         public String roomId;
         public String otherUid;
         public String otherName;
         public String lastMessage;
         public long   lastTimestamp;
-        public boolean unread;
+        public int    unreadCount;
 
         public Conversation(String roomId, String otherUid) {
             this.roomId = roomId;
@@ -54,7 +56,7 @@ public class InboxActivity extends AppCompatActivity {
             this.otherName = "";
             this.lastMessage = "";
             this.lastTimestamp = 0;
-            this.unread = false;
+            this.unreadCount = 0;
         }
     }
 
@@ -75,21 +77,40 @@ public class InboxActivity extends AppCompatActivity {
         @NonNull @Override
         public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View v = LayoutInflater.from(parent.getContext())
-                    .inflate(android.R.layout.simple_list_item_2, parent, false);
+                    .inflate(R.layout.item_inbox_conversation, parent, false);
             return new VH(v);
         }
 
         @Override
         public void onBindViewHolder(@NonNull VH h, int pos) {
             Conversation c = items.get(pos);
-            String name = c.otherName.isEmpty() ? c.otherUid : c.otherName;
+            String name = c.otherName.isEmpty() ? "User" : c.otherName;
+
+            // Avatar initial
+            h.tvAvatar.setText(String.valueOf(Character.toUpperCase(name.charAt(0))));
+
             h.tvName.setText(name);
-            h.tvPreview.setText(c.lastMessage.isEmpty() ? "" : c.lastMessage);
-            if (c.unread) {
-                h.tvName.setAlpha(1.0f);
+            h.tvPreview.setText(c.lastMessage.isEmpty() ? "Tap to chat" : c.lastMessage);
+
+            if (c.lastTimestamp > 0) {
+                h.tvTime.setText(formatTime(c.lastTimestamp));
+                h.tvTime.setVisibility(View.VISIBLE);
             } else {
-                h.tvName.setAlpha(0.7f);
+                h.tvTime.setVisibility(View.GONE);
             }
+
+            // Unread badge
+            if (c.unreadCount > 0) {
+                h.tvUnreadBadge.setVisibility(View.VISIBLE);
+                h.tvUnreadBadge.setText(c.unreadCount > 99 ? "99+" : String.valueOf(c.unreadCount));
+                h.tvName.setAlpha(1.0f);
+                h.tvPreview.setAlpha(1.0f);
+            } else {
+                h.tvUnreadBadge.setVisibility(View.GONE);
+                h.tvName.setAlpha(0.85f);
+                h.tvPreview.setAlpha(0.65f);
+            }
+
             h.itemView.setOnClickListener(v -> {
                 Intent i = new Intent(v.getContext(), ChatActivity.class);
                 i.putExtra(ChatActivity.EXTRA_OTHER_UID,  c.otherUid);
@@ -100,12 +121,26 @@ public class InboxActivity extends AppCompatActivity {
 
         @Override public int getItemCount() { return items.size(); }
 
+        private String formatTime(long millis) {
+            long now = System.currentTimeMillis();
+            long diff = now - millis;
+            if (diff < 60_000) return "Now";
+            if (diff < 3_600_000) return (diff / 60_000) + "m";
+            if (diff < 86_400_000) {
+                return new SimpleDateFormat("h:mm a", Locale.getDefault()).format(new Date(millis));
+            }
+            return new SimpleDateFormat("MMM d", Locale.getDefault()).format(new Date(millis));
+        }
+
         static class VH extends RecyclerView.ViewHolder {
-            TextView tvName, tvPreview;
+            TextView tvAvatar, tvName, tvPreview, tvTime, tvUnreadBadge;
             VH(@NonNull View v) {
                 super(v);
-                tvName    = v.findViewById(android.R.id.text1);
-                tvPreview = v.findViewById(android.R.id.text2);
+                tvAvatar      = v.findViewById(R.id.tvAvatar);
+                tvName        = v.findViewById(R.id.tvName);
+                tvPreview     = v.findViewById(R.id.tvPreview);
+                tvTime        = v.findViewById(R.id.tvTime);
+                tvUnreadBadge = v.findViewById(R.id.tvUnreadBadge);
             }
         }
     }
@@ -113,22 +148,21 @@ public class InboxActivity extends AppCompatActivity {
     // ── Activity ─────────────────────────────────────────────────────────────
     private RecyclerView rv;
     private InboxAdapter adapter;
+    private TextView tvEmpty;
     private String myUid;
     private final List<Conversation> conversations = new ArrayList<>();
+    private ValueEventListener inboxListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        // Use a minimal layout — just a RecyclerView + toolbar back button
-        // In your project, replace this with a proper layout XML if you want
-        // custom styling (header card, "Messages" title, etc.)
         setContentView(R.layout.activity_inbox);
 
         myUid = FirebaseAuth.getInstance().getUid();
         if (myUid == null) { finish(); return; }
 
         rv = findViewById(R.id.rvInbox);
+        tvEmpty = findViewById(R.id.tvEmpty);
         rv.setLayoutManager(new LinearLayoutManager(this));
         adapter = new InboxAdapter(myUid);
         rv.setAdapter(adapter);
@@ -136,81 +170,122 @@ public class InboxActivity extends AppCompatActivity {
         View btnBack = findViewById(R.id.btnBack);
         if (btnBack != null) btnBack.setOnClickListener(v -> finish());
 
-        loadConversations();
+        listenToInbox();
     }
 
-    private void loadConversations() {
-        FirebaseDatabase.getInstance()
-                .getReference(Constants.DB_CHATS)
-                .addValueEventListener(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        conversations.clear();
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (inboxListener != null) {
+            FirebaseDatabase.getInstance()
+                    .getReference(Constants.DB_CHATS)
+                    .removeEventListener(inboxListener);
+        }
+    }
 
-                        for (DataSnapshot roomSnap : snapshot.getChildren()) {
-                            String roomId = roomSnap.getKey();
-                            if (roomId == null) continue;
+    /**
+     * Real-time listener — updates immediately when messages arrive.
+     * Only loads rooms where my UID is part of the room key.
+     */
+    private void listenToInbox() {
+        inboxListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                conversations.clear();
 
-                            // Only rooms that involve the current user
-                            if (!roomId.contains(myUid)) continue;
+                for (DataSnapshot roomSnap : snapshot.getChildren()) {
+                    String roomId = roomSnap.getKey();
+                    if (roomId == null) continue;
 
-                            // Derive the other UID from the roomId (format: uid1_uid2)
-                            String[] parts = roomId.split("_");
-                            if (parts.length != 2) continue;
-                            String otherUid = parts[0].equals(myUid) ? parts[1] : parts[0];
+                    // Room key = uid1 + "_" + uid2 (both UIDs are alphanumeric + "-" only)
+                    // Check if myUid is part of this room
+                    if (!isMyRoom(roomId)) continue;
 
-                            Conversation conv = new Conversation(roomId, otherUid);
+                    // Derive the other user's UID
+                    String otherUid = getOtherUid(roomId);
+                    if (otherUid == null || otherUid.isEmpty()) continue;
 
-                            // Find the last message (ordered by timestamp)
-                            long lastTs = 0;
-                            String lastText = "";
-                            boolean hasUnread = false;
+                    Conversation conv = new Conversation(roomId, otherUid);
 
-                            for (DataSnapshot msgSnap : roomSnap.getChildren()) {
-                                long ts = msgSnap.child("timestamp").getValue(Long.class) != null
-                                        ? msgSnap.child("timestamp").getValue(Long.class)
-                                        : 0L;
-                                String senderId = msgSnap.child("senderId").getValue(String.class);
-                                Boolean read = msgSnap.child("read").getValue(Boolean.class);
+                    long lastTs = 0;
+                    String lastText = "";
+                    int unreadCount = 0;
 
-                                if (ts > lastTs) {
-                                    lastTs = ts;
-                                    lastText = msgSnap.child("text").getValue(String.class) != null
-                                            ? msgSnap.child("text").getValue(String.class) : "";
-                                }
-                                // Unread = message sent to ME that I haven't read
-                                if (otherUid.equals(senderId) &&
-                                        (read == null || !read)) {
-                                    hasUnread = true;
-                                }
-                            }
+                    for (DataSnapshot msgSnap : roomSnap.getChildren()) {
+                        ChatMessage msg = msgSnap.getValue(ChatMessage.class);
+                        if (msg == null) continue;
 
-                            conv.lastMessage   = lastText;
-                            conv.lastTimestamp = lastTs;
-                            conv.unread        = hasUnread;
-                            conversations.add(conv);
+                        long ts = msg.getTimestamp();
+                        if (ts > lastTs) {
+                            lastTs   = ts;
+                            lastText = msg.getText() != null ? msg.getText() : "";
                         }
 
-                        // Sort: most recent first
-                        Collections.sort(conversations,
-                                (a, b) -> Long.compare(b.lastTimestamp, a.lastTimestamp));
-
-                        // Resolve names, then show
-                        resolveNames();
+                        // Count unread messages sent TO me that I haven't read
+                        if (otherUid.equals(msg.getSenderId()) && !msg.isRead()) {
+                            unreadCount++;
+                        }
                     }
 
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {}
-                });
+                    conv.lastMessage   = lastText;
+                    conv.lastTimestamp = lastTs;
+                    conv.unreadCount   = unreadCount;
+                    conversations.add(conv);
+                }
+
+                // Sort: most recent first
+                Collections.sort(conversations,
+                        (a, b) -> Long.compare(b.lastTimestamp, a.lastTimestamp));
+
+                resolveNamesAndShow();
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
+        };
+
+        FirebaseDatabase.getInstance()
+                .getReference(Constants.DB_CHATS)
+                .addValueEventListener(inboxListener);
     }
 
-    private void resolveNames() {
+    /**
+     * Check if myUid is part of the room.
+     * Room format: uid1_uid2 where uid1 < uid2 (lexicographically)
+     */
+    private boolean isMyRoom(String roomId) {
+        // Room = uid1 + "_" + uid2
+        // Since Firebase UIDs contain only [a-zA-Z0-9] and "-",
+        // the single "_" separator is unambiguous.
+        int sepIdx = roomId.indexOf('_');
+        if (sepIdx < 0) return false;
+        String part1 = roomId.substring(0, sepIdx);
+        String part2 = roomId.substring(sepIdx + 1);
+        return myUid.equals(part1) || myUid.equals(part2);
+    }
+
+    /**
+     * Get the other user's UID from the room ID.
+     */
+    private String getOtherUid(String roomId) {
+        int sepIdx = roomId.indexOf('_');
+        if (sepIdx < 0) return null;
+        String part1 = roomId.substring(0, sepIdx);
+        String part2 = roomId.substring(sepIdx + 1);
+        return myUid.equals(part1) ? part2 : part1;
+    }
+
+    private void resolveNamesAndShow() {
         if (conversations.isEmpty()) {
             adapter.setData(conversations);
+            if (tvEmpty != null) tvEmpty.setVisibility(View.VISIBLE);
+            rv.setVisibility(View.GONE);
             return;
         }
 
-        // Counter to know when all name lookups are done
+        if (tvEmpty != null) tvEmpty.setVisibility(View.GONE);
+        rv.setVisibility(View.VISIBLE);
+
         final int[] remaining = {conversations.size()};
 
         for (Conversation conv : conversations) {
@@ -233,10 +308,5 @@ public class InboxActivity extends AppCompatActivity {
                         }
                     });
         }
-    }
-
-    private String formatTime(long millis) {
-        if (millis == 0) return "";
-        return new SimpleDateFormat("MMM d", Locale.getDefault()).format(new Date(millis));
     }
 }

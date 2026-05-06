@@ -32,8 +32,9 @@
                 android:contentDescription="Back"/>
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:layout_marginStart="12dp"
                 android:text="Messages"
                 android:textColor="@android:color/white"
@@ -46,9 +47,46 @@
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvInbox"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:clipToPadding="false"
         android:paddingTop="8dp"
         android:paddingBottom="16dp"/>
+
+    <!-- Empty state -->
+    <LinearLayout
+        android:id="@+id/tvEmpty"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="💬"
+            android:textSize="60sp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="No messages yet"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:textColor="#444444"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Chat with announcers by tapping Chat on any post"
+            android:textSize="14sp"
+            android:textColor="#888888"
+            android:gravity="center"
+            android:paddingHorizontal="32dp"/>
+    </LinearLayout>
 
 </LinearLayout>

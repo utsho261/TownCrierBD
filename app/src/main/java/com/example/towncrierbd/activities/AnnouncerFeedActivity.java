@@ -36,6 +36,7 @@ import com.example.towncrierbd.utils.DistanceUtil;
 import com.example.towncrierbd.utils.ExpiredPostCleaner;
 import com.example.towncrierbd.utils.NetworkMonitor;
 import com.google.android.gms.location.*;
+import com.google.android.material.badge.BadgeDrawable;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
@@ -53,9 +54,10 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     private SwipeRefreshLayout swipeRefresh;
     private EditText etSearch;
     private View bannerNoInternet;
+    private BottomNavigationView bottomNav;
 
     private FirebaseAuth auth;
-    private DatabaseReference annRef, userRef;
+    private DatabaseReference annRef, userRef, chatsRef;
 
     private static final int LOCATION_REQ     = 900;
     private static final int NOTIFICATION_REQ = 901;
@@ -68,6 +70,7 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
 
     private final List<Announcement> all = new ArrayList<>();
     private ValueEventListener feedListener;
+    private ValueEventListener unreadListener;
 
     private final Map<String, String> roleCache = new HashMap<>();
     private final Set<String> roleFetching = new HashSet<>();
@@ -82,25 +85,26 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_announcer_feed);
 
-        tvWelcome       = findViewById(R.id.tvWelcome);
-        tvLocationName  = findViewById(R.id.tvLocationName);
-        tvRadius        = findViewById(R.id.tvRadius);
-        rvFeed          = findViewById(R.id.rvFeed);
-        fabAdd          = findViewById(R.id.fabAdd);
-        layoutEmpty     = findViewById(R.id.layoutEmpty);
-        swipeRefresh    = findViewById(R.id.swipeRefresh);
-        etSearch        = findViewById(R.id.etSearch);
+        tvWelcome        = findViewById(R.id.tvWelcome);
+        tvLocationName   = findViewById(R.id.tvLocationName);
+        tvRadius         = findViewById(R.id.tvRadius);
+        rvFeed           = findViewById(R.id.rvFeed);
+        fabAdd           = findViewById(R.id.fabAdd);
+        layoutEmpty      = findViewById(R.id.layoutEmpty);
+        swipeRefresh     = findViewById(R.id.swipeRefresh);
+        etSearch         = findViewById(R.id.etSearch);
         bannerNoInternet = findViewById(R.id.bannerNoInternet);
+        bottomNav        = findViewById(R.id.bottomNav);
 
         adapter = new FeedAdapter(this);
         rvFeed.setLayoutManager(new LinearLayoutManager(this));
         rvFeed.setAdapter(adapter);
 
-        auth    = FirebaseAuth.getInstance();
-        annRef  = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
-        userRef = FirebaseDatabase.getInstance().getReference(Constants.DB_USERS);
+        auth     = FirebaseAuth.getInstance();
+        annRef   = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
+        userRef  = FirebaseDatabase.getInstance().getReference(Constants.DB_USERS);
+        chatsRef = FirebaseDatabase.getInstance().getReference(Constants.DB_CHATS);
 
-        // ✅ FIXED: Clean expired posts (also deletes Firebase Storage audio)
         ExpiredPostCleaner.cleanExpired();
 
         updateRadiusText();
@@ -122,7 +126,7 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
 
         if (swipeRefresh != null) {
             swipeRefresh.setOnRefreshListener(() -> {
-                ExpiredPostCleaner.cleanExpired(); // ✅ Also clean on manual refresh
+                ExpiredPostCleaner.cleanExpired();
                 applyAndShow();
                 swipeRefresh.setRefreshing(false);
             });
@@ -131,20 +135,7 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         fabAdd.setOnClickListener(v ->
                 startActivity(new Intent(this, AddAnnouncementActivity.class)));
 
-        BottomNavigationView nav = findViewById(R.id.bottomNav);
-        if (nav != null) {
-            nav.setSelectedItemId(R.id.menu_feed);
-            nav.setOnItemSelectedListener(item -> {
-                if (item.getItemId() == R.id.menu_map) {
-                    startActivity(new Intent(this, MapsActivity.class));
-                    return true;
-                } else if (item.getItemId() == R.id.menu_profile) {
-                    startActivity(new Intent(this, ProfileActivity.class));
-                    return true;
-                }
-                return true;
-            });
-        }
+        setupBottomNav();
 
         locationClient = LocationServices.getFusedLocationProviderClient(this);
 
@@ -153,6 +144,78 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         loadUser();
         attachFeedListenerOnce();
         startLiveLocation();
+        listenForUnreadMessages();
+    }
+
+    private void setupBottomNav() {
+        if (bottomNav == null) return;
+        bottomNav.setSelectedItemId(R.id.menu_feed);
+        bottomNav.setOnItemSelectedListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.menu_map) {
+                startActivity(new Intent(this, MapsActivity.class));
+                return true;
+            } else if (id == R.id.menu_inbox) {
+                startActivity(new Intent(this, InboxActivity.class));
+                return true;
+            } else if (id == R.id.menu_profile) {
+                startActivity(new Intent(this, ProfileActivity.class));
+                return true;
+            }
+            return true;
+        });
+    }
+
+    private void listenForUnreadMessages() {
+        String myUid = auth.getUid();
+        if (myUid == null || bottomNav == null) return;
+
+        unreadListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                int totalUnread = 0;
+
+                for (DataSnapshot roomSnap : snapshot.getChildren()) {
+                    String roomId = roomSnap.getKey();
+                    if (roomId == null) continue;
+
+                    int sepIdx = roomId.indexOf('_');
+                    if (sepIdx < 0) continue;
+                    String p1 = roomId.substring(0, sepIdx);
+                    String p2 = roomId.substring(sepIdx + 1);
+                    if (!myUid.equals(p1) && !myUid.equals(p2)) continue;
+
+                    String otherUid = myUid.equals(p1) ? p2 : p1;
+
+                    for (DataSnapshot msgSnap : roomSnap.getChildren()) {
+                        String senderId = msgSnap.child("senderId").getValue(String.class);
+                        Boolean read = msgSnap.child("read").getValue(Boolean.class);
+                        if (otherUid.equals(senderId) && (read == null || !read)) {
+                            totalUnread++;
+                        }
+                    }
+                }
+
+                final int unread = totalUnread;
+                runOnUiThread(() -> {
+                    try {
+                        BadgeDrawable badge = bottomNav.getOrCreateBadge(R.id.menu_inbox);
+                        if (unread > 0) {
+                            badge.setVisible(true);
+                            badge.setNumber(unread);
+                        } else {
+                            badge.setVisible(false);
+                            badge.clearNumber();
+                        }
+                    } catch (Exception ignored) {}
+                });
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
+        };
+
+        chatsRef.addValueEventListener(unreadListener);
     }
 
     private void requestNotificationPermission() {
@@ -165,7 +228,7 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
                         Manifest.permission.POST_NOTIFICATIONS)) {
                     new AlertDialog.Builder(this)
                             .setTitle("Enable Notifications")
-                            .setMessage("Town Crier BD sends notifications when new announcements are nearby. Allow notifications to stay updated.")
+                            .setMessage("Town Crier BD sends notifications when new announcements are nearby.")
                             .setPositiveButton("Allow", (d, w) ->
                                     ActivityCompat.requestPermissions(this,
                                             new String[]{Manifest.permission.POST_NOTIFICATIONS},
@@ -205,7 +268,8 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (feedListener != null) annRef.removeEventListener(feedListener);
+        if (feedListener != null)   annRef.removeEventListener(feedListener);
+        if (unreadListener != null) chatsRef.removeEventListener(unreadListener);
         if (locationClient != null && locationCallback != null)
             locationClient.removeLocationUpdates(locationCallback);
         if (adapter != null) adapter.release();
