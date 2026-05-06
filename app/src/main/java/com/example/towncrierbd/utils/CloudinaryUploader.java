@@ -25,10 +25,14 @@ public class CloudinaryUploader {
         initialized = true;
     }
 
+    // ── Common listener ───────────────────────────────────────────────────
+
     public interface UploadListener {
-        void onSuccess(String imageUrl);
+        void onSuccess(String url);
         void onError(String message);
     }
+
+    // ── Image upload (Bitmap) ─────────────────────────────────────────────
 
     public static void uploadBitmap(Context context, Bitmap bitmap, UploadListener listener) {
         try {
@@ -46,11 +50,8 @@ public class CloudinaryUploader {
                     .upload(tempFile.getAbsolutePath())
                     .unsigned(Constants.CLOUDINARY_UPLOAD_PRESET)
                     .callback(new UploadCallback() {
-                        @Override
-                        public void onStart(String requestId) {}
-
-                        @Override
-                        public void onProgress(String requestId, long bytes, long totalBytes) {}
+                        @Override public void onStart(String requestId) {}
+                        @Override public void onProgress(String requestId, long bytes, long totalBytes) {}
 
                         @Override
                         public void onSuccess(String requestId, Map resultData) {
@@ -65,15 +66,65 @@ public class CloudinaryUploader {
                             listener.onError(error.getDescription());
                         }
 
-                        @Override
-                        public void onReschedule(String requestId, ErrorInfo error) {}
+                        @Override public void onReschedule(String requestId, ErrorInfo error) {}
                     })
                     .dispatch();
 
         } catch (Exception e) {
-            listener.onError(e.getMessage() != null ? e.getMessage() : "Upload failed");
+            listener.onError(e.getMessage() != null ? e.getMessage() : "Image upload failed");
         }
     }
+
+    // ── Audio upload (local .m4a file path) ──────────────────────────────
+
+    public static void uploadAudio(String localFilePath, String announcementId,
+                                   AudioUploadListener listener) {
+        if (localFilePath == null || localFilePath.isEmpty()) {
+            if (listener != null) listener.onError("No audio file path");
+            return;
+        }
+
+        File file = new File(localFilePath);
+        if (!file.exists()) {
+            if (listener != null) listener.onError("Audio file not found");
+            return;
+        }
+
+        // Cloudinary resource_type "video" দিলে audio ও accept করে
+        MediaManager.get()
+                .upload(localFilePath)
+                .unsigned(Constants.CLOUDINARY_UPLOAD_PRESET)
+                .option("resource_type", "video")          // audio র জন্য "video" লাগে Cloudinary তে
+                .option("public_id", "announcement_audio/" + announcementId)
+                .callback(new UploadCallback() {
+                    @Override public void onStart(String requestId) {}
+
+                    @Override
+                    public void onProgress(String requestId, long bytes, long totalBytes) {
+                        if (listener == null) return;
+                        int pct = totalBytes > 0 ? (int)(100 * bytes / totalBytes) : 0;
+                        listener.onProgress(pct);
+                    }
+
+                    @Override
+                    public void onSuccess(String requestId, Map resultData) {
+                        String url = (String) resultData.get("secure_url");
+                        file.delete(); // local temp file clean up
+                        if (listener != null)
+                            listener.onSuccess(url != null ? url : "");
+                    }
+
+                    @Override
+                    public void onError(String requestId, ErrorInfo error) {
+                        if (listener != null) listener.onError(error.getDescription());
+                    }
+
+                    @Override public void onReschedule(String requestId, ErrorInfo error) {}
+                })
+                .dispatch();
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────
 
     private static Bitmap scaleBitmap(Bitmap bmp, int maxSize) {
         int w = bmp.getWidth(), h = bmp.getHeight();
@@ -81,5 +132,13 @@ public class CloudinaryUploader {
         float ratio = Math.min((float) maxSize / w, (float) maxSize / h);
         return Bitmap.createScaledBitmap(bmp,
                 Math.round(w * ratio), Math.round(h * ratio), true);
+    }
+
+    // ── Audio upload listener (progress সহ) ──────────────────────────────
+
+    public interface AudioUploadListener {
+        void onProgress(int percent);
+        void onSuccess(String audioUrl);
+        void onError(String message);
     }
 }
