@@ -22,7 +22,7 @@ public class LoginActivity extends AppCompatActivity {
 
     private EditText etEmail, etPassword;
     private Button btnLogin;
-    private TextView tvGotoSignup;
+    private TextView tvGotoSignup, tvForgotPassword;
 
     private FirebaseAuth auth;
 
@@ -33,7 +33,6 @@ public class LoginActivity extends AppCompatActivity {
 
         auth = FirebaseAuth.getInstance();
 
-        // ✅ FIX: Already logged-in user gets role-aware redirect (not always GeneralFeed)
         FirebaseUser currentUser = auth.getCurrentUser();
         if (currentUser != null) {
             routeUser();
@@ -42,14 +41,22 @@ public class LoginActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_login);
 
-        etEmail      = findViewById(R.id.etEmail);
-        etPassword   = findViewById(R.id.etPassword);
-        btnLogin     = findViewById(R.id.btnLogin);
-        tvGotoSignup = findViewById(R.id.tvGotoSignup);
+        etEmail          = findViewById(R.id.etEmail);
+        etPassword       = findViewById(R.id.etPassword);
+        btnLogin         = findViewById(R.id.btnLogin);
+        tvGotoSignup     = findViewById(R.id.tvGotoSignup);
+        tvForgotPassword = findViewById(R.id.tvForgotPassword);
 
         btnLogin.setOnClickListener(v -> login());
+
         tvGotoSignup.setOnClickListener(v ->
                 startActivity(new Intent(this, SignupActivity.class)));
+
+        // ✅ Forgot Password
+        if (tvForgotPassword != null) {
+            tvForgotPassword.setOnClickListener(v ->
+                    startActivity(new Intent(this, ForgotPasswordActivity.class)));
+        }
     }
 
     private void login() {
@@ -158,12 +165,10 @@ public class LoginActivity extends AppCompatActivity {
 
                         UserModel user = snapshot.getValue(UserModel.class);
                         if (user == null) {
-                            // User data missing — go to GeneralFeed as safe fallback
                             goTo(GeneralFeedActivity.class);
                             return;
                         }
 
-                        // ✅ FIX: role-aware routing works for both login and auto-login
                         if (Constants.ROLE_ANNOUNCER.equals(user.getRole())) {
                             goTo(AnnouncerFeedActivity.class);
                         } else {

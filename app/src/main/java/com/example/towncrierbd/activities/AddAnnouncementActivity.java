@@ -21,12 +21,10 @@ import androidx.core.content.ContextCompat;
 import com.example.towncrierbd.R;
 import com.example.towncrierbd.models.Announcement;
 import com.example.towncrierbd.models.UserModel;
-import com.example.towncrierbd.utils.AudioRecorderHelper;
 import com.example.towncrierbd.utils.CategoryConfig;
 import com.example.towncrierbd.utils.CloudinaryUploader;
 import com.example.towncrierbd.utils.Constants;
-import com.example.towncrierbd.utils.DistanceUtil;
-import com.example.towncrierbd.utils.FcmSender;
+import com.example.towncrierbd.utils.NotificationSender;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.*;
 
@@ -40,16 +38,13 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     private EditText etCustomSub, etTitle, etDesc, etHours;
     private Button btnCancel, btnPublish;
     private ImageView btnClose, ivPreview;
-    private View btnAddImage, btnRecordAudio;
-    private TextView tvImageStatus, tvAudioStatus;
+    private View btnAddImage;
+    private TextView tvImageStatus;
 
     private FirebaseAuth auth;
     private DatabaseReference annRef, userRef;
 
     private Bitmap selectedBitmap = null;
-    private String recordedAudioPath = null;
-
-    private AudioRecorderHelper audioHelper;
 
     private ActivityResultLauncher<Intent> galleryLauncher;
     private ActivityResultLauncher<String[]> permissionLauncher;
@@ -69,16 +64,12 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         btnPublish    = findViewById(R.id.btnPublish);
         btnClose      = findViewById(R.id.btnClose);
         btnAddImage   = findViewById(R.id.btnAddImage);
-        btnRecordAudio = findViewById(R.id.btnRecordAudio);
         tvImageStatus = findViewById(R.id.tvImageStatus);
-        tvAudioStatus = findViewById(R.id.tvAudioStatus);
         ivPreview     = findViewById(R.id.ivPreview);
 
         auth    = FirebaseAuth.getInstance();
         annRef  = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
         userRef = FirebaseDatabase.getInstance().getReference(Constants.DB_USERS);
-
-        audioHelper = new AudioRecorderHelper(this);
 
         setupPermissions();
         setupLaunchers();
@@ -88,69 +79,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         if (btnClose != null) btnClose.setOnClickListener(v -> finish());
         btnPublish.setOnClickListener(v -> publish());
         if (btnAddImage != null) btnAddImage.setOnClickListener(v -> showImageChooser());
-        if (btnRecordAudio != null) btnRecordAudio.setOnClickListener(v -> toggleRecording());
     }
-
-    // ─── Audio ──────────────────────────────────────────────────────────────
-
-    private void toggleRecording() {
-        if (!hasMicPermission()) {
-            permissionLauncher.launch(new String[]{Manifest.permission.RECORD_AUDIO});
-            return;
-        }
-
-        if (audioHelper.isRecording()) {
-            audioHelper.stopRecording(new AudioRecorderHelper.RecordListener() {
-                @Override public void onRecordStarted() {}
-                @Override public void onRecordStopped(String localPath) {
-                    recordedAudioPath = localPath;
-                    if (tvAudioStatus != null)
-                        tvAudioStatus.setText("Audio recorded ✅");
-                    updateRecordButtonUI(false);
-                }
-                @Override public void onError(String message) {
-                    toast("Record stop error: " + message);
-                }
-            });
-        } else {
-            audioHelper.startRecording(new AudioRecorderHelper.RecordListener() {
-                @Override public void onRecordStarted() {
-                    if (tvAudioStatus != null)
-                        tvAudioStatus.setText("🎙️ Recording... tap again to stop");
-                    updateRecordButtonUI(true);
-                }
-                @Override public void onRecordStopped(String localPath) {}
-                @Override public void onError(String message) {
-                    toast("Record failed: " + message);
-                }
-            });
-        }
-    }
-
-    private void updateRecordButtonUI(boolean recording) {
-        if (btnRecordAudio == null) return;
-        TextView tvLabel = btnRecordAudio.findViewWithTag("audioLabel");
-        if (tvLabel == null) {
-            // fallback: find TextView inside LinearLayout
-            if (btnRecordAudio instanceof android.view.ViewGroup) {
-                android.view.ViewGroup vg = (android.view.ViewGroup) btnRecordAudio;
-                for (int i = 0; i < vg.getChildCount(); i++) {
-                    View child = vg.getChildAt(i);
-                    if (child instanceof TextView) {
-                        ((TextView) child).setText(recording ? "Stop Recording" : "Record Audio");
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    private boolean hasMicPermission() {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-                == PackageManager.PERMISSION_GRANTED;
-    }
-
-    // ─── Permissions ────────────────────────────────────────────────────────
 
     private void setupPermissions() {
         permissionLauncher = registerForActivityResult(
@@ -170,8 +99,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         }
         if (!need.isEmpty()) permissionLauncher.launch(need.toArray(new String[0]));
     }
-
-    // ─── Gallery ────────────────────────────────────────────────────────────
 
     private void setupLaunchers() {
         galleryLauncher = registerForActivityResult(
@@ -210,8 +137,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         i.setType("image/*");
         galleryLauncher.launch(i);
     }
-
-    // ─── Category UI ────────────────────────────────────────────────────────
 
     private void setupCategoryUI() {
         List<String> cats = new ArrayList<>(CategoryConfig.MAIN);
@@ -262,15 +187,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         return o == null ? "" : o.toString().trim();
     }
 
-    // ─── Publish ────────────────────────────────────────────────────────────
-
     private void publish() {
-        // Stop recording if still going
-        if (audioHelper.isRecording()) {
-            toast("Please stop recording first");
-            return;
-        }
-
         String title    = etTitle.getText().toString().trim();
         String desc     = etDesc.getText().toString().trim();
         String cat      = getSelected(spCategory);
@@ -279,7 +196,8 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         String custom   = etCustomSub.getText().toString().trim();
         String hoursStr = etHours.getText().toString().trim();
         long hoursValue = 24;
-        try { if (!hoursStr.isEmpty()) hoursValue = Long.parseLong(hoursStr); } catch (Exception ignored) {}
+        try { if (!hoursStr.isEmpty()) hoursValue = Long.parseLong(hoursStr); }
+        catch (Exception ignored) {}
 
         if (title.isEmpty() || desc.isEmpty()) {
             toast("Title & Description required");
@@ -304,6 +222,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                     toast("User not found");
                     return;
                 }
+
                 if (u.getLat() == 0.0 && u.getLng() == 0.0) {
                     btnPublish.setEnabled(true);
                     toast("Location not detected. Open Feed once and try again.");
@@ -334,7 +253,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 a.setTime(now);
                 a.setExpireAt(expireAt);
 
-                // Step 1: Upload image if any
                 if (selectedBitmap != null) {
                     if (tvImageStatus != null) tvImageStatus.setText("Uploading image...");
                     CloudinaryUploader.uploadBitmap(
@@ -343,17 +261,18 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                             new CloudinaryUploader.UploadListener() {
                                 @Override public void onSuccess(String imageUrl) {
                                     a.setImageUrl(imageUrl);
-                                    uploadAudioThenSave(a, id, u);
+                                    saveAnnouncement(a, id, u);
                                 }
                                 @Override public void onError(String message) {
                                     a.setImageUrl("");
-                                    uploadAudioThenSave(a, id, u);
+                                    saveAnnouncement(a, id, u);
+                                    toast("Image upload failed, posting without image");
                                 }
                             }
                     );
                 } else {
                     a.setImageUrl("");
-                    uploadAudioThenSave(a, id, u);
+                    saveAnnouncement(a, id, u);
                 }
             }
 
@@ -364,36 +283,21 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         });
     }
 
-    private void uploadAudioThenSave(Announcement a, String id, UserModel u) {
-        if (recordedAudioPath != null && !recordedAudioPath.isEmpty()) {
-            if (tvAudioStatus != null) tvAudioStatus.setText("Uploading audio...");
-            AudioRecorderHelper.uploadAudio(recordedAudioPath, id,
-                    new AudioRecorderHelper.UploadListener() {
-                        @Override public void onProgress(int percent) {
-                            if (tvAudioStatus != null)
-                                tvAudioStatus.setText("Uploading audio... " + percent + "%");
-                        }
-                        @Override public void onSuccess(String downloadUrl) {
-                            a.setAudioUrl(downloadUrl);
-                            saveAndNotify(a, id, u);
-                        }
-                        @Override public void onError(String message) {
-                            a.setAudioUrl("");
-                            saveAndNotify(a, id, u);
-                            toast("Audio upload failed, posting without audio");
-                        }
-                    });
-        } else {
-            a.setAudioUrl("");
-            saveAndNotify(a, id, u);
-        }
-    }
-
-    private void saveAndNotify(Announcement a, String id, UserModel poster) {
+    private void saveAnnouncement(Announcement a, String id, UserModel u) {
         annRef.child(id).setValue(a)
                 .addOnSuccessListener(v -> {
                     toast("Published ✅");
-                    sendNearbyNotifications(a, poster);
+
+                    // ✅ Notification পাঠাও
+                    NotificationSender.sendAnnouncementNotification(
+                            id,
+                            a.getTitle(),
+                            a.getDescription(),
+                            u.getLat(),
+                            u.getLng(),
+                            a.getUserId()
+                    );
+
                     finish();
                 })
                 .addOnFailureListener(e -> {
@@ -403,62 +307,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 });
     }
 
-    // ─── FCM Notification ───────────────────────────────────────────────────
-
-    private void sendNearbyNotifications(Announcement announcement, UserModel poster) {
-        // Fetch all users, find those within radius, collect their FCM tokens
-        DatabaseReference usersRef = FirebaseDatabase.getInstance()
-                .getReference(Constants.DB_USERS);
-
-        usersRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
-                List<String> tokens = new ArrayList<>();
-                String myUid = auth.getUid();
-
-                for (DataSnapshot s : snapshot.getChildren()) {
-                    String uid = s.getKey();
-                    if (uid == null || uid.equals(myUid)) continue;
-
-                    // Get location
-                    Double lat = s.child("lat").getValue(Double.class);
-                    Double lng = s.child("lng").getValue(Double.class);
-                    if (lat == null || lng == null) continue;
-
-                    double dist = DistanceUtil.distanceKm(
-                            poster.getLat(), poster.getLng(), lat, lng);
-                    if (dist > Constants.FEED_RADIUS_KM) continue;
-
-                    // Get FCM token
-                    String token = s.child("fcmToken").getValue(String.class);
-                    if (token != null && !token.isEmpty()) tokens.add(token);
-                }
-
-                if (tokens.isEmpty()) return;
-
-                String title = "New announcement nearby!";
-                String body  = safe(announcement.getTitle()) + " — "
-                        + safe(announcement.getCategory());
-
-                FcmSender.sendToTokens(tokens, title, body, count ->
-                        android.util.Log.d("FCM", "Sent to " + count + " devices"));
-            }
-
-            @Override public void onCancelled(@NonNull DatabaseError error) {}
-        });
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        // Stop recording if activity closes mid-record
-        if (audioHelper != null && audioHelper.isRecording()) {
-            audioHelper.cancelRecording();
-        }
-    }
-
     private void toast(String s) {
         Toast.makeText(this, s, Toast.LENGTH_SHORT).show();
     }
-
-    private String safe(String s) { return s == null ? "" : s.trim(); }
 }

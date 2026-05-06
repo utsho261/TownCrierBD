@@ -10,77 +10,135 @@ import android.os.Build;
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 
+import com.example.towncrierbd.activities.ChatActivity;
 import com.example.towncrierbd.activities.GeneralFeedActivity;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
+import java.util.Map;
+
 public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
-    private static final String CHANNEL_ID = "town_crier_channel";
+    private static final String CHANNEL_ANNOUNCE = "tc_announce_channel";
+    private static final String CHANNEL_CHAT     = "tc_chat_channel";
 
     @Override
     public void onMessageReceived(@NonNull RemoteMessage remoteMessage) {
         super.onMessageReceived(remoteMessage);
 
         String title = "Town Crier BD";
-        String body  = "New announcement nearby!";
+        String body  = "New activity!";
 
+        // notification payload থেকে নাও
         if (remoteMessage.getNotification() != null) {
-            title = remoteMessage.getNotification().getTitle();
-            body  = remoteMessage.getNotification().getBody();
-        } else if (remoteMessage.getData().size() > 0) {
-            title = remoteMessage.getData().getOrDefault("title", title);
-            body  = remoteMessage.getData().getOrDefault("body", body);
+            String t = remoteMessage.getNotification().getTitle();
+            String b = remoteMessage.getNotification().getBody();
+            if (t != null) title = t;
+            if (b != null) body  = b;
         }
 
-        showNotification(title, body);
+        // data payload থেকেও নাও (override করবে)
+        Map<String, String> data = remoteMessage.getData();
+        if (data.containsKey("title")) title = data.get("title");
+        if (data.containsKey("body"))  body  = data.get("body");
+
+        String type = data.getOrDefault("type", "announcement");
+
+        if ("chat".equals(type)) {
+            String chatRoomId  = data.getOrDefault("chatRoomId", "");
+            String senderName  = data.getOrDefault("senderName", "");
+            String senderId    = data.getOrDefault("senderId", "");
+            showChatNotification(title, body, chatRoomId, senderName, senderId);
+        } else {
+            showAnnouncementNotification(title, body);
+        }
     }
 
     @Override
     public void onNewToken(@NonNull String token) {
         super.onNewToken(token);
-        // ✅ Token Firebase এ save করো
         saveTokenToFirebase(token);
     }
 
     private void saveTokenToFirebase(String token) {
-        com.google.firebase.auth.FirebaseAuth auth =
-                com.google.firebase.auth.FirebaseAuth.getInstance();
-        String uid = auth.getUid();
-        if (uid == null) return;
-
-        com.google.firebase.database.FirebaseDatabase.getInstance()
+        String uid = FirebaseAuth.getInstance().getUid();
+        if (uid == null || token == null) return;
+        FirebaseDatabase.getInstance()
                 .getReference("users")
                 .child(uid)
                 .child("fcmToken")
                 .setValue(token);
     }
 
-    private void showNotification(String title, String body) {
+    // ── Announcement Notification ──────────────────────────────
+    private void showAnnouncementNotification(String title, String body) {
         NotificationManager manager =
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID,
-                    "Town Crier Notifications",
+            NotificationChannel ch = new NotificationChannel(
+                    CHANNEL_ANNOUNCE,
+                    "Announcements",
                     NotificationManager.IMPORTANCE_HIGH);
-            manager.createNotificationChannel(channel);
+            ch.setDescription("Nearby announcements");
+            manager.createNotificationChannel(ch);
         }
 
         Intent intent = new Intent(this, GeneralFeedActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent pendingIntent = PendingIntent.getActivity(
+        PendingIntent pi = PendingIntent.getActivity(
                 this, 0, intent,
                 PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-                .setContentTitle(title)
-                .setContentText(body)
-                .setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setContentIntent(pendingIntent);
+        NotificationCompat.Builder builder =
+                new NotificationCompat.Builder(this, CHANNEL_ANNOUNCE)
+                        .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+                        .setContentTitle(title)
+                        .setContentText(body)
+                        .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
+                        .setAutoCancel(true)
+                        .setPriority(NotificationCompat.PRIORITY_HIGH)
+                        .setContentIntent(pi);
+
+        manager.notify((int) System.currentTimeMillis(), builder.build());
+    }
+
+    // ── Chat Notification ──────────────────────────────────────
+    private void showChatNotification(String title, String body,
+                                      String chatRoomId, String senderName, String senderId) {
+        NotificationManager manager =
+                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel ch = new NotificationChannel(
+                    CHANNEL_CHAT,
+                    "Chat Messages",
+                    NotificationManager.IMPORTANCE_HIGH);
+            ch.setDescription("In-app chat messages");
+            manager.createNotificationChannel(ch);
+        }
+
+        // Chat notification tap করলে সরাসরি ChatActivity তে যাবে
+        Intent intent = new Intent(this, ChatActivity.class);
+        intent.putExtra(ChatActivity.EXTRA_OTHER_UID,  senderId);
+        intent.putExtra(ChatActivity.EXTRA_OTHER_NAME, senderName);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+        PendingIntent pi = PendingIntent.getActivity(
+                this, (int) System.currentTimeMillis(), intent,
+                PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
+
+        NotificationCompat.Builder builder =
+                new NotificationCompat.Builder(this, CHANNEL_CHAT)
+                        .setSmallIcon(android.R.drawable.ic_dialog_email)
+                        .setContentTitle(title)
+                        .setContentText(body)
+                        .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
+                        .setAutoCancel(true)
+                        .setPriority(NotificationCompat.PRIORITY_HIGH)
+                        .setContentIntent(pi);
 
         manager.notify((int) System.currentTimeMillis(), builder.build());
     }

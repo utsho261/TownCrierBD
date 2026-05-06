@@ -18,6 +18,7 @@ import com.example.towncrierbd.adapters.ChatAdapter;
 import com.example.towncrierbd.models.ChatMessage;
 import com.example.towncrierbd.models.UserModel;
 import com.example.towncrierbd.utils.Constants;
+import com.example.towncrierbd.utils.NotificationSender;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -37,7 +38,6 @@ public class ChatActivity extends AppCompatActivity {
     private EditText etMessage;
     private View btnSend;
     private TextView tvOtherName;
-    // ✅ FIX: added avatar TextView reference
     private TextView tvHeaderAvatar;
     private ImageView btnBack;
 
@@ -68,21 +68,19 @@ public class ChatActivity extends AppCompatActivity {
         myUid = FirebaseAuth.getInstance().getUid();
         if (myUid == null) { finish(); return; }
 
-        // Stable chat room ID (alphabetical so both sides match)
         chatRoomId = myUid.compareTo(otherUid) < 0
                 ? myUid + "_" + otherUid
                 : otherUid + "_" + myUid;
 
-        rvMessages    = findViewById(R.id.rvMessages);
-        etMessage     = findViewById(R.id.etMessage);
-        btnSend       = findViewById(R.id.btnSend);
-        tvOtherName   = findViewById(R.id.tvOtherName);
-        tvHeaderAvatar = findViewById(R.id.tvHeaderAvatar); // ✅ FIX: bind avatar
-        btnBack       = findViewById(R.id.btnBack);
+        rvMessages     = findViewById(R.id.rvMessages);
+        etMessage      = findViewById(R.id.etMessage);
+        btnSend        = findViewById(R.id.btnSend);
+        tvOtherName    = findViewById(R.id.tvOtherName);
+        tvHeaderAvatar = findViewById(R.id.tvHeaderAvatar);
+        btnBack        = findViewById(R.id.btnBack);
 
         tvOtherName.setText(otherName != null ? otherName : "Chat");
 
-        // ✅ FIX: Set avatar first letter
         String nm = (otherName != null && !otherName.trim().isEmpty()) ? otherName.trim() : "?";
         if (tvHeaderAvatar != null) {
             tvHeaderAvatar.setText(String.valueOf(Character.toUpperCase(nm.charAt(0))));
@@ -130,7 +128,6 @@ public class ChatActivity extends AppCompatActivity {
                     if (msg.getId() == null) msg.setId(s.getKey());
                     list.add(msg);
 
-                    // Mark messages from other user as read
                     if (otherUid.equals(msg.getSenderId()) && !msg.isRead()) {
                         s.getRef().child("read").setValue(true);
                     }
@@ -158,7 +155,18 @@ public class ChatActivity extends AppCompatActivity {
         msg.setId(msgId);
 
         chatRef.child(msgId).setValue(msg)
-                .addOnSuccessListener(v -> etMessage.setText(""))
+                .addOnSuccessListener(v -> {
+                    etMessage.setText("");
+
+                    // ✅ Chat notification পাঠাও
+                    NotificationSender.sendChatNotification(
+                            otherUid,
+                            myName,
+                            myUid,
+                            text,
+                            chatRoomId
+                    );
+                })
                 .addOnFailureListener(e ->
                         Toast.makeText(this, "Send failed", Toast.LENGTH_SHORT).show());
     }
@@ -166,7 +174,6 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // ✅ FIX: proper null checks before removing listener
         if (chatListener != null && chatRef != null) {
             chatRef.removeEventListener(chatListener);
         }
