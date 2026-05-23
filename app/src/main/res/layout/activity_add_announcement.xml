@@ -200,14 +200,14 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
-                        android:text="Record Audio"
+                        android:text="Add Audio"
                         android:textStyle="bold"
                         android:textColor="#A21CAF" />
                 </LinearLayout>
 
             </LinearLayout>
 
-            <!-- status lines (optional) -->
+            <!-- Status lines -->
             <TextView
                 android:id="@+id/tvImageStatus"
                 android:layout_width="wrap_content"
@@ -217,7 +217,6 @@
                 android:textSize="12sp"
                 android:textColor="#4B5563" />
 
-            <!-- ✅ Image Preview -->
             <ImageView
                 android:id="@+id/ivPreview"
                 android:layout_width="match_parent"
@@ -236,17 +235,27 @@
                 android:textSize="12sp"
                 android:textColor="#4B5563" />
 
-
-            <!-- Expires -->
+            <!-- ════════════════════════════════════════ -->
+            <!-- Expires In — value + unit (required)     -->
+            <!-- ════════════════════════════════════════ -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:text="Expires In"
+                android:layout_marginTop="18dp"
+                android:text="Expires In *"
                 android:textStyle="bold"
                 android:textSize="14sp"
                 android:textColor="#202020"/>
 
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Post won't publish without a set expiry time"
+                android:textSize="11sp"
+                android:textColor="#EF4444"/>
+
+            <!-- Number input + Unit spinner side by side -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -254,25 +263,45 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
+                <!-- Number field -->
                 <EditText
-                    android:id="@+id/etHours"
+                    android:id="@+id/etExpiryValue"
                     android:layout_width="0dp"
-                    android:layout_height="52dp"
+                    android:layout_height="56dp"
                     android:layout_weight="1"
-                    android:hint="24"
-                    android:inputType="number"
+                    android:hint="e.g. 30"
+                    android:inputType="numberDecimal"
                     android:background="@drawable/bg_input"
                     android:padding="14dp"
-                    android:textSize="14sp"/>
+                    android:textSize="16sp"
+                    android:textColor="#111111"
+                    android:gravity="center"/>
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
-                    android:text="hours"
-                    android:textSize="14sp"
-                    android:textColor="#3A3A3A"/>
+                <Space
+                    android:layout_width="10dp"
+                    android:layout_height="1dp"/>
+
+                <!-- Unit spinner: Minutes / Hours / Days -->
+                <Spinner
+                    android:id="@+id/spExpiryUnit"
+                    android:layout_width="0dp"
+                    android:layout_height="56dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_spinner_white"
+                    android:spinnerMode="dropdown"
+                    android:popupBackground="@drawable/bg_spinner_popup_white"/>
+
             </LinearLayout>
+
+            <!-- Live preview label e.g. "Post expires in 2 hours" -->
+            <TextView
+                android:id="@+id/tvExpiryPreview"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text=""
+                android:textSize="12sp"
+                android:textColor="#6B7280"/>
 
             <!-- Buttons -->
             <LinearLayout
