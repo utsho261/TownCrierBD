@@ -12,8 +12,13 @@ import com.google.firebase.database.ValueEventListener;
 public class ExpiredPostCleaner {
 
     /**
-     * Call this when Feed opens.
-     * Scans all announcements, deletes expired ones + their audio from Storage.
+     * Feed open হলে call করো।
+     * Expired announcements Firebase DB থেকে delete করো।
+     *
+     * NOTE: Audio এখন Cloudinary-তে আছে।
+     * Cloudinary-তে client-side delete safe না (API secret লাগে)।
+     * তাই audio file Cloudinary-তে থাকবে, শুধু DB entry মুছবে।
+     * Server-side cleanup করতে চাইলে Firebase Functions ব্যবহার করো।
      */
     public static void cleanExpired() {
         DatabaseReference annRef = FirebaseDatabase.getInstance()
@@ -29,14 +34,8 @@ public class ExpiredPostCleaner {
                     if (a == null) continue;
 
                     if (a.getExpireAt() > 0 && now > a.getExpireAt()) {
-                        String id = a.getId() != null ? a.getId() : s.getKey();
-
-                        // 1. Delete audio from Firebase Storage (if exists)
-                        if (a.getAudioUrl() != null && !a.getAudioUrl().isEmpty()) {
-                            AudioRecorderHelper.deleteAudio(id);
-                        }
-
-                        // 2. Delete post from Realtime DB
+                        // ✅ শুধু Firebase DB থেকে delete করো
+                        // Cloudinary audio server-side cleanup করতে হবে
                         s.getRef().removeValue();
                     }
                 }

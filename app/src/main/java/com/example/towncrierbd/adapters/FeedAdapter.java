@@ -351,10 +351,9 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         if (a.getId() == null) return;
         if (pos == RecyclerView.NO_ID || pos < 0 || pos >= items.size()) return;
 
-        // Delete audio from Firebase Storage if exists
-        if (a.getAudioUrl() != null && !a.getAudioUrl().isEmpty()) {
-            AudioRecorderHelper.deleteAudio(a.getId());
-        }
+        // ✅ UPDATED: Audio Cloudinary-তে আছে, client-side delete unsafe
+        // তাই শুধু Firebase DB থেকে post delete করো
+        // Cloudinary-তে file থাকবে (server-side cleanup আলাদা করো)
 
         FirebaseDatabase.getInstance()
                 .getReference(Constants.DB_ANNOUNCEMENTS)

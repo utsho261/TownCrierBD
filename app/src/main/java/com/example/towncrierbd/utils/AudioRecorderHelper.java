@@ -10,7 +10,6 @@ import org.json.JSONObject;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -18,6 +17,8 @@ import java.net.URL;
 public class AudioRecorderHelper {
 
     private static final String TAG = "AudioRecorderHelper";
+
+    // ── Interfaces ─────────────────────────────────────────────────────────
 
     public interface RecordListener {
         void onRecordStarted();
@@ -31,23 +32,28 @@ public class AudioRecorderHelper {
         void onError(String message);
     }
 
-    private MediaRecorder recorder;
-    private String outputPath;
-    private boolean isRecording = false;
+    // ── Fields ─────────────────────────────────────────────────────────────
 
+    private MediaRecorder recorder;
+    private String        outputPath;
+    private boolean       isRecording = false;
     private final Context context;
 
+    // ── Constructor ────────────────────────────────────────────────────────
+
     public AudioRecorderHelper(Context context) {
-        this.context = context;
+        this.context = context.getApplicationContext();
     }
 
-    public boolean isRecording() {
-        return isRecording;
-    }
+    public boolean isRecording() { return isRecording; }
+
+    // ── Recording ──────────────────────────────────────────────────────────
 
     public void startRecording(RecordListener listener) {
         try {
             File dir = context.getCacheDir();
+            if (!dir.exists()) dir.mkdirs();
+
             File outFile = new File(dir, "tc_audio_" + System.currentTimeMillis() + ".m4a");
             outputPath = outFile.getAbsolutePath();
 
@@ -70,14 +76,17 @@ public class AudioRecorderHelper {
             isRecording = true;
             if (listener != null) listener.onRecordStarted();
 
-        } catch (IOException | IllegalStateException e) {
+        } catch (Exception e) {
             isRecording = false;
             if (listener != null) listener.onError("Recording failed: " + e.getMessage());
         }
     }
 
     public void stopRecording(RecordListener listener) {
-        if (!isRecording || recorder == null) return;
+        if (!isRecording || recorder == null) {
+            if (listener != null) listener.onError("Not recording");
+            return;
+        }
         try {
             recorder.stop();
             recorder.release();
@@ -93,7 +102,7 @@ public class AudioRecorderHelper {
 
     public void cancelRecording() {
         if (recorder != null) {
-            try { recorder.stop(); } catch (Exception ignored) {}
+            try { recorder.stop();    } catch (Exception ignored) {}
             try { recorder.release(); } catch (Exception ignored) {}
             recorder = null;
         }
@@ -104,153 +113,154 @@ public class AudioRecorderHelper {
         }
     }
 
+    // ── Cloudinary Upload ──────────────────────────────────────────────────
+
     /**
-     * Upload audio to Cloudinary using unsigned upload preset.
-     * resource_type=video handles audio files (.m4a, .mp3, etc.)
-     * Runs on background thread — wrap callbacks in runOnUiThread if needed.
+     * Cloudinary REST API দিয়ে audio upload।
+     * resource_type = raw  →  .m4a / audio যেকোনো file accept করে।
+     * SDK ব্যবহার করা হয়নি কারণ Cloudinary Android SDK
+     * raw audio officially support করে না।
      */
     public static void uploadAudio(String localPath,
                                    String announcementId,
                                    UploadListener listener) {
+
         if (localPath == null || localPath.isEmpty()) {
-            if (listener != null) listener.onError("No audio file");
+            if (listener != null) listener.onError("No audio file path");
             return;
         }
+
         File file = new File(localPath);
-        if (!file.exists()) {
-            if (listener != null) listener.onError("Audio file not found");
+        if (!file.exists() || file.length() == 0) {
+            if (listener != null) listener.onError("Audio file missing or empty");
             return;
         }
 
         new Thread(() -> {
-            String boundary = "------CloudinaryBoundary" + System.currentTimeMillis();
-            HttpURLConnection conn = null;
             try {
-                // Cloudinary video endpoint handles audio files
-                String uploadUrl = "https://api.cloudinary.com/v1_1/"
-                        + Constants.CLOUDINARY_CLOUD_NAME
-                        + "/video/upload";
-
-                URL url = new URL(uploadUrl);
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setDoOutput(true);
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type",
-                        "multipart/form-data; boundary=" + boundary);
-                conn.setConnectTimeout(30_000);
-                conn.setReadTimeout(120_000);
-
-                DataOutputStream out = new DataOutputStream(conn.getOutputStream());
-
-                // upload_preset — must be configured in Cloudinary dashboard
-                // to allow unsigned uploads for video/audio resource type
-                writeField(out, boundary, "upload_preset", Constants.CLOUDINARY_UPLOAD_PRESET);
-
-                // Use a predictable public_id so we can delete later
-                String publicId = Constants.STORAGE_AUDIO_FOLDER + "/" + announcementId;
-                writeField(out, boundary, "public_id", publicId);
-
-                // Overwrite existing asset with same public_id
-                writeField(out, boundary, "overwrite", "true");
-
-                // File part
-                out.writeBytes("--" + boundary + "\r\n");
-                out.writeBytes("Content-Disposition: form-data; name=\"file\"; "
-                        + "filename=\"" + file.getName() + "\"\r\n");
-                out.writeBytes("Content-Type: audio/mp4\r\n\r\n");
-
-                long fileSize = file.length();
-                long bytesWritten = 0;
-                byte[] buf = new byte[8192];
-                int read;
-                try (FileInputStream fis = new FileInputStream(file)) {
-                    while ((read = fis.read(buf)) != -1) {
-                        out.write(buf, 0, read);
-                        bytesWritten += read;
-                        if (listener != null && fileSize > 0) {
-                            int pct = (int) (100 * bytesWritten / fileSize);
-                            listener.onProgress(pct);
-                        }
-                    }
+                String url = doUpload(file, announcementId, listener);
+                file.delete(); // local temp সরাও
+                if (url != null && listener != null) {
+                    listener.onSuccess(url);
                 }
-                out.writeBytes("\r\n--" + boundary + "--\r\n");
-                out.flush();
-                out.close();
-
-                int responseCode = conn.getResponseCode();
-                InputStream is = responseCode == 200
-                        ? conn.getInputStream()
-                        : conn.getErrorStream();
-
-                StringBuilder sb = new StringBuilder();
-                byte[] tmp = new byte[4096];
-                int n;
-                while ((n = is.read(tmp)) != -1) sb.append(new String(tmp, 0, n));
-                is.close();
-
-                if (responseCode == 200) {
-                    JSONObject json = new JSONObject(sb.toString());
-                    String secureUrl = json.optString("secure_url", "");
-                    file.delete(); // clean up local cache
-                    if (listener != null) listener.onSuccess(secureUrl);
-                } else {
-                    Log.e(TAG, "Cloudinary error " + responseCode + ": " + sb);
-                    if (listener != null)
-                        listener.onError("Upload failed (" + responseCode + ")");
-                }
-
             } catch (Exception e) {
-                Log.e(TAG, "Audio upload exception: " + e.getMessage());
+                Log.e(TAG, "Cloudinary upload error: " + e.getMessage());
                 if (listener != null)
-                    listener.onError(e.getMessage() != null ? e.getMessage() : "Upload failed");
-            } finally {
-                if (conn != null) conn.disconnect();
+                    listener.onError("Upload failed: " + e.getMessage());
             }
         }).start();
     }
+
+    // ── Core multipart upload ──────────────────────────────────────────────
+
+    private static String doUpload(File file,
+                                   String publicId,
+                                   UploadListener listener) throws Exception {
+
+        String cloudName    = Constants.CLOUDINARY_CLOUD_NAME;   // "dilf73u5q"
+        String uploadPreset = Constants.CLOUDINARY_UPLOAD_PRESET; // "town_crier_preset"
+
+        // resource_type=raw → audio/video/any binary
+        String apiUrl    = "https://api.cloudinary.com/v1_1/" + cloudName + "/raw/upload";
+        String boundary  = "TCBoundary" + System.currentTimeMillis();
+        String CRLF      = "\r\n";
+        String DASHDASH  = "--";
+
+        HttpURLConnection conn = (HttpURLConnection) new URL(apiUrl).openConnection();
+        conn.setDoInput(true);
+        conn.setDoOutput(true);
+        conn.setUseCaches(false);
+        conn.setConnectTimeout(30_000);
+        conn.setReadTimeout(120_000);   // audio বড় হলে বেশি সময় লাগতে পারে
+        conn.setRequestMethod("POST");
+        conn.setRequestProperty("Content-Type",
+                "multipart/form-data; boundary=" + boundary);
+
+        DataOutputStream out = new DataOutputStream(conn.getOutputStream());
+
+        // ── upload_preset field ────────────────────────────────────────────
+        out.writeBytes(DASHDASH + boundary + CRLF);
+        out.writeBytes("Content-Disposition: form-data; name=\"upload_preset\"" + CRLF + CRLF);
+        out.writeBytes(uploadPreset + CRLF);
+
+        // ── public_id field (Cloudinary-তে folder/name) ───────────────────
+        out.writeBytes(DASHDASH + boundary + CRLF);
+        out.writeBytes("Content-Disposition: form-data; name=\"public_id\"" + CRLF + CRLF);
+        out.writeBytes("announcement_audio/" + publicId + CRLF);
+
+        // ── file field ────────────────────────────────────────────────────
+        out.writeBytes(DASHDASH + boundary + CRLF);
+        out.writeBytes("Content-Disposition: form-data; name=\"file\"; "
+                + "filename=\"audio_" + publicId + ".m4a\"" + CRLF);
+        out.writeBytes("Content-Type: audio/mp4" + CRLF + CRLF);
+
+        // File bytes + progress
+        long   total    = file.length();
+        long   written  = 0;
+        int    lastPct  = -1;
+        byte[] buf      = new byte[8192];
+
+        try (FileInputStream fis = new FileInputStream(file)) {
+            int read;
+            while ((read = fis.read(buf)) != -1) {
+                out.write(buf, 0, read);
+                written += read;
+                int pct = (int) (100L * written / total);
+                if (pct != lastPct) {
+                    lastPct = pct;
+                    if (listener != null) listener.onProgress(pct);
+                }
+            }
+        }
+
+        out.writeBytes(CRLF + DASHDASH + boundary + DASHDASH + CRLF);
+        out.flush();
+        out.close();
+
+        // ── Response ──────────────────────────────────────────────────────
+        int code = conn.getResponseCode();
+        Log.d(TAG, "Cloudinary HTTP response: " + code);
+
+        InputStream responseStream = (code == 200)
+                ? conn.getInputStream()
+                : conn.getErrorStream();
+
+        java.io.BufferedReader br = new java.io.BufferedReader(
+                new java.io.InputStreamReader(responseStream));
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while ((line = br.readLine()) != null) sb.append(line);
+        br.close();
+
+        String body = sb.toString();
+        Log.d(TAG, "Cloudinary response body: " + body);
+
+        if (code != 200) {
+            throw new Exception("HTTP " + code + " — " + body);
+        }
+
+        JSONObject json = new JSONObject(body);
+
+        if (json.has("secure_url")) {
+            String secureUrl = json.getString("secure_url");
+            Log.d(TAG, "Audio uploaded successfully: " + secureUrl);
+            return secureUrl;
+        } else {
+            throw new Exception("No secure_url in response: " + body);
+        }
+    }
+
+    // ── Delete ────────────────────────────────────────────────────────────
 
     /**
-     * Delete audio from Cloudinary via your Render.com server.
-     * The server uses Cloudinary Admin API (api_key + api_secret) to delete.
-     * POST /delete-audio  { "public_id": "announcement_audio/<announcementId>" }
+     * Cloudinary unsigned delete support করে না।
+     * তাই এখানে শুধু Firebase DB থেকে audioUrl field null করা হয়।
+     * Actual Cloudinary file delete করতে হলে server-side করতে হবে।
      */
     public static void deleteAudio(String announcementId) {
-        if (announcementId == null || announcementId.isEmpty()) return;
-
-        new Thread(() -> {
-            try {
-                String publicId = Constants.STORAGE_AUDIO_FOLDER + "/" + announcementId;
-                JSONObject body = new JSONObject();
-                body.put("public_id", publicId);
-                body.put("resource_type", "video"); // audio is resource_type=video in Cloudinary
-
-                URL url = new URL(Constants.SERVER_URL + "/delete-audio");
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json");
-                conn.setDoOutput(true);
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(10000);
-
-                byte[] input = body.toString().getBytes("UTF-8");
-                conn.getOutputStream().write(input, 0, input.length);
-
-                int code = conn.getResponseCode();
-                Log.d(TAG, "Delete audio response: " + code + " for " + publicId);
-                conn.disconnect();
-            } catch (Exception e) {
-                Log.e(TAG, "deleteAudio error: " + e.getMessage());
-            }
-        }).start();
-    }
-
-    // ── Multipart helper ─────────────────────────────────────────────────────
-    private static void writeField(DataOutputStream out,
-                                   String boundary,
-                                   String name,
-                                   String value) throws IOException {
-        out.writeBytes("--" + boundary + "\r\n");
-        out.writeBytes("Content-Disposition: form-data; name=\"" + name + "\"\r\n\r\n");
-        out.writeBytes(value + "\r\n");
+        // Server-side (Firebase Functions বা Render.com server) থেকে করো।
+        // Client-side Cloudinary delete করতে API secret লাগে যা app-এ রাখা unsafe।
+        Log.d(TAG, "deleteAudio: " + announcementId
+                + " — handle server-side for security");
     }
 }

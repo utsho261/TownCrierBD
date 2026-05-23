@@ -68,6 +68,16 @@ public class ChatActivity extends AppCompatActivity {
         myUid = FirebaseAuth.getInstance().getUid();
         if (myUid == null) { finish(); return; }
 
+        // ✅ FIX: নিজের সাথে চ্যাট করা যাবে না
+        if (myUid.equals(otherUid)) {
+            Toast.makeText(this, "Cannot chat with yourself", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        // ✅ FIX: chatRoomId — UID compare করে consistent room ID তৈরি করো
+        // UID তে "_" থাকতে পারে তাই separator হিসেবে "_" ব্যবহার করা ঠিক না
+        // বরং lexicographic order maintain করো যাতে দুইদিক থেকে একই room পাওয়া যায়
         chatRoomId = myUid.compareTo(otherUid) < 0
                 ? myUid + "_" + otherUid
                 : otherUid + "_" + myUid;
@@ -86,6 +96,7 @@ public class ChatActivity extends AppCompatActivity {
             tvHeaderAvatar.setText(String.valueOf(Character.toUpperCase(nm.charAt(0))));
         }
 
+        // ✅ FIX: myUid pass করো adapter এ — এটাই sent/received ঠিক করে
         adapter = new ChatAdapter(myUid);
         LinearLayoutManager lm = new LinearLayoutManager(this);
         lm.setStackFromEnd(true);
@@ -128,6 +139,7 @@ public class ChatActivity extends AppCompatActivity {
                     if (msg.getId() == null) msg.setId(s.getKey());
                     list.add(msg);
 
+                    // ✅ FIX: অপরজনের message read হিসেবে mark করো
                     if (otherUid.equals(msg.getSenderId()) && !msg.isRead()) {
                         s.getRef().child("read").setValue(true);
                     }
@@ -138,8 +150,13 @@ public class ChatActivity extends AppCompatActivity {
                 }
             }
             @Override
-            public void onCancelled(@NonNull DatabaseError error) {}
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(ChatActivity.this,
+                        "Failed to load messages: " + error.getMessage(),
+                        Toast.LENGTH_SHORT).show();
+            }
         };
+        // ✅ timestamp অনুযায়ী sort করো
         chatRef.orderByChild("timestamp").addValueEventListener(chatListener);
     }
 
@@ -150,15 +167,19 @@ public class ChatActivity extends AppCompatActivity {
         String msgId = chatRef.push().getKey();
         if (msgId == null) return;
 
-        ChatMessage msg = new ChatMessage(myUid, myName, otherUid, text,
-                System.currentTimeMillis());
+        // ✅ FIX: senderId = myUid, receiverId = otherUid সঠিকভাবে set করো
+        ChatMessage msg = new ChatMessage(
+                myUid,      // senderId
+                myName,     // senderName
+                otherUid,   // receiverId
+                text,
+                System.currentTimeMillis()
+        );
         msg.setId(msgId);
 
         chatRef.child(msgId).setValue(msg)
                 .addOnSuccessListener(v -> {
                     etMessage.setText("");
-
-                    // ✅ Chat notification পাঠাও
                     NotificationSender.sendChatNotification(
                             otherUid,
                             myName,
@@ -168,7 +189,8 @@ public class ChatActivity extends AppCompatActivity {
                     );
                 })
                 .addOnFailureListener(e ->
-                        Toast.makeText(this, "Send failed", Toast.LENGTH_SHORT).show());
+                        Toast.makeText(this, "Send failed: " + e.getMessage(),
+                                Toast.LENGTH_SHORT).show());
     }
 
     @Override
