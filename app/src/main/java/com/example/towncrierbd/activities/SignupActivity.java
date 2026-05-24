@@ -11,6 +11,8 @@ import android.os.Bundle;
 import android.os.Looper;
 import android.widget.*;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -27,6 +29,7 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
@@ -48,13 +51,19 @@ public class SignupActivity extends AppCompatActivity {
     private double userLng = 0.0;
     private String locationName = "Unknown";
 
+    // ── Category picker launcher ──────────────────────────────────────────
+    private ActivityResultLauncher<Intent> categoryLauncher;
+
+    // Pending user data while waiting for category selection
+    private String pendingUid;
+    private UserModel pendingUser;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         auth = FirebaseAuth.getInstance();
 
-        // ✅ FIX: already logged-in → check role and route correctly (not always GeneralFeed)
         FirebaseUser currentUser = auth.getCurrentUser();
         if (currentUser != null) {
             routeLoggedInUser(currentUser.getUid());
@@ -68,10 +77,8 @@ public class SignupActivity extends AppCompatActivity {
         etEmail    = findViewById(R.id.etEmail);
         etPassword = findViewById(R.id.etPassword);
         etDob      = findViewById(R.id.etDob);
-
         rbGeneral   = findViewById(R.id.rbGeneral);
         rbAnnouncer = findViewById(R.id.rbAnnouncer);
-
         btnSignup   = findViewById(R.id.btnSignup);
         tvGotoLogin = findViewById(R.id.tvGotoLogin);
 
@@ -81,9 +88,40 @@ public class SignupActivity extends AppCompatActivity {
         etDob.setOnClickListener(v -> openDatePicker());
         btnSignup.setOnClickListener(v -> doSignup());
         tvGotoLogin.setOnClickListener(v -> finish());
+
+        // ── Category picker result handler ────────────────────────────
+        categoryLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                        ArrayList<String> cats = result.getData()
+                                .getStringArrayListExtra(HawkerCategoryActivity.EXTRA_CATEGORIES);
+                        ArrayList<String> subs = result.getData()
+                                .getStringArrayListExtra(HawkerCategoryActivity.EXTRA_SUBCATEGORIES);
+                        String othersName = result.getData()
+                                .getStringExtra(HawkerCategoryActivity.EXTRA_OTHERS_NAME);
+
+                        if (cats != null) pendingUser.setHawkerCategories(cats);
+                        if (subs != null) pendingUser.setHawkerSubcategories(subs);
+                        if (othersName != null) pendingUser.setHawkerOthersName(othersName);
+
+                        saveUserToFirebase(pendingUid, pendingUser);
+
+                    } else {
+                        // User pressed back → delete the just-created auth account & reset
+                        FirebaseUser u = auth.getCurrentUser();
+                        if (u != null) u.delete();
+                        btnSignup.setEnabled(true);
+                        Toast.makeText(this,
+                                "Please select your categories to complete signup",
+                                Toast.LENGTH_LONG).show();
+                    }
+                }
+        );
     }
 
-    // ✅ FIX: fetch role then route
+    // ── Route already-logged-in user ───────────────────────────────────────
+
     private void routeLoggedInUser(String uid) {
         FirebaseDatabase.getInstance()
                 .getReference(Constants.DB_USERS)
@@ -93,24 +131,15 @@ public class SignupActivity extends AppCompatActivity {
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         UserModel u = snapshot.getValue(UserModel.class);
                         Class<?> dest = GeneralFeedActivity.class;
-                        if (u != null && Constants.ROLE_ANNOUNCER.equals(u.getRole())) {
+                        if (u != null && Constants.ROLE_ANNOUNCER.equals(u.getRole()))
                             dest = AnnouncerFeedActivity.class;
-                        }
-                        Intent intent = new Intent(SignupActivity.this, dest);
-                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                        startActivity(intent);
-                        finish();
+                        go(dest);
                     }
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
-                        // Fallback to GeneralFeed
-                        Intent intent = new Intent(SignupActivity.this, GeneralFeedActivity.class);
-                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                        startActivity(intent);
-                        finish();
-                    }
+                    @Override public void onCancelled(@NonNull DatabaseError error) { go(GeneralFeedActivity.class); }
                 });
     }
+
+    // ── Location ───────────────────────────────────────────────────────────
 
     private void requestLocation() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
@@ -141,15 +170,13 @@ public class SignupActivity extends AppCompatActivity {
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) return;
-
         locationClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper());
     }
 
     private void resolveAddress(Location location) {
         try {
             Geocoder g = new Geocoder(this, Locale.getDefault());
-            List<Address> list = g.getFromLocation(
-                    location.getLatitude(), location.getLongitude(), 1);
+            List<Address> list = g.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
             if (list != null && !list.isEmpty()) {
                 Address a = list.get(0);
                 locationName = a.getLocality() + ", " + a.getCountryName();
@@ -168,6 +195,8 @@ public class SignupActivity extends AppCompatActivity {
         }
     }
 
+    // ── Signup ─────────────────────────────────────────────────────────────
+
     private void doSignup() {
         String name  = etName.getText().toString().trim();
         String phone = etPhone.getText().toString().trim();
@@ -178,7 +207,6 @@ public class SignupActivity extends AppCompatActivity {
             toast("Name, Email, Password required");
             return;
         }
-
         if (pass.length() < 6) {
             toast("Password must be at least 6 characters");
             return;
@@ -197,30 +225,16 @@ public class SignupActivity extends AppCompatActivity {
                     UserModel user = new UserModel(
                             uid, name, email, phone, role, locationName, userLat, userLng);
 
-                    FirebaseDatabase db = FirebaseDatabase.getInstance();
-
-                    db.getReference(Constants.DB_USERS)
-                            .child(uid)
-                            .setValue(user)
-                            .addOnSuccessListener(v -> {
-                                if (!phone.isEmpty()) {
-                                    String phoneKey = phone.replace("+", "").replace(".", "_");
-                                    db.getReference(Constants.DB_PHONE_MAP)
-                                            .child(phoneKey)
-                                            .setValue(email);
-                                }
-
-                                btnSignup.setEnabled(true);
-
-                                // ✅ role-aware routing after signup
-                                Class<?> dest = Constants.ROLE_ANNOUNCER.equals(role)
-                                        ? AnnouncerFeedActivity.class
-                                        : GeneralFeedActivity.class;
-                                Intent intent = new Intent(this, dest);
-                                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                startActivity(intent);
-                                finish();
-                            });
+                    if (Constants.ROLE_ANNOUNCER.equals(role)) {
+                        // ── Announcer → go to category picker first ──────
+                        pendingUid  = uid;
+                        pendingUser = user;
+                        categoryLauncher.launch(
+                                new Intent(this, HawkerCategoryActivity.class));
+                    } else {
+                        // ── General user → save directly ─────────────────
+                        saveUserToFirebase(uid, user);
+                    }
                 })
                 .addOnFailureListener(e -> {
                     btnSignup.setEnabled(true);
@@ -228,17 +242,54 @@ public class SignupActivity extends AppCompatActivity {
                 });
     }
 
+    // ── Save to Firebase ───────────────────────────────────────────────────
+
+    private void saveUserToFirebase(String uid, UserModel user) {
+        FirebaseDatabase db = FirebaseDatabase.getInstance();
+
+        db.getReference(Constants.DB_USERS)
+                .child(uid)
+                .setValue(user)
+                .addOnSuccessListener(v -> {
+                    // Save phone → email map
+                    String phone = user.getPhone();
+                    if (phone != null && !phone.isEmpty()) {
+                        String phoneKey = phone.replace("+", "").replace(".", "_");
+                        db.getReference(Constants.DB_PHONE_MAP)
+                                .child(phoneKey)
+                                .setValue(user.getEmail());
+                    }
+
+                    btnSignup.setEnabled(true);
+
+                    Class<?> dest = Constants.ROLE_ANNOUNCER.equals(user.getRole())
+                            ? AnnouncerFeedActivity.class
+                            : GeneralFeedActivity.class;
+                    go(dest);
+                })
+                .addOnFailureListener(e -> {
+                    btnSignup.setEnabled(true);
+                    toast("Failed to save profile: " + e.getMessage());
+                });
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────
+
     private void openDatePicker() {
         Calendar c = Calendar.getInstance();
         DatePickerDialog dp = new DatePickerDialog(
                 this,
                 (view, y, m, d) -> etDob.setText(d + "/" + (m + 1) + "/" + y),
-                c.get(Calendar.YEAR),
-                c.get(Calendar.MONTH),
-                c.get(Calendar.DAY_OF_MONTH)
-        );
+                c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH));
         dp.getDatePicker().setMaxDate(System.currentTimeMillis());
         dp.show();
+    }
+
+    private void go(Class<?> cls) {
+        Intent intent = new Intent(SignupActivity.this, cls);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 
     private void toast(String s) {
