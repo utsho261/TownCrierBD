@@ -6,7 +6,7 @@
     android:orientation="vertical"
     android:background="#F4F7FF">
 
-    <!-- Header -->
+    <!-- ══ HEADER ══ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -25,7 +25,8 @@
                 android:text="📢 Create Announcement"
                 android:textColor="@android:color/white"
                 android:textSize="18sp"
-                android:textStyle="bold"/>
+                android:textStyle="bold"
+                android:layout_centerVertical="true"/>
 
             <ImageView
                 android:id="@+id/btnClose"
@@ -48,7 +49,7 @@
             android:layout_marginTop="4dp"/>
     </LinearLayout>
 
-    <!-- ══ STEP 1: CATEGORY ══ -->
+    <!-- ══ STEP 1: CATEGORY SELECTION ══ -->
     <ScrollView
         android:id="@+id/stepCategory"
         android:layout_width="match_parent"
@@ -72,12 +73,13 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Choose all that apply"
+                android:text="Choose all that apply — tap to select multiple"
                 android:textSize="13sp"
                 android:textColor="#888888"
                 android:layout_marginTop="2dp"
                 android:layout_marginBottom="12dp"/>
 
+            <!-- Category checkboxes built dynamically -->
             <LinearLayout
                 android:id="@+id/llCategoryList"
                 android:layout_width="match_parent"
@@ -88,7 +90,7 @@
                 android:id="@+id/btnNextStep1"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="20dp"
                 android:text="Next: Choose Products →"
                 android:textColor="@android:color/white"
                 android:background="@drawable/bg_btn_publish"/>
@@ -96,7 +98,7 @@
         </LinearLayout>
     </ScrollView>
 
-    <!-- ══ STEP 2: PRODUCTS ══ -->
+    <!-- ══ STEP 2: PRODUCT / ITEM SELECTION ══ -->
     <ScrollView
         android:id="@+id/stepProducts"
         android:layout_width="match_parent"
@@ -121,22 +123,24 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Buyers/sellers can filter by product"
+                android:text="Buyers can filter by specific products"
                 android:textSize="13sp"
                 android:textColor="#888888"
                 android:layout_marginBottom="8dp"/>
 
-            <!-- Custom category input (shown for "Others") -->
+            <!-- ✅ FIX: ID is etCustomCategory (matches Java code) -->
             <EditText
                 android:id="@+id/etCustomCategory"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
-                android:hint="Describe your category (for Others)"
+                android:hint="Describe your 'Others' category (e.g. Flower pot seller)"
                 android:background="@drawable/bg_input"
                 android:padding="14dp"
                 android:visibility="gone"
-                android:textSize="14sp"/>
+                android:textSize="14sp"
+                android:layout_marginBottom="10dp"/>
 
+            <!-- Product checkboxes built dynamically -->
             <LinearLayout
                 android:id="@+id/llProductList"
                 android:layout_width="match_parent"
@@ -147,7 +151,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:layout_marginTop="16dp">
+                android:layout_marginTop="20dp">
 
                 <Button
                     android:id="@+id/btnBackStep2"
@@ -185,6 +189,7 @@
             android:orientation="vertical"
             android:padding="16dp">
 
+            <!-- Title -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -203,10 +208,11 @@
                 android:padding="14dp"
                 android:textSize="14sp"/>
 
+            <!-- Description -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="14dp"
                 android:text="Description *"
                 android:textStyle="bold"
                 android:textSize="14sp"
@@ -217,17 +223,17 @@
                 android:layout_width="match_parent"
                 android:layout_height="120dp"
                 android:layout_marginTop="6dp"
-                android:hint="Add details..."
+                android:hint="Add details about your post..."
                 android:gravity="top"
                 android:background="@drawable/bg_input"
                 android:padding="14dp"
                 android:textSize="14sp"/>
 
-            <!-- Image + Audio -->
+            <!-- Image + Audio row -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="14dp"
                 android:orientation="horizontal">
 
                 <LinearLayout
@@ -239,10 +245,18 @@
                     android:gravity="center"
                     android:orientation="horizontal"
                     android:padding="10dp">
-                    <ImageView android:layout_width="18dp" android:layout_height="18dp"
-                        android:src="@android:drawable/ic_menu_camera" app:tint="#2563EB"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:layout_marginStart="6dp" android:text="Image" android:textStyle="bold" android:textColor="#2563EB"/>
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@android:drawable/ic_menu_camera"
+                        app:tint="#2563EB"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:text="Add Image"
+                        android:textStyle="bold"
+                        android:textColor="#2563EB"/>
                 </LinearLayout>
 
                 <Space android:layout_width="10dp" android:layout_height="1dp"/>
@@ -256,65 +270,131 @@
                     android:gravity="center"
                     android:orientation="horizontal"
                     android:padding="10dp">
-                    <ImageView android:layout_width="18dp" android:layout_height="18dp"
-                        android:src="@android:drawable/ic_btn_speak_now" app:tint="#A21CAF"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:layout_marginStart="6dp" android:text="Audio" android:textStyle="bold" android:textColor="#A21CAF"/>
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@android:drawable/ic_btn_speak_now"
+                        app:tint="#A21CAF"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:text="Add Audio"
+                        android:textStyle="bold"
+                        android:textColor="#A21CAF"/>
                 </LinearLayout>
             </LinearLayout>
 
-            <TextView android:id="@+id/tvImageStatus" android:layout_width="wrap_content"
-                android:layout_height="wrap_content" android:layout_marginTop="4dp"
-                android:text="" android:textSize="12sp" android:textColor="#4B5563"/>
+            <!-- Status labels -->
+            <TextView
+                android:id="@+id/tvImageStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text=""
+                android:textSize="12sp"
+                android:textColor="#4B5563"/>
 
-            <ImageView android:id="@+id/ivPreview" android:layout_width="match_parent"
-                android:layout_height="160dp" android:layout_marginTop="6dp"
-                android:scaleType="centerCrop" android:visibility="gone"
-                android:contentDescription="Preview"/>
+            <ImageView
+                android:id="@+id/ivPreview"
+                android:layout_width="match_parent"
+                android:layout_height="160dp"
+                android:layout_marginTop="6dp"
+                android:scaleType="centerCrop"
+                android:visibility="gone"
+                android:contentDescription="Selected image preview"/>
 
-            <TextView android:id="@+id/tvAudioStatus" android:layout_width="wrap_content"
-                android:layout_height="wrap_content" android:layout_marginTop="2dp"
-                android:text="" android:textSize="12sp" android:textColor="#4B5563"/>
+            <TextView
+                android:id="@+id/tvAudioStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text=""
+                android:textSize="12sp"
+                android:textColor="#4B5563"/>
 
             <!-- Expiry -->
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:layout_marginTop="14dp" android:text="Expires In *"
-                android:textStyle="bold" android:textSize="14sp" android:textColor="#202020"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Expires In *"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:textColor="#202020"/>
 
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="6dp" android:orientation="horizontal" android:gravity="center_vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Post requires an expiry time (max 7 days)"
+                android:textSize="11sp"
+                android:textColor="#EF4444"/>
 
-                <EditText android:id="@+id/etExpiryValue" android:layout_width="0dp"
-                    android:layout_height="52dp" android:layout_weight="1"
-                    android:hint="e.g. 2" android:inputType="numberDecimal"
-                    android:background="@drawable/bg_input" android:padding="14dp"
-                    android:textSize="16sp" android:gravity="center"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <EditText
+                    android:id="@+id/etExpiryValue"
+                    android:layout_width="0dp"
+                    android:layout_height="56dp"
+                    android:layout_weight="1"
+                    android:hint="e.g. 2"
+                    android:inputType="numberDecimal"
+                    android:background="@drawable/bg_input"
+                    android:padding="14dp"
+                    android:textSize="16sp"
+                    android:gravity="center"/>
 
                 <Space android:layout_width="10dp" android:layout_height="1dp"/>
 
-                <Spinner android:id="@+id/spExpiryUnit" android:layout_width="0dp"
-                    android:layout_height="52dp" android:layout_weight="1"
+                <Spinner
+                    android:id="@+id/spExpiryUnit"
+                    android:layout_width="0dp"
+                    android:layout_height="56dp"
+                    android:layout_weight="1"
                     android:background="@drawable/bg_spinner_white"
                     android:spinnerMode="dropdown"
                     android:popupBackground="@drawable/bg_spinner_popup_white"/>
             </LinearLayout>
 
-            <TextView android:id="@+id/tvExpiryPreview" android:layout_width="wrap_content"
-                android:layout_height="wrap_content" android:layout_marginTop="4dp"
-                android:text="" android:textSize="12sp" android:textColor="#6B7280"/>
+            <TextView
+                android:id="@+id/tvExpiryPreview"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text=""
+                android:textSize="12sp"
+                android:textColor="#6B7280"/>
 
-            <!-- Publish buttons -->
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:orientation="horizontal" android:layout_marginTop="16dp">
+            <!-- Navigation buttons -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="16dp">
 
-                <Button android:id="@+id/btnBackStep3" android:layout_width="0dp"
-                    android:layout_height="52dp" android:layout_weight="1"
-                    android:text="← Back" android:background="@drawable/bg_btn_gray"
+                <Button
+                    android:id="@+id/btnBackStep3"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_weight="1"
+                    android:text="← Back"
+                    android:background="@drawable/bg_btn_gray"
                     android:layout_marginEnd="8dp"/>
 
-                <Button android:id="@+id/btnPublish" android:layout_width="0dp"
-                    android:layout_height="52dp" android:layout_weight="2"
-                    android:text="Publish ✅" android:textColor="@android:color/white"
+                <Button
+                    android:id="@+id/btnPublish"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_weight="2"
+                    android:text="Publish ✅"
+                    android:textColor="@android:color/white"
                     android:background="@drawable/bg_btn_publish"/>
             </LinearLayout>
 

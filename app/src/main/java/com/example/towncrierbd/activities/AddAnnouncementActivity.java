@@ -51,7 +51,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     // Step 2 — Products
     private LinearLayout  llProductList;
     private EditText      etCustomCategoryText;
-    private final Set<String> selectedProducts     = new LinkedHashSet<>();
+    private final Set<String> selectedProducts      = new LinkedHashSet<>();
     private final Set<String> selectedSubcategories = new LinkedHashSet<>();
     private final List<CheckBox> productCheckBoxes  = new ArrayList<>();
 
@@ -83,7 +83,8 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_add_announcement);
+        // ✅ FIX: Use wizard layout (3-step)
+        setContentView(R.layout.activity_add_announcement_wizard);
 
         auth    = FirebaseAuth.getInstance();
         annRef  = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
@@ -98,7 +99,8 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         stepDetails      = findViewById(R.id.stepDetails);
         llCategoryList   = findViewById(R.id.llCategoryList);
         llProductList    = findViewById(R.id.llProductList);
-        etCustomCategoryText = findViewById(R.id.etCustomCategoryText);
+        // ✅ FIX: correct ID from wizard XML
+        etCustomCategoryText = findViewById(R.id.etCustomCategory);
 
         spExpiryUnit    = findViewById(R.id.spExpiryUnit);
         etTitle         = findViewById(R.id.etTitle);
@@ -330,6 +332,16 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             tvInfo.setPadding(0, dp(8), 0, 0);
             llProductList.addView(tvInfo);
         }
+
+        // If no products available for selected categories, show info
+        if (llProductList.getChildCount() == 0) {
+            TextView tvInfo = new TextView(this);
+            tvInfo.setText("No specific products for selected categories. Proceed to next step.");
+            tvInfo.setTextSize(13);
+            tvInfo.setTextColor(0xFF6B7280);
+            tvInfo.setPadding(dp(4), dp(8), dp(4), 0);
+            llProductList.addView(tvInfo);
+        }
     }
 
     private void addProductCheckBox(LinearLayout parent, String product, String subcategory) {
@@ -487,23 +499,26 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                         ? Constants.ROLE_USER : u.getRole().trim();
                 a.setUserRole(role);
 
-                // ✅ Post type: "announcement" or "request"
+                // Post type: "announcement" or "request"
                 a.setPostType(postType);
 
-                // ✅ Categories from Step 1
+                // Categories from Step 1
                 String primaryCat = selectedCategories.isEmpty()
                         ? "" : selectedCategories.iterator().next();
                 a.setCategory(primaryCat);
                 a.setSelectedCategories(new ArrayList<>(selectedCategories));
 
-                // ✅ Products & subcategories from Step 2
+                // Products & subcategories from Step 2
                 a.setSelectedSubcategories(new ArrayList<>(selectedSubcategories));
                 a.setSelectedProducts(new ArrayList<>(selectedProducts));
 
-                // ✅ Custom text for "Others" category
+                // Custom text for "Others" category
                 if (etCustomCategoryText != null
                         && etCustomCategoryText.getVisibility() == View.VISIBLE) {
-                    a.setCustomSubcategory(etCustomCategoryText.getText().toString().trim());
+                    String custom = etCustomCategoryText.getText().toString().trim();
+                    if (!custom.isEmpty()) {
+                        a.setCustomSubcategory(custom);
+                    }
                 }
 
                 a.setTitle(title);
@@ -679,7 +694,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             for (int i = 0; i < ll.getChildCount(); i++) {
                 View child = ll.getChildAt(i);
                 if (child instanceof TextView)
-                    ((TextView) child).setText(recording ? "⏹ Stop" : "Add Audio");
+                    ((TextView) child).setText(recording ? "⏹ Stop" : "Audio");
             }
         }
     }

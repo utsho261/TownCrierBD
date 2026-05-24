@@ -51,6 +51,7 @@ public class SignupActivity extends AppCompatActivity {
     private double userLng = 0.0;
     private String locationName = "Unknown";
 
+    // ✅ FIX: Category launcher for Announcer signup
     private ActivityResultLauncher<Intent> categoryLauncher;
     private String    pendingUid;
     private UserModel pendingUser;
@@ -86,11 +87,12 @@ public class SignupActivity extends AppCompatActivity {
         btnSignup.setOnClickListener(v -> doSignup());
         tvGotoLogin.setOnClickListener(v -> finish());
 
-        // Category picker result (Announcer only)
+        // ✅ FIX: Category picker result — launched after account creation for Announcers
         categoryLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
                     if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                        // ✅ User completed category selection — save their choices
                         ArrayList<String> cats = result.getData()
                                 .getStringArrayListExtra(HawkerCategoryActivity.EXTRA_CATEGORIES);
                         ArrayList<String> subs = result.getData()
@@ -100,17 +102,26 @@ public class SignupActivity extends AppCompatActivity {
 
                         if (cats != null) pendingUser.setHawkerCategories(cats);
                         if (subs != null) pendingUser.setHawkerSubcategories(subs);
-                        if (othersName != null) pendingUser.setHawkerOthersName(othersName);
+                        if (othersName != null && !othersName.isEmpty())
+                            pendingUser.setHawkerOthersName(othersName);
 
+                        // Now save user to Firebase
                         saveUserToFirebase(pendingUid, pendingUser);
 
                     } else {
-                        // User pressed back → delete auth account & reset
+                        // ✅ FIX: User pressed back from category screen
+                        // Delete the Firebase Auth account since signup is incomplete
                         FirebaseUser u = auth.getCurrentUser();
-                        if (u != null) u.delete();
+                        if (u != null) {
+                            u.delete().addOnCompleteListener(task -> {
+                                // Account deleted — reset UI
+                            });
+                        }
+                        pendingUid  = null;
+                        pendingUser = null;
                         btnSignup.setEnabled(true);
                         Toast.makeText(this,
-                                "Signup complete করতে category বেছে নিন",
+                                "Please select your selling categories to complete signup",
                                 Toast.LENGTH_LONG).show();
                     }
                 }
@@ -178,7 +189,11 @@ public class SignupActivity extends AppCompatActivity {
             List<Address> list = g.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
             if (list != null && !list.isEmpty()) {
                 Address a = list.get(0);
-                locationName = a.getLocality() + ", " + a.getCountryName();
+                String locality = a.getLocality();
+                String country  = a.getCountryName();
+                if (locality != null && country != null) {
+                    locationName = locality + ", " + country;
+                }
             }
         } catch (Exception ignored) {}
     }
@@ -210,33 +225,50 @@ public class SignupActivity extends AppCompatActivity {
             toast("Password must be at least 6 characters");
             return;
         }
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            toast("Please enter a valid email address");
+            return;
+        }
 
         String role = rbAnnouncer.isChecked()
                 ? Constants.ROLE_ANNOUNCER : Constants.ROLE_USER;
 
         btnSignup.setEnabled(false);
+        btnSignup.setText("Creating account...");
 
         auth.createUserWithEmailAndPassword(email, pass)
                 .addOnSuccessListener(res -> {
+                    btnSignup.setText("Sign Up");
                     String uid = auth.getUid();
-                    if (uid == null) return;
+                    if (uid == null) {
+                        btnSignup.setEnabled(true);
+                        return;
+                    }
 
                     UserModel user = new UserModel(
                             uid, name, email, phone, role, locationName, userLat, userLng);
 
                     if (Constants.ROLE_ANNOUNCER.equals(role)) {
-                        // Announcer → HawkerCategoryActivity
+                        // ✅ FIX: Announcer must select categories before account is saved
                         pendingUid  = uid;
                         pendingUser = user;
-                        categoryLauncher.launch(
-                                new Intent(this, HawkerCategoryActivity.class));
+                        // Launch category selection screen
+                        Intent catIntent = new Intent(this, HawkerCategoryActivity.class);
+                        categoryLauncher.launch(catIntent);
                     } else {
+                        // General User — save directly
                         saveUserToFirebase(uid, user);
                     }
                 })
                 .addOnFailureListener(e -> {
                     btnSignup.setEnabled(true);
-                    toast(e.getMessage());
+                    btnSignup.setText("Sign Up");
+                    String msg = e.getMessage();
+                    if (msg != null && msg.contains("email address is already in use")) {
+                        toast("This email is already registered. Please login.");
+                    } else {
+                        toast(msg != null ? msg : "Signup failed");
+                    }
                 });
     }
 
@@ -251,7 +283,7 @@ public class SignupActivity extends AppCompatActivity {
                 .addOnSuccessListener(v -> {
                     String phone = user.getPhone();
                     if (phone != null && !phone.isEmpty()) {
-                        // ✅ FIX: store ALL phone formats so any input style works at login
+                        // Store ALL phone formats for flexible login
                         String normalized = phone.trim().replaceAll("[\\s\\-]", "");
 
                         // Format 1: as-is (remove + and replace . with _)
@@ -264,7 +296,7 @@ public class SignupActivity extends AppCompatActivity {
                             db.getReference(Constants.DB_PHONE_MAP).child(key2).setValue(user.getEmail());
                         }
 
-                        // Format 3: if starts with +880 or 880, also store 0... version
+                        // Format 3: +880 or 880 → store 0... version too
                         if (normalized.startsWith("+880")) {
                             String key3 = ("0" + normalized.substring(4)).replace(".", "_");
                             db.getReference(Constants.DB_PHONE_MAP).child(key3).setValue(user.getEmail());
@@ -279,6 +311,7 @@ public class SignupActivity extends AppCompatActivity {
                     Class<?> dest = Constants.ROLE_ANNOUNCER.equals(user.getRole())
                             ? AnnouncerFeedActivity.class
                             : GeneralFeedActivity.class;
+                    toast("Welcome, " + user.getName() + "! 🎉");
                     go(dest);
                 })
                 .addOnFailureListener(e -> {
