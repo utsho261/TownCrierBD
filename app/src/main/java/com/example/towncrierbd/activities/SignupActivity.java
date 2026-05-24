@@ -51,11 +51,9 @@ public class SignupActivity extends AppCompatActivity {
     private double userLng = 0.0;
     private String locationName = "Unknown";
 
-    // ── Category picker launcher ──────────────────────────────────────────
+    // Pending user data while waiting for category selection (Announcer only)
     private ActivityResultLauncher<Intent> categoryLauncher;
-
-    // Pending user data while waiting for category selection
-    private String pendingUid;
+    private String    pendingUid;
     private UserModel pendingUser;
 
     @Override
@@ -72,11 +70,11 @@ public class SignupActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_signup);
 
-        etName     = findViewById(R.id.etName);
-        etPhone    = findViewById(R.id.etPhone);
-        etEmail    = findViewById(R.id.etEmail);
-        etPassword = findViewById(R.id.etPassword);
-        etDob      = findViewById(R.id.etDob);
+        etName      = findViewById(R.id.etName);
+        etPhone     = findViewById(R.id.etPhone);
+        etEmail     = findViewById(R.id.etEmail);
+        etPassword  = findViewById(R.id.etPassword);
+        etDob       = findViewById(R.id.etDob);
         rbGeneral   = findViewById(R.id.rbGeneral);
         rbAnnouncer = findViewById(R.id.rbAnnouncer);
         btnSignup   = findViewById(R.id.btnSignup);
@@ -89,7 +87,8 @@ public class SignupActivity extends AppCompatActivity {
         btnSignup.setOnClickListener(v -> doSignup());
         tvGotoLogin.setOnClickListener(v -> finish());
 
-        // ── Category picker result handler ────────────────────────────
+        // ── Category picker result (Announcer only) ────────────────────────
+        // HawkerCategoryActivity থেকে selected categories ফিরে আসবে
         categoryLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
@@ -108,12 +107,12 @@ public class SignupActivity extends AppCompatActivity {
                         saveUserToFirebase(pendingUid, pendingUser);
 
                     } else {
-                        // User pressed back → delete the just-created auth account & reset
+                        // User pressed back → delete auth account & reset
                         FirebaseUser u = auth.getCurrentUser();
                         if (u != null) u.delete();
                         btnSignup.setEnabled(true);
                         Toast.makeText(this,
-                                "Please select your categories to complete signup",
+                                "Signup complete করতে category বেছে নিন",
                                 Toast.LENGTH_LONG).show();
                     }
                 }
@@ -226,13 +225,13 @@ public class SignupActivity extends AppCompatActivity {
                             uid, name, email, phone, role, locationName, userLat, userLng);
 
                     if (Constants.ROLE_ANNOUNCER.equals(role)) {
-                        // ── Announcer → go to category picker first ──────
+                        // Announcer → HawkerCategoryActivity (same 7 categories)
                         pendingUid  = uid;
                         pendingUser = user;
                         categoryLauncher.launch(
                                 new Intent(this, HawkerCategoryActivity.class));
                     } else {
-                        // ── General user → save directly ─────────────────
+                        // General user → সরাসরি save করো (category লাগবে না)
                         saveUserToFirebase(uid, user);
                     }
                 })
@@ -251,7 +250,6 @@ public class SignupActivity extends AppCompatActivity {
                 .child(uid)
                 .setValue(user)
                 .addOnSuccessListener(v -> {
-                    // Save phone → email map
                     String phone = user.getPhone();
                     if (phone != null && !phone.isEmpty()) {
                         String phoneKey = phone.replace("+", "").replace(".", "_");

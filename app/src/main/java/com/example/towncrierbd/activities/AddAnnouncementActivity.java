@@ -46,7 +46,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     private static final int UNIT_HOURS   = 1;
     private static final int UNIT_DAYS    = 2;
 
-    // Limits (in minutes)
     private static final long MIN_MINUTES = 1;
     private static final long MAX_MINUTES = 7 * 24 * 60; // 7 days
 
@@ -79,7 +78,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_announcement);
 
-        // Bind views
         spCategory      = findViewById(R.id.spCategory);
         spSubcategory   = findViewById(R.id.spSubcategory);
         spExpiryUnit    = findViewById(R.id.spExpiryUnit);
@@ -116,11 +114,72 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     }
 
     // ══════════════════════════════════════════════════════════════════════
+    // Category UI — CategoryConfig.MAIN থেকে তৈরি
+    // ══════════════════════════════════════════════════════════════════════
+
+    private void setupCategoryUI() {
+        // Category spinner — CategoryConfig.MAIN এর ৭টি category
+        List<String> cats = new ArrayList<>(CategoryConfig.MAIN);
+        ArrayAdapter<String> catAdapter = new ArrayAdapter<>(
+                this, R.layout.spinner_selected_white, cats);
+        catAdapter.setDropDownViewResource(R.layout.spinner_dropdown_dark);
+        spCategory.setAdapter(catAdapter);
+
+        spCategory.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
+                updateSubcategoryUI(getSelected(spCategory));
+            }
+            @Override public void onNothingSelected(AdapterView<?> p) {}
+        });
+
+        spSubcategory.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
+                String cat = getSelected(spCategory);
+                String sub = getSelected(spSubcategory);
+                if ("Others".equals(cat)) {
+                    showCustom(true, "আপনার category-র বিস্তারিত লিখুন (optional)");
+                } else if ("Other".equalsIgnoreCase(sub)) {
+                    showCustom(true, "অন্য কিছু হলে specify করুন (optional)");
+                } else {
+                    showCustom(false, "");
+                }
+            }
+            @Override public void onNothingSelected(AdapterView<?> p) {}
+        });
+    }
+
+    private void updateSubcategoryUI(String cat) {
+        List<String> subs = new ArrayList<>();
+        subs.add("Select subcategory");
+        if (!"Others".equals(cat)) {
+            subs.addAll(CategoryConfig.getSubcategories(cat));
+        }
+        ArrayAdapter<String> subAdapter = new ArrayAdapter<>(
+                this, R.layout.spinner_dropdown_dark, subs);
+        subAdapter.setDropDownViewResource(R.layout.spinner_dropdown_dark);
+        spSubcategory.setAdapter(subAdapter);
+
+        // "Others" category → always show custom field
+        showCustom("Others".equals(cat), "আপনার category-র বিস্তারিত লিখুন (optional)");
+    }
+
+    private void showCustom(boolean show, String hint) {
+        if (etCustomSub == null) return;
+        etCustomSub.setVisibility(show ? View.VISIBLE : View.GONE);
+        if (show) etCustomSub.setHint(hint);
+        if (!show) etCustomSub.setText("");
+    }
+
+    private String getSelected(Spinner sp) {
+        Object o = sp.getSelectedItem();
+        return o == null ? "" : o.toString().trim();
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
     // Expiry UI
     // ══════════════════════════════════════════════════════════════════════
 
     private void setupExpiryUI() {
-        // Unit spinner: Minutes / Hours / Days
         ArrayAdapter<String> unitAdapter = new ArrayAdapter<>(
                 this,
                 R.layout.spinner_selected_white,
@@ -128,9 +187,8 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         );
         unitAdapter.setDropDownViewResource(R.layout.spinner_dropdown_dark);
         spExpiryUnit.setAdapter(unitAdapter);
-        spExpiryUnit.setSelection(UNIT_HOURS); // default → Hours
+        spExpiryUnit.setSelection(UNIT_HOURS);
 
-        // Live preview whenever value or unit changes
         TextWatcher watcher = new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
             @Override public void afterTextChanged(Editable s) {}
@@ -148,41 +206,29 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         });
     }
 
-    /** Returns expiry duration in milliseconds, or -1 if invalid / empty. */
     private long getExpiryMillis() {
         String raw = etExpiryValue.getText().toString().trim();
         if (raw.isEmpty()) return -1;
-
         double value;
-        try {
-            value = Double.parseDouble(raw);
-        } catch (NumberFormatException e) {
-            return -1;
-        }
-
+        try { value = Double.parseDouble(raw); } catch (NumberFormatException e) { return -1; }
         if (value <= 0) return -1;
 
         int unit = spExpiryUnit.getSelectedItemPosition();
         long minutes;
         switch (unit) {
-            case UNIT_MINUTES: minutes = (long) value;               break;
-            case UNIT_DAYS:    minutes = (long)(value * 24 * 60);    break;
-            default:           minutes = (long)(value * 60);         break; // UNIT_HOURS
+            case UNIT_MINUTES: minutes = (long) value;            break;
+            case UNIT_DAYS:    minutes = (long)(value * 24 * 60); break;
+            default:           minutes = (long)(value * 60);      break;
         }
-
         if (minutes < MIN_MINUTES) return -1;
-        if (minutes > MAX_MINUTES) return -2; // over limit
-
+        if (minutes > MAX_MINUTES) return -2;
         return minutes * 60_000L;
     }
 
     private void updateExpiryPreview() {
         if (tvExpiryPreview == null) return;
         long millis = getExpiryMillis();
-        if (millis == -1) {
-            tvExpiryPreview.setText("");
-            return;
-        }
+        if (millis == -1) { tvExpiryPreview.setText(""); return; }
         if (millis == -2) {
             tvExpiryPreview.setText("⚠️ Maximum 7 days allowed");
             tvExpiryPreview.setTextColor(0xFFEF4444);
@@ -192,16 +238,14 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         tvExpiryPreview.setText("⏳ Post will expire in " + humanReadable(millis));
     }
 
-    /** Converts millis to a human-friendly string like "2 hours 30 minutes" */
     private String humanReadable(long millis) {
         long totalMinutes = millis / 60_000L;
         long days    = totalMinutes / (24 * 60);
         long hours   = (totalMinutes % (24 * 60)) / 60;
         long minutes = totalMinutes % 60;
-
         StringBuilder sb = new StringBuilder();
-        if (days > 0)    sb.append(days).append(days == 1 ? " day"    : " days");
-        if (hours > 0)   { if (sb.length() > 0) sb.append(" "); sb.append(hours).append(hours == 1 ? " hour"   : " hours"); }
+        if (days > 0)    sb.append(days).append(days == 1 ? " day" : " days");
+        if (hours > 0)   { if (sb.length() > 0) sb.append(" "); sb.append(hours).append(hours == 1 ? " hour" : " hours"); }
         if (minutes > 0) { if (sb.length() > 0) sb.append(" "); sb.append(minutes).append(minutes == 1 ? " minute" : " minutes"); }
         return sb.length() > 0 ? sb.toString() : "less than a minute";
     }
@@ -212,7 +256,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
 
     private void showAudioOptions() {
         if (isRecording) { stopAudioRecording(); return; }
-
         new AlertDialog.Builder(this)
                 .setTitle("Add Audio")
                 .setItems(new String[]{"🎙️ Record Audio", "📁 Select Audio File"}, (dialog, which) -> {
@@ -355,8 +398,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                                 ivPreview.setVisibility(View.VISIBLE);
                                 ivPreview.setImageBitmap(selectedBitmap);
                             }
-                            if (tvImageStatus != null)
-                                tvImageStatus.setText("Image selected ✅");
+                            if (tvImageStatus != null) tvImageStatus.setText("Image selected ✅");
                         } catch (IOException e) { toast("Image read failed"); }
                     }
                 });
@@ -383,59 +425,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     }
 
     // ══════════════════════════════════════════════════════════════════════
-    // Category UI
-    // ══════════════════════════════════════════════════════════════════════
-
-    private void setupCategoryUI() {
-        List<String> cats = new ArrayList<>(CategoryConfig.MAIN);
-        ArrayAdapter<String> catAdapter = new ArrayAdapter<>(
-                this, R.layout.spinner_selected_white, cats);
-        catAdapter.setDropDownViewResource(R.layout.spinner_dropdown_dark);
-        spCategory.setAdapter(catAdapter);
-
-        spCategory.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
-                updateSubcategoryUI(getSelected(spCategory));
-            }
-            @Override public void onNothingSelected(AdapterView<?> p) {}
-        });
-
-        spSubcategory.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
-                String cat = getSelected(spCategory);
-                String sub = getSelected(spSubcategory);
-                if ("Others".equals(cat)) showCustom(true, "Optional: Write details");
-                else if ("Other".equalsIgnoreCase(sub)) showCustom(true, "Specify other (optional)");
-                else showCustom(false, "");
-            }
-            @Override public void onNothingSelected(AdapterView<?> p) {}
-        });
-    }
-
-    private void updateSubcategoryUI(String cat) {
-        List<String> subs = new ArrayList<>();
-        subs.add("Select subcategory");
-        if (!"Others".equals(cat)) subs.addAll(CategoryConfig.getSubcategories(cat));
-        ArrayAdapter<String> subAdapter = new ArrayAdapter<>(
-                this, R.layout.spinner_dropdown_dark, subs);
-        subAdapter.setDropDownViewResource(R.layout.spinner_dropdown_dark);
-        spSubcategory.setAdapter(subAdapter);
-        showCustom("Others".equals(cat), "Optional: Write details");
-    }
-
-    private void showCustom(boolean show, String hint) {
-        if (etCustomSub == null) return;
-        etCustomSub.setVisibility(show ? View.VISIBLE : View.GONE);
-        if (show) etCustomSub.setHint(hint);
-        if (!show) etCustomSub.setText("");
-    }
-
-    private String getSelected(Spinner sp) {
-        Object o = sp.getSelectedItem();
-        return o == null ? "" : o.toString().trim();
-    }
-
-    // ══════════════════════════════════════════════════════════════════════
     // Publish
     // ══════════════════════════════════════════════════════════════════════
 
@@ -449,11 +438,9 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         if ("Select subcategory".equalsIgnoreCase(subSel)) subSel = "";
         String custom = etCustomSub.getText().toString().trim();
 
-        // ── Validate required fields ──────────────────────────────────────
         if (title.isEmpty()) { toast("Title is required"); etTitle.requestFocus(); return; }
         if (desc.isEmpty())  { toast("Description is required"); etDesc.requestFocus(); return; }
 
-        // ── Validate expiry (required) ────────────────────────────────────
         long expiryMillis = getExpiryMillis();
         if (expiryMillis == -1) {
             toast("Please set an expiry time");
@@ -479,9 +466,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         userRef.child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
                 UserModel u = snapshot.getValue(UserModel.class);
-                if (u == null) {
-                    reset(); toast("User not found"); return;
-                }
+                if (u == null) { reset(); toast("User not found"); return; }
                 if (u.getLat() == 0.0 && u.getLng() == 0.0) {
                     reset(); toast("Location not detected. Open Feed once and try again."); return;
                 }
@@ -510,7 +495,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 a.setTime(now);
                 a.setExpireAt(expireAt);
 
-                // Step 1: Image
                 if (selectedBitmap != null) {
                     if (tvImageStatus != null) tvImageStatus.setText("Uploading image...");
                     CloudinaryUploader.uploadBitmap(
@@ -586,10 +570,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         if (tvImageStatus != null) tvImageStatus.setText("");
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    // Lifecycle
-    // ══════════════════════════════════════════════════════════════════════
-
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -599,5 +579,4 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     private void toast(String s) {
         Toast.makeText(this, s, Toast.LENGTH_SHORT).show();
     }
-
 }
