@@ -9,6 +9,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -28,29 +30,32 @@ import java.util.List;
 public class ProfileActivity extends AppCompatActivity {
 
     private TextView tvName, tvRole, tvEmail, tvPhone;
-    private Button btnLogout, btnEditProfile;
+    private Button btnLogout, btnEditProfile, btnEditCategories;
     private RecyclerView rvMyPosts;
     private FeedAdapter myPostsAdapter;
 
     private FirebaseAuth auth;
     private DatabaseReference userRef, annRef;
     private ValueEventListener postsListener;
-    // ✅ FIX: keep a query reference so we can remove the listener properly
     private Query postsQuery;
     private UserModel currentUser = null;
+
+    // Category edit launcher
+    private ActivityResultLauncher<Intent> categoryLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
 
-        tvName         = findViewById(R.id.tvName);
-        tvRole         = findViewById(R.id.tvRole);
-        tvEmail        = findViewById(R.id.tvEmail);
-        tvPhone        = findViewById(R.id.tvPhone);
-        btnLogout      = findViewById(R.id.btnLogout);
-        btnEditProfile = findViewById(R.id.btnEditProfile);
-        rvMyPosts      = findViewById(R.id.rvMyPosts);
+        tvName           = findViewById(R.id.tvName);
+        tvRole           = findViewById(R.id.tvRole);
+        tvEmail          = findViewById(R.id.tvEmail);
+        tvPhone          = findViewById(R.id.tvPhone);
+        btnLogout        = findViewById(R.id.btnLogout);
+        btnEditProfile   = findViewById(R.id.btnEditProfile);
+        btnEditCategories = findViewById(R.id.btnEditCategories);
+        rvMyPosts        = findViewById(R.id.rvMyPosts);
 
         myPostsAdapter = new FeedAdapter(this);
         myPostsAdapter.setShowEditDelete(true);
@@ -61,6 +66,23 @@ public class ProfileActivity extends AppCompatActivity {
         auth    = FirebaseAuth.getInstance();
         userRef = FirebaseDatabase.getInstance().getReference(Constants.DB_USERS);
         annRef  = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
+
+        // Category launcher — opens HawkerCategoryActivity for full re-selection
+        categoryLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                        ArrayList<String> cats = result.getData()
+                                .getStringArrayListExtra(HawkerCategoryActivity.EXTRA_CATEGORIES);
+                        ArrayList<String> subs = result.getData()
+                                .getStringArrayListExtra(HawkerCategoryActivity.EXTRA_SUBCATEGORIES);
+                        String othersName = result.getData()
+                                .getStringExtra(HawkerCategoryActivity.EXTRA_OTHERS_NAME);
+
+                        saveUpdatedCategories(cats, subs, othersName);
+                    }
+                }
+        );
 
         btnLogout.setOnClickListener(v -> {
             auth.signOut();
@@ -74,8 +96,49 @@ public class ProfileActivity extends AppCompatActivity {
             btnEditProfile.setOnClickListener(v -> showEditProfileDialog());
         }
 
+        if (btnEditCategories != null) {
+            btnEditCategories.setOnClickListener(v -> openCategoryEditor());
+        }
+
         loadProfile();
         loadMyPosts();
+    }
+
+    private void openCategoryEditor() {
+        Intent intent = new Intent(this, HawkerCategoryActivity.class);
+        // Pass existing selections so they appear pre-selected
+        if (currentUser != null) {
+            intent.putStringArrayListExtra(
+                    HawkerCategoryActivity.EXTRA_CATEGORIES,
+                    new ArrayList<>(currentUser.getHawkerCategories()));
+            intent.putStringArrayListExtra(
+                    HawkerCategoryActivity.EXTRA_SUBCATEGORIES,
+                    new ArrayList<>(currentUser.getHawkerSubcategories()));
+            intent.putExtra(
+                    HawkerCategoryActivity.EXTRA_OTHERS_NAME,
+                    currentUser.getHawkerOthersName());
+        }
+        categoryLauncher.launch(intent);
+    }
+
+    private void saveUpdatedCategories(ArrayList<String> cats, ArrayList<String> subs, String othersName) {
+        String uid = auth.getUid();
+        if (uid == null) return;
+
+        if (cats != null) {
+            userRef.child(uid).child("hawkerCategories").setValue(cats);
+            if (currentUser != null) currentUser.setHawkerCategories(cats);
+        }
+        if (subs != null) {
+            userRef.child(uid).child("hawkerSubcategories").setValue(subs);
+            if (currentUser != null) currentUser.setHawkerSubcategories(subs);
+        }
+        if (othersName != null) {
+            userRef.child(uid).child("hawkerOthersName").setValue(othersName);
+            if (currentUser != null) currentUser.setHawkerOthersName(othersName);
+        }
+
+        Toast.makeText(this, "Categories updated ✅", Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -87,7 +150,6 @@ public class ProfileActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // ✅ FIX: use stored query reference to remove listener cleanly
         if (postsListener != null && postsQuery != null) {
             postsQuery.removeEventListener(postsListener);
         }
@@ -109,6 +171,12 @@ public class ProfileActivity extends AppCompatActivity {
                 tvEmail.setText("Email: " + safe(u.getEmail()));
                 tvPhone.setText("Phone: " + safe(u.getPhone()));
                 myPostsAdapter.setMyLocation(u.getLat(), u.getLng());
+
+                // Show Edit Categories button only for ANNOUNCERs
+                if (btnEditCategories != null) {
+                    boolean isAnnouncer = Constants.ROLE_ANNOUNCER.equals(u.getRole());
+                    btnEditCategories.setVisibility(isAnnouncer ? android.view.View.VISIBLE : android.view.View.GONE);
+                }
             }
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
@@ -130,10 +198,7 @@ public class ProfileActivity extends AppCompatActivity {
                     if (a == null) continue;
                     if (a.getId() == null || a.getId().trim().isEmpty())
                         a.setId(s.getKey());
-
-                    // ✅ FIX: filter expired posts in My Posts too
                     if (a.getExpireAt() > 0 && now > a.getExpireAt()) continue;
-
                     list.add(a);
                 }
                 myPostsAdapter.setData(list);
@@ -142,7 +207,6 @@ public class ProfileActivity extends AppCompatActivity {
             public void onCancelled(@NonNull DatabaseError error) {}
         };
 
-        // ✅ FIX: save query reference for clean removal in onDestroy
         postsQuery = annRef.orderByChild("userId").equalTo(uid);
         postsQuery.addValueEventListener(postsListener);
     }

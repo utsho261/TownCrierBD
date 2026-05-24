@@ -52,7 +52,7 @@
             android:textColor="@color/text_primary"
             android:layout_marginTop="4dp"/>
 
-        <!-- ✅ Edit + Logout row -->
+        <!-- Edit Profile + Logout row -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -78,6 +78,17 @@
                 android:textColor="@color/white"
                 android:backgroundTint="#F44336"/>
         </LinearLayout>
+
+        <!-- Edit Categories button — only visible for ANNOUNCERs -->
+        <Button
+            android:id="@+id/btnEditCategories"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="10dp"
+            android:text="🛒 Edit My Selling Categories"
+            android:textColor="@color/white"
+            android:backgroundTint="#FF7A00"
+            android:visibility="gone"/>
 
     </LinearLayout>
 

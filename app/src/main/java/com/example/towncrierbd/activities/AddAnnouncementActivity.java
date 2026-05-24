@@ -44,11 +44,11 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     private View   stepCategory, stepProducts, stepDetails;
     private TextView tvStepIndicator, tvPostTypeHeader;
 
-    // Step 1 — Category
+    // Step 1 — Category (from user's profile selection)
     private LinearLayout llCategoryList;
     private final Set<String> selectedCategories = new LinkedHashSet<>();
 
-    // Step 2 — Products
+    // Step 2 — Products (only from user's signup selections)
     private LinearLayout  llProductList;
     private EditText      etCustomCategoryText;
     private final Set<String> selectedProducts      = new LinkedHashSet<>();
@@ -65,11 +65,16 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     private View     btnAddImage, btnRecordAudio;
 
     // Post type
-    private String postType = "announcement"; // or "request"
+    private String postType = "announcement";
 
     // Firebase
     private FirebaseAuth      auth;
     private DatabaseReference annRef, userRef;
+
+    // User's profile categories (from signup)
+    private List<String> userHawkerCategories    = new ArrayList<>();
+    private List<String> userHawkerSubcategories = new ArrayList<>();
+    private String       userHawkerOthersName    = "";
 
     // Media
     private Bitmap            selectedBitmap;
@@ -83,7 +88,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // ✅ FIX: Use wizard layout (3-step)
         setContentView(R.layout.activity_add_announcement_wizard);
 
         auth    = FirebaseAuth.getInstance();
@@ -99,7 +103,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         stepDetails      = findViewById(R.id.stepDetails);
         llCategoryList   = findViewById(R.id.llCategoryList);
         llProductList    = findViewById(R.id.llProductList);
-        // ✅ FIX: correct ID from wizard XML
         etCustomCategoryText = findViewById(R.id.etCustomCategory);
 
         spExpiryUnit    = findViewById(R.id.spExpiryUnit);
@@ -114,14 +117,12 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         btnAddImage     = findViewById(R.id.btnAddImage);
         btnRecordAudio  = findViewById(R.id.btnRecordAudio);
 
-        // ── Button wiring ────────────────────────────────────────────────
         View btnClose = findViewById(R.id.btnClose);
         if (btnClose != null) btnClose.setOnClickListener(v -> finish());
         if (btnAddImage != null)    btnAddImage.setOnClickListener(v -> showImageChooser());
         if (btnRecordAudio != null) btnRecordAudio.setOnClickListener(v -> showAudioOptions());
         if (btnPublish != null)     btnPublish.setOnClickListener(v -> publish());
 
-        // Step navigation
         Button btnNext1 = findViewById(R.id.btnNextStep1);
         if (btnNext1 != null) btnNext1.setOnClickListener(v -> goToStep2());
 
@@ -138,26 +139,34 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         setupLaunchers();
         setupExpiryUI();
 
-        // Determine post type from user role
-        loadRoleThenInit();
-
-        // Build category list and show step 1
-        buildCategoryStep();
+        // Load user profile first, then build UI
+        loadUserProfileThenInit();
         showStep(1);
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // Role detection
+    // Load user profile (role + hawker categories from signup)
     // ════════════════════════════════════════════════════════════════════════
 
-    private void loadRoleThenInit() {
+    private void loadUserProfileThenInit() {
         String uid = auth.getUid();
         if (uid == null) return;
-        userRef.child(uid).child("role").addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override public void onDataChange(@NonNull DataSnapshot s) {
-                String role = s.getValue(String.class);
+        userRef.child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot s) {
+                UserModel u = s.getValue(UserModel.class);
+                if (u == null) return;
+
+                String role = u.getRole();
                 postType = Constants.ROLE_ANNOUNCER.equals(role) ? "announcement" : "request";
                 updatePostTypeHeader();
+
+                // Store user's signup-selected categories
+                userHawkerCategories    = u.getHawkerCategories();
+                userHawkerSubcategories = u.getHawkerSubcategories();
+                userHawkerOthersName    = u.getHawkerOthersName();
+
+                buildCategoryStep();
             }
             @Override public void onCancelled(@NonNull DatabaseError e) {}
         });
@@ -193,14 +202,37 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // STEP 1 — Category selection (multi-select checkboxes)
+    // STEP 1 — Category selection
+    // Shows ONLY the categories the user selected during signup (if ANNOUNCER)
+    // For General User, shows all categories
     // ════════════════════════════════════════════════════════════════════════
 
     private void buildCategoryStep() {
         if (llCategoryList == null) return;
         llCategoryList.removeAllViews();
 
-        for (CategoryConfig.HawkerCategory cat : CategoryConfig.HAWKER_CATEGORIES) {
+        // Determine which categories to show
+        List<CategoryConfig.HawkerCategory> categoriesToShow = new ArrayList<>();
+
+        if (Constants.ROLE_ANNOUNCER.equals(postType.equals("announcement") ? Constants.ROLE_ANNOUNCER : "")
+                && !userHawkerCategories.isEmpty()) {
+            // ANNOUNCER: only show their signup-selected categories
+            for (CategoryConfig.HawkerCategory cat : CategoryConfig.HAWKER_CATEGORIES) {
+                if (userHawkerCategories.contains(cat.name)) {
+                    categoriesToShow.add(cat);
+                }
+            }
+        } else {
+            // General user or no hawker categories set: show all
+            categoriesToShow = CategoryConfig.HAWKER_CATEGORIES;
+        }
+
+        // If announcer but no categories set (old account), show all
+        if (categoriesToShow.isEmpty()) {
+            categoriesToShow = CategoryConfig.HAWKER_CATEGORIES;
+        }
+
+        for (CategoryConfig.HawkerCategory cat : categoriesToShow) {
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL);
@@ -224,12 +256,23 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                     0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
             tvLabel.setLayoutParams(tlp);
 
-            // Sub-item count hint
-            int subCount = 0;
-            for (CategoryConfig.SubGroup g : cat.subGroups) subCount += g.items.size();
+            // Count how many items user selected for this category
+            int selectedCount = 0;
+            for (String sub : userHawkerSubcategories) {
+                for (CategoryConfig.SubGroup g : cat.subGroups) {
+                    if (g.items.contains(sub)) { selectedCount++; break; }
+                }
+            }
+
             TextView tvHint = new TextView(this);
-            if (subCount > 0) {
-                tvHint.setText(subCount + " items");
+            if (selectedCount > 0) {
+                tvHint.setText(selectedCount + " items");
+                tvHint.setTextSize(11);
+                tvHint.setTextColor(0xFF9CA3AF);
+            } else if (!cat.subGroups.isEmpty()) {
+                int total = 0;
+                for (CategoryConfig.SubGroup g : cat.subGroups) total += g.items.size();
+                tvHint.setText(total + " items");
                 tvHint.setTextSize(11);
                 tvHint.setTextColor(0xFF9CA3AF);
             }
@@ -239,7 +282,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             row.addView(tvHint);
             llCategoryList.addView(row);
 
-            // Click anywhere on row toggles checkbox
             row.setOnClickListener(v -> cb.toggle());
             cb.setOnCheckedChangeListener((btn, checked) -> {
                 if (checked) {
@@ -248,16 +290,27 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 } else {
                     selectedCategories.remove(cat.name);
                     row.setBackground(roundedBg(0xFFFFFFFF, dp(12)));
-                    // Remove products of this category
                     for (CategoryConfig.SubGroup g : cat.subGroups)
                         selectedProducts.removeAll(g.items);
                 }
             });
         }
+
+        // Add hint for announcer about editing categories
+        if ("announcement".equals(postType) && !userHawkerCategories.isEmpty()) {
+            TextView tvHint = new TextView(this);
+            tvHint.setText("💡 To add more categories, go to Profile → Edit Categories");
+            tvHint.setTextSize(12);
+            tvHint.setTextColor(0xFF6B7280);
+            tvHint.setPadding(dp(4), dp(12), dp(4), 0);
+            llCategoryList.addView(tvHint);
+        }
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // STEP 2 — Product selection (multi-select per subcategory)
+    // STEP 2 — Product selection
+    // ANNOUNCER: only shows items from their signup selections
+    // General User: shows all items
     // ════════════════════════════════════════════════════════════════════════
 
     private void buildProductStep() {
@@ -265,15 +318,24 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         llProductList.removeAllViews();
         productCheckBoxes.clear();
 
+        boolean isAnnouncer = "announcement".equals(postType);
         boolean hasOthers = selectedCategories.contains("Others");
-        if (etCustomCategoryText != null)
+
+        if (etCustomCategoryText != null) {
             etCustomCategoryText.setVisibility(hasOthers ? View.VISIBLE : View.GONE);
+            // Pre-fill others name if set during signup
+            if (hasOthers && !userHawkerOthersName.isEmpty()) {
+                etCustomCategoryText.setHint("e.g. " + userHawkerOthersName);
+            }
+        }
+
+        boolean anyAdded = false;
 
         for (CategoryConfig.HawkerCategory cat : CategoryConfig.HAWKER_CATEGORIES) {
             if (!selectedCategories.contains(cat.name)) continue;
-            if ("Others".equals(cat.name)) continue; // handled by etCustomCategoryText
+            if ("Others".equals(cat.name)) continue;
 
-            // Category section header
+            // Category header
             TextView tvCatHeader = new TextView(this);
             tvCatHeader.setText(cat.emoji + "  " + cat.name);
             tvCatHeader.setTextSize(15);
@@ -284,18 +346,36 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             hlp.setMargins(0, dp(14), 0, dp(4));
             tvCatHeader.setLayoutParams(hlp);
             llProductList.addView(tvCatHeader);
+            anyAdded = true;
 
-            // "Select All" for this category
-            TextView tvSelectAll = new TextView(this);
-            tvSelectAll.setText("✓ Select all from " + cat.name);
-            tvSelectAll.setTextSize(12);
-            tvSelectAll.setTextColor(0xFF1976F3);
-            tvSelectAll.setPadding(0, 0, 0, dp(4));
-            final CategoryConfig.HawkerCategory finalCat = cat;
-            tvSelectAll.setOnClickListener(v -> selectAllForCategory(finalCat));
-            llProductList.addView(tvSelectAll);
+            // "Select All" only for non-announcer or announcer with no pre-selections
+            boolean hasPreSelected = isAnnouncer && !userHawkerSubcategories.isEmpty();
+            if (!hasPreSelected) {
+                TextView tvSelectAll = new TextView(this);
+                tvSelectAll.setText("✓ Select all from " + cat.name);
+                tvSelectAll.setTextSize(12);
+                tvSelectAll.setTextColor(0xFF1976F3);
+                tvSelectAll.setPadding(0, 0, 0, dp(4));
+                final CategoryConfig.HawkerCategory finalCat = cat;
+                tvSelectAll.setOnClickListener(v -> selectAllForCategory(finalCat));
+                llProductList.addView(tvSelectAll);
+            }
 
             for (CategoryConfig.SubGroup group : cat.subGroups) {
+                // For announcer: only show items they selected during signup
+                List<String> itemsToShow;
+                if (isAnnouncer && !userHawkerSubcategories.isEmpty()) {
+                    itemsToShow = new ArrayList<>();
+                    for (String item : group.items) {
+                        if (userHawkerSubcategories.contains(item)) {
+                            itemsToShow.add(item);
+                        }
+                    }
+                    if (itemsToShow.isEmpty()) continue;
+                } else {
+                    itemsToShow = group.items;
+                }
+
                 // Subcategory label
                 TextView tvSub = new TextView(this);
                 tvSub.setText("▸ " + group.groupName);
@@ -305,9 +385,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 tvSub.setPadding(dp(4), dp(8), 0, dp(4));
                 llProductList.addView(tvSub);
 
-                // Products in a 2-column grid
-                List<String> items = group.items;
-                for (int i = 0; i < items.size(); i += 2) {
+                for (int i = 0; i < itemsToShow.size(); i += 2) {
                     LinearLayout rowLayout = new LinearLayout(this);
                     rowLayout.setOrientation(LinearLayout.HORIZONTAL);
                     LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
@@ -315,16 +393,15 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                     rlp.setMargins(0, dp(2), 0, dp(2));
                     rowLayout.setLayoutParams(rlp);
 
-                    addProductCheckBox(rowLayout, items.get(i), group.groupName);
-                    if (i + 1 < items.size())
-                        addProductCheckBox(rowLayout, items.get(i + 1), group.groupName);
+                    addProductCheckBox(rowLayout, itemsToShow.get(i), group.groupName);
+                    if (i + 1 < itemsToShow.size())
+                        addProductCheckBox(rowLayout, itemsToShow.get(i + 1), group.groupName);
                     llProductList.addView(rowLayout);
                 }
             }
         }
 
-        // If only "Others" selected and no other categories
-        if (selectedCategories.size() == 1 && hasOthers) {
+        if (hasOthers && !anyAdded) {
             TextView tvInfo = new TextView(this);
             tvInfo.setText("Describe what you " + ("request".equals(postType) ? "need" : "sell") + " in the field above.");
             tvInfo.setTextSize(13);
@@ -333,7 +410,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             llProductList.addView(tvInfo);
         }
 
-        // If no products available for selected categories, show info
         if (llProductList.getChildCount() == 0) {
             TextView tvInfo = new TextView(this);
             tvInfo.setText("No specific products for selected categories. Proceed to next step.");
@@ -376,7 +452,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 selectedSubcategories.add(g.groupName);
             }
         }
-        // Refresh checkboxes
         for (CheckBox cb : productCheckBoxes) {
             String label = cb.getText().toString();
             if (selectedProducts.contains(label)) cb.setChecked(true);
@@ -498,27 +573,19 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 String role = (u.getRole() == null || u.getRole().trim().isEmpty())
                         ? Constants.ROLE_USER : u.getRole().trim();
                 a.setUserRole(role);
-
-                // Post type: "announcement" or "request"
                 a.setPostType(postType);
 
-                // Categories from Step 1
                 String primaryCat = selectedCategories.isEmpty()
                         ? "" : selectedCategories.iterator().next();
                 a.setCategory(primaryCat);
                 a.setSelectedCategories(new ArrayList<>(selectedCategories));
-
-                // Products & subcategories from Step 2
                 a.setSelectedSubcategories(new ArrayList<>(selectedSubcategories));
                 a.setSelectedProducts(new ArrayList<>(selectedProducts));
 
-                // Custom text for "Others" category
                 if (etCustomCategoryText != null
                         && etCustomCategoryText.getVisibility() == View.VISIBLE) {
                     String custom = etCustomCategoryText.getText().toString().trim();
-                    if (!custom.isEmpty()) {
-                        a.setCustomSubcategory(custom);
-                    }
+                    if (!custom.isEmpty()) a.setCustomSubcategory(custom);
                 }
 
                 a.setTitle(title);
@@ -529,7 +596,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 a.setTime(now);
                 a.setExpireAt(now + expiryMillis);
 
-                // Upload image if selected
                 if (selectedBitmap != null) {
                     if (tvImageStatus != null) tvImageStatus.setText("Uploading image...");
                     CloudinaryUploader.uploadBitmap(

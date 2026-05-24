@@ -17,12 +17,9 @@ import com.example.towncrierbd.utils.CategoryConfig.SubGroup;
 import java.util.*;
 
 /**
- * ✅ FIXED: Category selection screen used in TWO flows:
- * 1. Announcer signup — called from SignupActivity
- * 2. (optional) Could be used standalone
- *
- * Multi-select categories + sub-items under each category.
- * "Others" = custom name + custom sub-items.
+ * Category selection screen used in TWO flows:
+ * 1. Announcer signup — called from SignupActivity (no pre-selections)
+ * 2. Profile edit — called from ProfileActivity (pre-selections passed via Intent)
  *
  * Result Intent extras:
  *   EXTRA_CATEGORIES      -> ArrayList<String>  (selected category names)
@@ -43,11 +40,26 @@ public class HawkerCategoryActivity extends AppCompatActivity {
     private LinearLayout llCategoryList;
     private TextView     tvDoneBtn;
 
-    private final Map<String, View> subPanels = new LinkedHashMap<>();
+    private final Map<String, View>           subPanels   = new LinkedHashMap<>();
+    private final Map<String, TextView>       catCheckMap = new LinkedHashMap<>();
+    private final Map<String, View>           catRowMap   = new LinkedHashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Load pre-existing selections if passed (profile edit flow)
+        Intent incoming = getIntent();
+        if (incoming != null) {
+            ArrayList<String> preCats = incoming.getStringArrayListExtra(EXTRA_CATEGORIES);
+            ArrayList<String> preSubs = incoming.getStringArrayListExtra(EXTRA_SUBCATEGORIES);
+            String preOthers = incoming.getStringExtra(EXTRA_OTHERS_NAME);
+
+            if (preCats != null)  selectedCategories.addAll(preCats);
+            if (preSubs != null)  selectedSubcategories.addAll(preSubs);
+            if (preOthers != null && !preOthers.isEmpty()) othersCustomName = preOthers;
+        }
+
         buildUI();
     }
 
@@ -61,7 +73,7 @@ public class HawkerCategoryActivity extends AppCompatActivity {
 
         LinearLayout container = new LinearLayout(this);
         container.setOrientation(LinearLayout.VERTICAL);
-        container.setPadding(dp(16), dp(16), dp(16), dp(100)); // extra bottom for sticky bar
+        container.setPadding(dp(16), dp(16), dp(16), dp(100));
 
         // Header
         LinearLayout header = new LinearLayout(this);
@@ -99,9 +111,11 @@ public class HawkerCategoryActivity extends AppCompatActivity {
             addCategoryRow(cat);
         }
 
+        // Restore pre-selected state visually after all rows are built
+        restorePreSelectedUI();
+
         root.addView(container);
 
-        // Sticky Done button overlay
         FrameLayout frame = new FrameLayout(this);
         frame.addView(root);
 
@@ -112,13 +126,11 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         bottomBar.setElevation(dp(8));
 
         tvDoneBtn = new TextView(this);
-        tvDoneBtn.setText("Please select at least one category");
         tvDoneBtn.setTextColor(0xFFFFFFFF);
         tvDoneBtn.setTextSize(16);
         tvDoneBtn.setTypeface(null, android.graphics.Typeface.BOLD);
         tvDoneBtn.setGravity(Gravity.CENTER);
         tvDoneBtn.setPadding(dp(24), dp(14), dp(24), dp(14));
-        tvDoneBtn.setBackground(roundedBg(0xFFB0BEC5, dp(14)));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         tvDoneBtn.setLayoutParams(lp);
@@ -130,7 +142,47 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         frame.addView(bottomBar, barLp);
 
         setContentView(frame);
+
+        refreshDoneButton(); // Update button text based on pre-selections
         tvDoneBtn.setOnClickListener(v -> onDone());
+    }
+
+    /**
+     * After all rows are added, restore visual state for pre-selected categories.
+     */
+    private void restorePreSelectedUI() {
+        for (HawkerCategory cat : CategoryConfig.HAWKER_CATEGORIES) {
+            if (!selectedCategories.contains(cat.name)) continue;
+
+            View row = catRowMap.get(cat.name);
+            TextView tvCheck = catCheckMap.get(cat.name);
+            View subPanel = subPanels.get(cat.name);
+
+            if (row != null) row.setBackground(roundedBg(0xFFEFF6FF, dp(14)));
+            if (tvCheck != null) tvCheck.setVisibility(View.VISIBLE);
+            if (subPanel != null) {
+                boolean hasSubs = !cat.subGroups.isEmpty() || "Others".equals(cat.name);
+                subPanel.setVisibility(hasSubs ? View.VISIBLE : View.GONE);
+            }
+
+            // Restore Others custom name
+            if ("Others".equals(cat.name) && !othersCustomName.isEmpty() && etOthersName != null) {
+                etOthersName.setText(othersCustomName);
+            }
+        }
+
+        // Re-check sub-items
+        recheckSelectedInAll();
+    }
+
+    private void recheckSelectedInAll() {
+        if (llCategoryList == null) return;
+        for (int i = 0; i < llCategoryList.getChildCount(); i++) {
+            View child = llCategoryList.getChildAt(i);
+            if (child instanceof LinearLayout) {
+                recheckSelected((LinearLayout) child);
+            }
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -145,7 +197,6 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         wLp.setMargins(0, dp(6), 0, 0);
         wrapper.setLayoutParams(wLp);
 
-        // Row header
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -166,7 +217,6 @@ public class HawkerCategoryActivity extends AppCompatActivity {
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         tvName.setLayoutParams(nameLp);
 
-        // Item count badge
         int totalItems = 0;
         for (SubGroup g : cat.subGroups) totalItems += g.items.size();
         TextView tvCount = new TextView(this);
@@ -211,6 +261,9 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         }
 
         subPanels.put(cat.name, subPanel);
+        catCheckMap.put(cat.name, tvCheck);  // store tvCheck (used as visual indicator)
+        catRowMap.put(cat.name, row);
+
         wrapper.addView(row);
         wrapper.addView(subPanel);
         llCategoryList.addView(wrapper);
@@ -218,7 +271,6 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         row.setOnClickListener(v -> {
             boolean nowSelected = selectedCategories.contains(cat.name);
             if (!nowSelected) {
-                // Select and expand
                 selectedCategories.add(cat.name);
                 row.setBackground(roundedBg(0xFFEFF6FF, dp(14)));
                 tvCheck.setVisibility(View.VISIBLE);
@@ -226,13 +278,10 @@ public class HawkerCategoryActivity extends AppCompatActivity {
                 boolean hasSubs = !cat.subGroups.isEmpty() || "Others".equals(cat.name);
                 subPanel.setVisibility(hasSubs ? View.VISIBLE : View.GONE);
             } else {
-                // Already selected: toggle sub-panel visibility
                 if (subPanel.getVisibility() == View.VISIBLE) {
-                    // Collapse but keep selected
                     subPanel.setVisibility(View.GONE);
                     tvChevron.setText("  ▾");
                 } else {
-                    // Re-expand
                     boolean hasSubs = !cat.subGroups.isEmpty() || "Others".equals(cat.name);
                     subPanel.setVisibility(hasSubs ? View.VISIBLE : View.GONE);
                     tvChevron.setText("  ▴");
@@ -241,7 +290,6 @@ public class HawkerCategoryActivity extends AppCompatActivity {
             refreshDoneButton();
         });
 
-        // Long-press to deselect
         row.setOnLongClickListener(v -> {
             if (selectedCategories.contains(cat.name)) {
                 selectedCategories.remove(cat.name);
@@ -260,7 +308,6 @@ public class HawkerCategoryActivity extends AppCompatActivity {
     // ── Sub-panel for normal categories ───────────────────────────────────
 
     private void buildSubPanel(LinearLayout panel, HawkerCategory cat) {
-        // "Select All" button
         TextView tvSelectAll = new TextView(this);
         tvSelectAll.setText("✓ Select all items from " + cat.name);
         tvSelectAll.setTextSize(12);
@@ -269,12 +316,8 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         tvSelectAll.setTypeface(null, android.graphics.Typeface.BOLD);
         tvSelectAll.setOnClickListener(v -> {
             for (SubGroup g : cat.subGroups) {
-                for (String item : g.items) {
-                    selectedSubcategories.add(item);
-                }
+                selectedSubcategories.addAll(g.items);
             }
-            // Refresh all checkboxes in this panel
-            uncheckAll(panel); // reset then recheck
             recheckSelected(panel);
             refreshDoneButton();
         });
@@ -289,7 +332,6 @@ public class HawkerCategoryActivity extends AppCompatActivity {
             tvGroup.setPadding(0, dp(10), 0, dp(4));
             panel.addView(tvGroup);
 
-            // Items in 2-column grid
             List<String> items = group.items;
             for (int i = 0; i < items.size(); i += 2) {
                 LinearLayout itemRow = new LinearLayout(this);
@@ -326,6 +368,7 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         etOthersName.setBackground(editBg());
         etOthersName.setPadding(dp(12), dp(10), dp(12), dp(10));
         etOthersName.setTextSize(14);
+        if (!othersCustomName.isEmpty()) etOthersName.setText(othersCustomName);
         panel.addView(etOthersName);
 
         etOthersName.addTextChangedListener(new TextWatcher() {
@@ -376,6 +419,11 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         llOthersSubs = new LinearLayout(this);
         llOthersSubs.setOrientation(LinearLayout.VERTICAL);
         panel.addView(llOthersSubs);
+
+        // Restore previously saved custom subs
+        for (String existingSub : othersCustomSubs) {
+            addOthersSubChip(llOthersSubs, existingSub);
+        }
 
         btnAdd.setOnClickListener(v -> {
             String text = etOthersSubInput.getText().toString().trim();
@@ -460,28 +508,13 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         }
     }
 
-    /** Reset checkbox visual state (uncheck all) in a panel */
-    private void uncheckAll(LinearLayout parent) {
-        for (int i = 0; i < parent.getChildCount(); i++) {
-            View child = parent.getChildAt(i);
-            if (child instanceof CheckBox) {
-                ((CheckBox) child).setChecked(false);
-            } else if (child instanceof LinearLayout) {
-                uncheckAll((LinearLayout) child);
-            }
-        }
-    }
-
-    /** Re-check items that are in selectedSubcategories */
     private void recheckSelected(LinearLayout parent) {
         for (int i = 0; i < parent.getChildCount(); i++) {
             View child = parent.getChildAt(i);
             if (child instanceof CheckBox) {
                 CheckBox cb = (CheckBox) child;
                 String tag = (String) cb.getTag();
-                if (tag != null && selectedSubcategories.contains(tag)) {
-                    cb.setChecked(true);
-                }
+                if (tag != null) cb.setChecked(selectedSubcategories.contains(tag));
             } else if (child instanceof LinearLayout) {
                 recheckSelected((LinearLayout) child);
             }
