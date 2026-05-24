@@ -416,6 +416,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
         if (layoutEmpty != null) {
             layoutEmpty.setVisibility(out.isEmpty() && locationReady ? View.VISIBLE : View.GONE);
         }
+
     }
 
     private void buildCategoryChips() {

@@ -51,7 +51,6 @@ public class SignupActivity extends AppCompatActivity {
     private double userLng = 0.0;
     private String locationName = "Unknown";
 
-    // Pending user data while waiting for category selection (Announcer only)
     private ActivityResultLauncher<Intent> categoryLauncher;
     private String    pendingUid;
     private UserModel pendingUser;
@@ -87,8 +86,7 @@ public class SignupActivity extends AppCompatActivity {
         btnSignup.setOnClickListener(v -> doSignup());
         tvGotoLogin.setOnClickListener(v -> finish());
 
-        // ── Category picker result (Announcer only) ────────────────────────
-        // HawkerCategoryActivity থেকে selected categories ফিরে আসবে
+        // Category picker result (Announcer only)
         categoryLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
@@ -134,7 +132,9 @@ public class SignupActivity extends AppCompatActivity {
                             dest = AnnouncerFeedActivity.class;
                         go(dest);
                     }
-                    @Override public void onCancelled(@NonNull DatabaseError error) { go(GeneralFeedActivity.class); }
+                    @Override public void onCancelled(@NonNull DatabaseError error) {
+                        go(GeneralFeedActivity.class);
+                    }
                 });
     }
 
@@ -225,13 +225,12 @@ public class SignupActivity extends AppCompatActivity {
                             uid, name, email, phone, role, locationName, userLat, userLng);
 
                     if (Constants.ROLE_ANNOUNCER.equals(role)) {
-                        // Announcer → HawkerCategoryActivity (same 7 categories)
+                        // Announcer → HawkerCategoryActivity
                         pendingUid  = uid;
                         pendingUser = user;
                         categoryLauncher.launch(
                                 new Intent(this, HawkerCategoryActivity.class));
                     } else {
-                        // General user → সরাসরি save করো (category লাগবে না)
                         saveUserToFirebase(uid, user);
                     }
                 })
@@ -252,10 +251,27 @@ public class SignupActivity extends AppCompatActivity {
                 .addOnSuccessListener(v -> {
                     String phone = user.getPhone();
                     if (phone != null && !phone.isEmpty()) {
-                        String phoneKey = phone.replace("+", "").replace(".", "_");
-                        db.getReference(Constants.DB_PHONE_MAP)
-                                .child(phoneKey)
-                                .setValue(user.getEmail());
+                        // ✅ FIX: store ALL phone formats so any input style works at login
+                        String normalized = phone.trim().replaceAll("[\\s\\-]", "");
+
+                        // Format 1: as-is (remove + and replace . with _)
+                        String key1 = normalized.replace("+", "").replace(".", "_");
+                        db.getReference(Constants.DB_PHONE_MAP).child(key1).setValue(user.getEmail());
+
+                        // Format 2: if starts with 0, also store 880... version
+                        if (normalized.startsWith("0") && normalized.length() >= 11) {
+                            String key2 = ("880" + normalized.substring(1)).replace(".", "_");
+                            db.getReference(Constants.DB_PHONE_MAP).child(key2).setValue(user.getEmail());
+                        }
+
+                        // Format 3: if starts with +880 or 880, also store 0... version
+                        if (normalized.startsWith("+880")) {
+                            String key3 = ("0" + normalized.substring(4)).replace(".", "_");
+                            db.getReference(Constants.DB_PHONE_MAP).child(key3).setValue(user.getEmail());
+                        } else if (normalized.startsWith("880") && !normalized.startsWith("0")) {
+                            String key3 = ("0" + normalized.substring(3)).replace(".", "_");
+                            db.getReference(Constants.DB_PHONE_MAP).child(key3).setValue(user.getEmail());
+                        }
                     }
 
                     btnSignup.setEnabled(true);

@@ -57,6 +57,7 @@
         <activity android:name="com.example.towncrierbd.activities.SignupActivity"/>
         <activity android:name="com.example.towncrierbd.activities.ChatActivity"/>
         <activity android:name="com.example.towncrierbd.activities.InboxActivity"/>
+        <activity android:name="com.example.towncrierbd.activities.HawkerCategoryActivity"/>
 
         <activity
             android:name="com.example.towncrierbd.activities.LoginActivity"

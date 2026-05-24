@@ -52,7 +52,6 @@ public class LoginActivity extends AppCompatActivity {
         tvGotoSignup.setOnClickListener(v ->
                 startActivity(new Intent(this, SignupActivity.class)));
 
-        // ✅ Forgot Password
         if (tvForgotPassword != null) {
             tvForgotPassword.setOnClickListener(v ->
                     startActivity(new Intent(this, ForgotPasswordActivity.class)));
@@ -64,7 +63,7 @@ public class LoginActivity extends AppCompatActivity {
         String pass  = etPassword.getText().toString().trim();
 
         if (input.isEmpty() || pass.isEmpty()) {
-            toast("Email or Phone and Password required");
+            toast("Email/Phone and Password required");
             return;
         }
 
@@ -86,26 +85,52 @@ public class LoginActivity extends AppCompatActivity {
                 });
     }
 
+    // ✅ FIX: Phone login — normalize করে multiple key formats try করো
     private void loginWithPhone(String phone, String pass) {
-        String phoneKey = phone.replace("+", "").replace(".", "_");
+        // Normalize: remove spaces and dashes
+        String normalized = phone.trim().replaceAll("[\\s\\-]", "");
 
+        // Build all possible DB key variations
+        // Signup এ phone key store হয় format: phone.replace("+","").replace(".","_")
+        String key1 = normalized.replace("+", "").replace(".", "_");
+
+        // Also try: if user typed 01712..., try 8801712...
+        String key2 = null;
+        if (normalized.startsWith("0") && normalized.length() >= 11) {
+            key2 = ("880" + normalized.substring(1)).replace(".", "_");
+        }
+
+        // Also try: if user typed +8801712..., try 01712...
+        String key3 = null;
+        if (normalized.startsWith("+880")) {
+            key3 = ("0" + normalized.substring(4)).replace(".", "_");
+        } else if (normalized.startsWith("880") && !normalized.startsWith("0")) {
+            key3 = ("0" + normalized.substring(3)).replace(".", "_");
+        }
+
+        final String finalKey2 = key2;
+        final String finalKey3 = key3;
+
+        // Try key1 first
         FirebaseDatabase.getInstance()
                 .getReference(Constants.DB_PHONE_MAP)
-                .child(phoneKey)
+                .child(key1)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         String email = snapshot.getValue(String.class);
-                        if (email == null || email.isEmpty()) {
-                            loginWithPhoneFallback(phone, pass);
+                        if (email != null && !email.isEmpty()) {
+                            signInWithEmail(email, pass);
                             return;
                         }
-                        auth.signInWithEmailAndPassword(email, pass)
-                                .addOnSuccessListener(res -> routeUser())
-                                .addOnFailureListener(e -> {
-                                    btnLogin.setEnabled(true);
-                                    toast("Wrong password");
-                                });
+                        // Try key2
+                        if (finalKey2 != null) {
+                            tryPhoneKey(finalKey2, finalKey3, normalized, pass);
+                        } else if (finalKey3 != null) {
+                            tryPhoneKey(finalKey3, null, normalized, pass);
+                        } else {
+                            loginWithPhoneFallback(normalized, pass);
+                        }
                     }
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
@@ -115,11 +140,83 @@ public class LoginActivity extends AppCompatActivity {
                 });
     }
 
+    private void tryPhoneKey(String key, String nextKey, String normalizedPhone, String pass) {
+        FirebaseDatabase.getInstance()
+                .getReference(Constants.DB_PHONE_MAP)
+                .child(key)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        String email = snapshot.getValue(String.class);
+                        if (email != null && !email.isEmpty()) {
+                            signInWithEmail(email, pass);
+                            return;
+                        }
+                        if (nextKey != null) {
+                            tryPhoneKey(nextKey, null, normalizedPhone, pass);
+                        } else {
+                            loginWithPhoneFallback(normalizedPhone, pass);
+                        }
+                    }
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        btnLogin.setEnabled(true);
+                        toast("Login failed");
+                    }
+                });
+    }
+
+    // Final fallback: scan users by phone field directly
     private void loginWithPhoneFallback(String phone, String pass) {
+        DatabaseReference usersRef = FirebaseDatabase.getInstance()
+                .getReference(Constants.DB_USERS);
+
+        // Try exact match first
+        usersRef.orderByChild("phone").equalTo(phone)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (snapshot.exists()) {
+                            for (DataSnapshot s : snapshot.getChildren()) {
+                                UserModel user = s.getValue(UserModel.class);
+                                if (user != null && user.getEmail() != null) {
+                                    signInWithEmail(user.getEmail(), pass);
+                                    return;
+                                }
+                            }
+                        }
+                        // Try alternate formats in users collection
+                        tryUserPhoneVariants(phone, pass);
+                    }
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        btnLogin.setEnabled(true);
+                        toast("Login failed");
+                    }
+                });
+    }
+
+    private void tryUserPhoneVariants(String phone, String pass) {
+        // Build alternate phone format to search
+        String altPhone = null;
+        if (phone.startsWith("0")) {
+            altPhone = "+880" + phone.substring(1);
+        } else if (phone.startsWith("880")) {
+            altPhone = "0" + phone.substring(3);
+        } else if (phone.startsWith("+880")) {
+            altPhone = "0" + phone.substring(4);
+        }
+
+        if (altPhone == null) {
+            btnLogin.setEnabled(true);
+            toast("Phone number not found");
+            return;
+        }
+
+        final String searchPhone = altPhone;
         FirebaseDatabase.getInstance()
                 .getReference(Constants.DB_USERS)
-                .orderByChild("phone")
-                .equalTo(phone)
+                .orderByChild("phone").equalTo(searchPhone)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -130,21 +227,29 @@ public class LoginActivity extends AppCompatActivity {
                         }
                         for (DataSnapshot s : snapshot.getChildren()) {
                             UserModel user = s.getValue(UserModel.class);
-                            if (user == null) continue;
-                            auth.signInWithEmailAndPassword(user.getEmail(), pass)
-                                    .addOnSuccessListener(res -> routeUser())
-                                    .addOnFailureListener(e -> {
-                                        btnLogin.setEnabled(true);
-                                        toast("Wrong password");
-                                    });
-                            break;
+                            if (user != null && user.getEmail() != null) {
+                                signInWithEmail(user.getEmail(), pass);
+                                return;
+                            }
                         }
+                        btnLogin.setEnabled(true);
+                        toast("Phone number not found");
                     }
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
                         btnLogin.setEnabled(true);
                         toast("Login failed");
                     }
+                });
+    }
+
+    // ✅ Helper: sign in with email (shared by all phone login paths)
+    private void signInWithEmail(String email, String pass) {
+        auth.signInWithEmailAndPassword(email, pass)
+                .addOnSuccessListener(res -> routeUser())
+                .addOnFailureListener(e -> {
+                    btnLogin.setEnabled(true);
+                    toast("Wrong password");
                 });
     }
 
