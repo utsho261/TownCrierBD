@@ -78,7 +78,12 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     private String searchQuery = "";
     private double selectedRadius = Constants.FEED_RADIUS_KM;
 
+    // Announcer's own categories (set during signup/profile)
+    private List<String> myHawkerCategories    = new ArrayList<>();
+    private List<String> myHawkerSubcategories = new ArrayList<>();
+
     private NetworkMonitor networkMonitor;
+    private UserModel currentUser;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -132,8 +137,13 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
             });
         }
 
-        fabAdd.setOnClickListener(v ->
-                startActivity(new Intent(this, AddAnnouncementActivity.class)));
+        // FAB - fixed visibility and click
+        if (fabAdd != null) {
+            fabAdd.setVisibility(View.VISIBLE);
+            fabAdd.bringToFront();
+            fabAdd.setOnClickListener(v ->
+                    startActivity(new Intent(this, AddAnnouncementActivity.class)));
+        }
 
         setupBottomNav();
 
@@ -141,9 +151,7 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
 
         requestNotificationPermission();
         startNetworkMonitoring();
-        loadUser();
-        attachFeedListenerOnce();
-        startLiveLocation();
+        loadUserThenStart();
         listenForUnreadMessages();
     }
 
@@ -190,6 +198,7 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
                     for (DataSnapshot msgSnap : roomSnap.getChildren()) {
                         String senderId = msgSnap.child("senderId").getValue(String.class);
                         Boolean read = msgSnap.child("read").getValue(Boolean.class);
+                        // Only count messages FROM the other person, not our own
                         if (otherUid.equals(senderId) && (read == null || !read)) {
                             totalUnread++;
                         }
@@ -294,20 +303,31 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
             tvRadius.setText("within " + (int) selectedRadius + " km  ▾");
     }
 
-    private void loadUser() {
+    private void loadUserThenStart() {
         String uid = auth.getUid();
         if (uid == null) return;
         userRef.child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 UserModel u = snapshot.getValue(UserModel.class);
-                if (u != null && u.getName() != null)
-                    tvWelcome.setText("Welcome Back, " + u.getName() + "!");
+                if (u != null) {
+                    currentUser = u;
+                    if (u.getName() != null)
+                        tvWelcome.setText("Welcome Back, " + u.getName() + "! 👋");
+
+                    // Load announcer's own selling categories
+                    myHawkerCategories    = u.getHawkerCategories();
+                    myHawkerSubcategories = u.getHawkerSubcategories();
+                }
+                attachFeedListenerOnce();
+                startLiveLocation();
             }
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 Toast.makeText(AnnouncerFeedActivity.this,
                         "Failed to load profile.", Toast.LENGTH_SHORT).show();
+                attachFeedListenerOnce();
+                startLiveLocation();
             }
         });
     }
@@ -344,12 +364,32 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
 
         for (Announcement a : all) {
             if (a == null) continue;
+            // Don't show own posts
             if (myUid != null && myUid.equals(a.getUserId())) continue;
+            // Don't show expired
             if (a.getExpireAt() > 0 && now > a.getExpireAt()) continue;
 
+            // Announcer sees posts from General Users (requests)
             String postRole = resolvePostRole(a);
             if (!Constants.ROLE_USER.equals(postRole)) continue;
 
+            // ── FEATURE #5: If announcer has set categories, only show
+            // posts that match those categories (buyers looking for what announcer sells)
+            if (!myHawkerCategories.isEmpty()) {
+                boolean matches = false;
+                // Check primary category
+                String primaryCat = safe(a.getCategory());
+                if (myHawkerCategories.contains(primaryCat)) matches = true;
+                // Check selectedCategories list
+                if (!matches && a.getSelectedCategories() != null) {
+                    for (String pc : a.getSelectedCategories()) {
+                        if (myHawkerCategories.contains(pc)) { matches = true; break; }
+                    }
+                }
+                if (!matches) continue;
+            }
+
+            // Search filter
             if (!searchQuery.isEmpty()) {
                 String title = safe(a.getTitle()).toLowerCase();
                 String desc  = safe(a.getDescription()).toLowerCase();
