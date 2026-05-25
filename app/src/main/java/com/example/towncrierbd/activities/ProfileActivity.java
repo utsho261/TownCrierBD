@@ -29,7 +29,7 @@ import java.util.List;
 
 public class ProfileActivity extends AppCompatActivity {
 
-    private TextView tvName, tvRole, tvEmail, tvPhone;
+    private TextView tvName, tvRole, tvEmail, tvPhone, tvAvatarLarge;
     private Button btnLogout, btnEditProfile, btnEditCategories;
     private RecyclerView rvMyPosts;
     private FeedAdapter myPostsAdapter;
@@ -40,7 +40,6 @@ public class ProfileActivity extends AppCompatActivity {
     private Query postsQuery;
     private UserModel currentUser = null;
 
-    // Category edit launcher
     private ActivityResultLauncher<Intent> categoryLauncher;
 
     @Override
@@ -48,14 +47,15 @@ public class ProfileActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
 
-        tvName           = findViewById(R.id.tvName);
-        tvRole           = findViewById(R.id.tvRole);
-        tvEmail          = findViewById(R.id.tvEmail);
-        tvPhone          = findViewById(R.id.tvPhone);
-        btnLogout        = findViewById(R.id.btnLogout);
-        btnEditProfile   = findViewById(R.id.btnEditProfile);
+        tvName            = findViewById(R.id.tvName);
+        tvRole            = findViewById(R.id.tvRole);
+        tvEmail           = findViewById(R.id.tvEmail);
+        tvPhone           = findViewById(R.id.tvPhone);
+        tvAvatarLarge     = findViewById(R.id.tvAvatarLarge);
+        btnLogout         = findViewById(R.id.btnLogout);
+        btnEditProfile    = findViewById(R.id.btnEditProfile);
         btnEditCategories = findViewById(R.id.btnEditCategories);
-        rvMyPosts        = findViewById(R.id.rvMyPosts);
+        rvMyPosts         = findViewById(R.id.rvMyPosts);
 
         myPostsAdapter = new FeedAdapter(this);
         myPostsAdapter.setShowEditDelete(true);
@@ -67,7 +67,6 @@ public class ProfileActivity extends AppCompatActivity {
         userRef = FirebaseDatabase.getInstance().getReference(Constants.DB_USERS);
         annRef  = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
 
-        // Category launcher — opens HawkerCategoryActivity for full re-selection
         categoryLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
@@ -78,11 +77,9 @@ public class ProfileActivity extends AppCompatActivity {
                                 .getStringArrayListExtra(HawkerCategoryActivity.EXTRA_SUBCATEGORIES);
                         String othersName = result.getData()
                                 .getStringExtra(HawkerCategoryActivity.EXTRA_OTHERS_NAME);
-
                         saveUpdatedCategories(cats, subs, othersName);
                     }
-                }
-        );
+                });
 
         btnLogout.setOnClickListener(v -> {
             auth.signOut();
@@ -92,13 +89,11 @@ public class ProfileActivity extends AppCompatActivity {
             finish();
         });
 
-        if (btnEditProfile != null) {
+        if (btnEditProfile != null)
             btnEditProfile.setOnClickListener(v -> showEditProfileDialog());
-        }
 
-        if (btnEditCategories != null) {
+        if (btnEditCategories != null)
             btnEditCategories.setOnClickListener(v -> openCategoryEditor());
-        }
 
         loadProfile();
         loadMyPosts();
@@ -106,7 +101,6 @@ public class ProfileActivity extends AppCompatActivity {
 
     private void openCategoryEditor() {
         Intent intent = new Intent(this, HawkerCategoryActivity.class);
-        // Pass existing selections so they appear pre-selected
         if (currentUser != null) {
             intent.putStringArrayListExtra(
                     HawkerCategoryActivity.EXTRA_CATEGORIES,
@@ -121,7 +115,9 @@ public class ProfileActivity extends AppCompatActivity {
         categoryLauncher.launch(intent);
     }
 
-    private void saveUpdatedCategories(ArrayList<String> cats, ArrayList<String> subs, String othersName) {
+    private void saveUpdatedCategories(ArrayList<String> cats,
+                                       ArrayList<String> subs,
+                                       String othersName) {
         String uid = auth.getUid();
         if (uid == null) return;
 
@@ -150,9 +146,8 @@ public class ProfileActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (postsListener != null && postsQuery != null) {
+        if (postsListener != null && postsQuery != null)
             postsQuery.removeEventListener(postsListener);
-        }
         if (myPostsAdapter != null) myPostsAdapter.release();
     }
 
@@ -166,18 +161,28 @@ public class ProfileActivity extends AppCompatActivity {
                 UserModel u = snapshot.getValue(UserModel.class);
                 if (u == null) return;
                 currentUser = u;
-                tvName.setText(u.getName());
-                tvRole.setText(u.getRole());
+
+                String name = safe(u.getName());
+                tvName.setText(name);
+                tvRole.setText(safe(u.getRole()));
                 tvEmail.setText("Email: " + safe(u.getEmail()));
                 tvPhone.setText("Phone: " + safe(u.getPhone()));
+
+                // ── Avatar letter ─────────────────────────────────────
+                if (tvAvatarLarge != null && !name.isEmpty())
+                    tvAvatarLarge.setText(
+                            String.valueOf(Character.toUpperCase(name.charAt(0))));
+
                 myPostsAdapter.setMyLocation(u.getLat(), u.getLng());
 
-                // Show Edit Categories button only for ANNOUNCERs
+                // Show Edit Categories only for ANNOUNCERs
                 if (btnEditCategories != null) {
                     boolean isAnnouncer = Constants.ROLE_ANNOUNCER.equals(u.getRole());
-                    btnEditCategories.setVisibility(isAnnouncer ? android.view.View.VISIBLE : android.view.View.GONE);
+                    btnEditCategories.setVisibility(
+                            isAnnouncer ? android.view.View.VISIBLE : android.view.View.GONE);
                 }
             }
+
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
         });
@@ -192,7 +197,6 @@ public class ProfileActivity extends AppCompatActivity {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 List<Announcement> list = new ArrayList<>();
                 long now = System.currentTimeMillis();
-
                 for (DataSnapshot s : snapshot.getChildren()) {
                     Announcement a = s.getValue(Announcement.class);
                     if (a == null) continue;
@@ -203,6 +207,7 @@ public class ProfileActivity extends AppCompatActivity {
                 }
                 myPostsAdapter.setData(list);
             }
+
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
         };
@@ -258,6 +263,10 @@ public class ProfileActivity extends AppCompatActivity {
                     currentUser.setPhone(newPhone);
                     tvName.setText(newName);
                     tvPhone.setText("Phone: " + newPhone);
+                    // Also update avatar letter
+                    if (tvAvatarLarge != null && !newName.isEmpty())
+                        tvAvatarLarge.setText(
+                                String.valueOf(Character.toUpperCase(newName.charAt(0))));
                     Toast.makeText(this, "Profile updated ✅", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Cancel", null)

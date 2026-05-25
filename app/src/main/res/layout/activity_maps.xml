@@ -69,28 +69,66 @@
 
     </com.google.android.material.card.MaterialCardView>
 
+    <!-- ✅ FABs — fixed position, above bottom sheet, NO anchor to map -->
+    <LinearLayout
+        android:id="@+id/fabRow"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="440dp"
+        android:gravity="center"
+        android:elevation="30dp">
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabMyLoc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@android:drawable/ic_menu_mylocation"
+            app:tint="@android:color/white" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabDirections"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:src="@android:drawable/ic_menu_directions"
+            app:tint="@android:color/white" />
+
+    </LinearLayout>
+
     <!-- Bottom Sheet -->
     <LinearLayout
         android:id="@+id/bottomSheet"
         android:layout_width="match_parent"
-        android:layout_height="420dp"
+        android:layout_height="430dp"
         android:orientation="vertical"
         android:background="@android:color/white"
-        android:padding="12dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="12dp"
         app:layout_behavior="@string/bottom_sheet_behavior">
+
+        <!-- Drag handle -->
+        <View
+            android:layout_width="40dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
+            android:background="#CCCCCC"/>
 
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="170dp">
+            android:layout_height="160dp">
 
-            <!-- ✅ placeholder আগে (নিচে) -->
             <View
                 android:id="@+id/coverPlaceholder"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:background="#D9D9D9" />
 
-            <!-- ✅ image পরে (উপরে) -->
             <ImageView
                 android:id="@+id/ivCover"
                 android:layout_width="match_parent"
@@ -130,15 +168,17 @@
             android:layout_height="wrap_content"
             android:text="Title"
             android:textStyle="bold"
-            android:textSize="18sp"
-            android:layout_marginTop="10dp" />
+            android:textSize="17sp"
+            android:layout_marginTop="8dp" />
 
         <TextView
             android:id="@+id/tvDesc"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Description..."
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="4dp"
+            android:maxLines="2"
+            android:ellipsize="end"
             android:alpha="0.85"/>
 
         <TextView
@@ -146,69 +186,55 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="0.0 km away"
-            android:layout_marginTop="10dp"
-            android:alpha="0.8"/>
+            android:layout_marginTop="6dp"
+            android:textColor="#1976F3"
+            android:textStyle="bold"
+            android:alpha="0.9"/>
 
+        <!-- ✅ Buttons row: Details + Chat + Call + Direction -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="10dp"
             android:orientation="horizontal">
 
             <Button
                 android:id="@+id/btnDetails"
                 android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_weight="1"
-                android:text="View Details" />
+                android:layout_height="46dp"
+                android:layout_weight="2"
+                android:text="View Details"
+                android:textSize="13sp"
+                android:layout_marginEnd="6dp"/>
 
             <ImageButton
                 android:id="@+id/btnChat"
-                android:layout_width="52dp"
-                android:layout_height="48dp"
-                android:layout_marginLeft="10dp"
+                android:layout_width="46dp"
+                android:layout_height="46dp"
+                android:layout_marginEnd="6dp"
                 android:background="@android:color/holo_green_light"
                 android:src="@android:drawable/ic_dialog_email"
                 app:tint="@android:color/white"/>
 
             <ImageButton
                 android:id="@+id/btnCall"
-                android:layout_width="52dp"
-                android:layout_height="48dp"
-                android:layout_marginLeft="10dp"
+                android:layout_width="46dp"
+                android:layout_height="46dp"
+                android:layout_marginEnd="6dp"
                 android:background="@android:color/holo_orange_light"
                 android:src="@android:drawable/ic_menu_call"
                 app:tint="@android:color/white" />
+
+            <!-- ✅ NEW: Direction button in bottom sheet -->
+            <ImageButton
+                android:id="@+id/btnDirectionSheet"
+                android:layout_width="46dp"
+                android:layout_height="46dp"
+                android:background="#FF7A00"
+                android:src="@android:drawable/ic_menu_directions"
+                app:tint="@android:color/white" />
+
         </LinearLayout>
-
-    </LinearLayout>
-
-    <!-- FABs -->
-    <LinearLayout
-        android:id="@+id/fabRow"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_margin="16dp"
-        android:gravity="center"
-        android:elevation="30dp"
-        app:layout_anchor="@id/map"
-        app:layout_anchorGravity="bottom|end">
-
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/fabMyLoc"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:src="@android:drawable/ic_menu_mylocation"
-            app:tint="@android:color/white" />
-
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/fabDirections"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:src="@android:drawable/ic_menu_directions"
-            app:tint="@android:color/white" />
 
     </LinearLayout>
 

@@ -1,124 +1,207 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_gradient">
+    android:orientation="vertical"
+    android:background="#EEF3FB">
 
-    <LinearLayout
-        android:id="@+id/profileCard"
-        android:layout_width="0dp"
+    <!-- Profile Header (gradient top section) -->
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="18dp"
-        android:background="@drawable/bg_card"
-        android:padding="18dp"
-        android:orientation="vertical"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        android:layout_margin="14dp"
+        app:cardCornerRadius="26dp"
+        app:cardElevation="8dp"
+        app:cardBackgroundColor="#1565C0">
 
-        <TextView
-            android:id="@+id/tvName"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Name"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:textColor="@color/text_primary"/>
-
-        <TextView
-            android:id="@+id/tvRole"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Role"
-            android:textStyle="bold"
-            android:textColor="@color/blue_start"
-            android:layout_marginTop="4dp"/>
-
-        <TextView
-            android:id="@+id/tvEmail"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Email"
-            android:textColor="@color/text_primary"
-            android:layout_marginTop="10dp"/>
-
-        <TextView
-            android:id="@+id/tvPhone"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Phone"
-            android:textColor="@color/text_primary"
-            android:layout_marginTop="4dp"/>
-
-        <!-- Edit Profile + Logout row -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="14dp">
+            android:padding="22dp"
+            android:orientation="vertical">
 
-            <Button
-                android:id="@+id/btnEditProfile"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_weight="1"
-                android:text="Edit Profile"
-                android:textColor="@color/white"
-                android:backgroundTint="@color/blue_start"
-                android:layout_marginEnd="8dp"/>
+            <!-- Avatar + Name row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
+                <!-- Large Avatar circle -->
+                <TextView
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:gravity="center"
+                    android:text="U"
+                    android:id="@+id/tvAvatarLarge"
+                    android:textStyle="bold"
+                    android:textColor="@android:color/white"
+                    android:textSize="28sp"
+                    android:background="#1976F3"/>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvName"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Name"
+                        android:textSize="20sp"
+                        android:textStyle="bold"
+                        android:textColor="@android:color/white"/>
+
+                    <TextView
+                        android:id="@+id/tvRole"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="General User"
+                        android:textStyle="bold"
+                        android:textColor="#90CAF9"
+                        android:textSize="13sp"
+                        android:layout_marginTop="3dp"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#2C86F6"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="14dp"/>
+
+            <!-- Contact info -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:text="✉"
+                    android:textSize="14sp"
+                    android:textColor="#90CAF9"
+                    android:gravity="center"/>
+
+                <TextView
+                    android:id="@+id/tvEmail"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Email"
+                    android:textColor="#D6E7FF"
+                    android:textSize="14sp"
+                    android:layout_marginStart="8dp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="8dp">
+
+                <TextView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:text="📞"
+                    android:textSize="14sp"
+                    android:gravity="center"/>
+
+                <TextView
+                    android:id="@+id/tvPhone"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Phone"
+                    android:textColor="#D6E7FF"
+                    android:textSize="14sp"
+                    android:layout_marginStart="8dp"/>
+            </LinearLayout>
+
+            <!-- Action Buttons -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="18dp">
+
+                <Button
+                    android:id="@+id/btnEditProfile"
+                    android:layout_width="0dp"
+                    android:layout_height="46dp"
+                    android:layout_weight="1"
+                    android:text="Edit Profile"
+                    android:textColor="@color/white"
+                    android:backgroundTint="#1976F3"
+                    android:textAllCaps="false"
+                    android:textSize="14sp"
+                    android:layout_marginEnd="8dp"/>
+
+                <Button
+                    android:id="@+id/btnLogout"
+                    android:layout_width="0dp"
+                    android:layout_height="46dp"
+                    android:layout_weight="1"
+                    android:text="Logout"
+                    android:textColor="@color/white"
+                    android:backgroundTint="#E53935"
+                    android:textAllCaps="false"
+                    android:textSize="14sp"/>
+            </LinearLayout>
+
+            <!-- Edit Categories button (Announcers only) -->
             <Button
-                android:id="@+id/btnLogout"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_weight="1"
-                android:text="Logout"
+                android:id="@+id/btnEditCategories"
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:layout_marginTop="10dp"
+                android:text="🛒 Edit My Selling Categories"
                 android:textColor="@color/white"
-                android:backgroundTint="#F44336"/>
+                android:backgroundTint="#E65100"
+                android:textAllCaps="false"
+                android:textSize="14sp"
+                android:visibility="gone"/>
+
         </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
-        <!-- Edit Categories button — only visible for ANNOUNCERs -->
-        <Button
-            android:id="@+id/btnEditCategories"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginTop="10dp"
-            android:text="🛒 Edit My Selling Categories"
-            android:textColor="@color/white"
-            android:backgroundTint="#FF7A00"
-            android:visibility="gone"/>
-
-    </LinearLayout>
-
-    <TextView
-        android:id="@+id/tvMyPostsTitle"
-        android:layout_width="0dp"
+    <!-- My Posts section -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="My Posts"
-        android:textStyle="bold"
-        android:textSize="18sp"
-        android:textColor="@color/text_primary"
-        android:layout_marginStart="18dp"
-        android:layout_marginEnd="18dp"
-        android:layout_marginTop="10dp"
-        app:layout_constraintTop_toBottomOf="@id/profileCard"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:id="@+id/tvMyPostsTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="My Posts"
+            android:textStyle="bold"
+            android:textSize="17sp"
+            android:textColor="#1A237E"/>
+    </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvMyPosts"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginStart="10dp"
-        android:layout_marginEnd="10dp"
-        android:layout_marginTop="8dp"
+        android:layout_weight="1"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp"
         android:clipToPadding="false"
-        android:paddingBottom="12dp"
-        app:layout_constraintTop_toBottomOf="@id/tvMyPostsTitle"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        android:paddingBottom="16dp"/>
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>

@@ -23,7 +23,6 @@ import com.example.towncrierbd.R;
 import com.example.towncrierbd.activities.AnnouncementDetailActivity;
 import com.example.towncrierbd.activities.ChatActivity;
 import com.example.towncrierbd.models.Announcement;
-import com.example.towncrierbd.utils.AudioRecorderHelper;
 import com.example.towncrierbd.utils.Constants;
 import com.example.towncrierbd.utils.DistanceUtil;
 import com.google.firebase.auth.FirebaseAuth;
@@ -114,7 +113,6 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             }
         }
 
-        // ✅ FIXED: tvAudioBadge এখন layout এ আছে তাই null crash হবে না
         if (h.tvAudioBadge != null) {
             boolean hasAudio = a.getAudioUrl() != null && !a.getAudioUrl().isEmpty();
             h.tvAudioBadge.setVisibility(hasAudio ? View.VISIBLE : View.GONE);
@@ -144,6 +142,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             if (h.btnListen != null)        h.btnListen.setVisibility(View.GONE);
             if (h.btnChat != null)          h.btnChat.setVisibility(View.GONE);
             if (h.btnCall != null)          h.btnCall.setVisibility(View.GONE);
+            if (h.btnDirection != null)     h.btnDirection.setVisibility(View.GONE);
             if (h.layoutEditDelete != null) h.layoutEditDelete.setVisibility(View.VISIBLE);
 
             if (h.btnEdit != null)
@@ -166,6 +165,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             if (h.btnListen != null)        h.btnListen.setVisibility(View.VISIBLE);
             if (h.btnChat != null)          h.btnChat.setVisibility(View.VISIBLE);
             if (h.btnCall != null)          h.btnCall.setVisibility(View.VISIBLE);
+            if (h.btnDirection != null)     h.btnDirection.setVisibility(View.VISIBLE);
             if (h.layoutEditDelete != null) h.layoutEditDelete.setVisibility(View.GONE);
 
             if (h.btnCall != null) {
@@ -199,6 +199,11 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                 });
             }
 
+            // ✅ Direction button — Google Maps Navigation
+            if (h.btnDirection != null) {
+                h.btnDirection.setOnClickListener(v -> openDirections(a.getLat(), a.getLng()));
+            }
+
             // ── Listen: play audio if exists, else TTS ───────────────────
             if (h.btnListen != null) {
                 h.btnListen.setOnClickListener(v -> playAudioOrTts(a));
@@ -213,6 +218,23 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         }
     }
 
+    // ✅ NEW: Open Google Maps Navigation
+    private void openDirections(double destLat, double destLng) {
+        Uri gmmIntentUri = Uri.parse(
+                "google.navigation:q=" + destLat + "," + destLng + "&mode=d");
+        Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
+        mapIntent.setPackage("com.google.android.apps.maps");
+
+        if (mapIntent.resolveActivity(context.getPackageManager()) != null) {
+            context.startActivity(mapIntent);
+        } else {
+            // Fallback: browser
+            Uri web = Uri.parse("https://www.google.com/maps/dir/?api=1&destination="
+                    + destLat + "," + destLng + "&travelmode=driving");
+            context.startActivity(new Intent(Intent.ACTION_VIEW, web));
+        }
+    }
+
     // ─── Audio / TTS ─────────────────────────────────────────────────────────
 
     private void playAudioOrTts(Announcement a) {
@@ -220,14 +242,12 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         if (!audioUrl.isEmpty()) {
             playRemoteAudio(audioUrl);
         } else {
-            // Fallback: TTS reads title + description
             String speak = safe(a.getTitle()) + ". " + safe(a.getDescription());
             if (tts != null) tts.speak(speak, TextToSpeech.QUEUE_FLUSH, null, "tc_announce");
         }
     }
 
     private void playRemoteAudio(String url) {
-        // Stop any currently playing audio
         if (mediaPlayer != null) {
             try { mediaPlayer.stop(); mediaPlayer.release(); } catch (Exception ignored) {}
             mediaPlayer = null;
@@ -287,11 +307,14 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         intent.putExtra(AnnouncementDetailActivity.EXTRA_CATEGORY,  safe(a.getDisplayCategoryLabel()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_PHONE,     safe(a.getPhone()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_IMAGE_URL, safe(a.getImageUrl()));
-        intent.putExtra(AnnouncementDetailActivity.EXTRA_AUDIO_URL, safe(a.getAudioUrl())); // ✅ pass audio url
+        intent.putExtra(AnnouncementDetailActivity.EXTRA_AUDIO_URL, safe(a.getAudioUrl()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_USER_NAME, safe(a.getUserName()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_DISTANCE,  dist);
         intent.putExtra(AnnouncementDetailActivity.EXTRA_TIME,      getRelativeTime(a.getTime()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_OTHER_UID, safe(a.getUserId()));
+        // ✅ Pass lat/lng for direction
+        intent.putExtra(AnnouncementDetailActivity.EXTRA_LAT, a.getLat());
+        intent.putExtra(AnnouncementDetailActivity.EXTRA_LNG, a.getLng());
         context.startActivity(intent);
     }
 
@@ -351,10 +374,6 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         if (a.getId() == null) return;
         if (pos == RecyclerView.NO_ID || pos < 0 || pos >= items.size()) return;
 
-        // ✅ UPDATED: Audio Cloudinary-তে আছে, client-side delete unsafe
-        // তাই শুধু Firebase DB থেকে post delete করো
-        // Cloudinary-তে file থাকবে (server-side cleanup আলাদা করো)
-
         FirebaseDatabase.getInstance()
                 .getReference(Constants.DB_ANNOUNCEMENTS)
                 .child(a.getId())
@@ -391,8 +410,9 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
     public static class VH extends RecyclerView.ViewHolder {
         ImageView ivPhoto;
         TextView tvBadge, tvTitle, tvDesc, tvAvatar, tvName, tvDistance, tvTime;
-        TextView tvExpiry, tvAudioBadge; // ✅ FIXED: tvAudioBadge এখন layout এ আছে
+        TextView tvExpiry, tvAudioBadge;
         View btnListen, btnChat, btnCall;
+        View btnDirection; // ✅ NEW
         View layoutEditDelete;
         com.google.android.material.button.MaterialButton btnEdit, btnDelete, btnDetails;
 
@@ -407,10 +427,11 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             tvDistance       = itemView.findViewById(R.id.tvDistance);
             tvTime           = itemView.findViewById(R.id.tvTime);
             tvExpiry         = itemView.findViewById(R.id.tvExpiry);
-            tvAudioBadge     = itemView.findViewById(R.id.tvAudioBadge); // ✅ FIXED
+            tvAudioBadge     = itemView.findViewById(R.id.tvAudioBadge);
             btnListen        = itemView.findViewById(R.id.btnListen);
             btnChat          = itemView.findViewById(R.id.btnChat);
             btnCall          = itemView.findViewById(R.id.btnCall);
+            btnDirection     = itemView.findViewById(R.id.btnDirection);
             layoutEditDelete = itemView.findViewById(R.id.layoutEditDelete);
             btnEdit          = itemView.findViewById(R.id.btnEdit);
             btnDelete        = itemView.findViewById(R.id.btnDelete);

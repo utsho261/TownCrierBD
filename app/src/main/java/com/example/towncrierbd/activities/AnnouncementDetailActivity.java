@@ -28,8 +28,10 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
     public static final String EXTRA_DISTANCE   = "distance";
     public static final String EXTRA_TIME       = "time";
     public static final String EXTRA_OTHER_UID  = "otherUid";
+    // ✅ NEW: lat/lng for directions
+    public static final String EXTRA_LAT        = "lat";
+    public static final String EXTRA_LNG        = "lng";
 
-    // ✅ FIXED: MediaPlayer এখন সত্যিই ব্যবহার হচ্ছে
     private MediaPlayer mediaPlayer;
     private boolean isPlaying = false;
 
@@ -38,18 +40,18 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_announcement_detail);
 
-        ImageView ivPhoto        = findViewById(R.id.ivPhoto);
-        TextView tvCategory      = findViewById(R.id.tvCategory);
-        TextView tvTitle         = findViewById(R.id.tvTitle);
-        TextView tvDesc          = findViewById(R.id.tvDesc);
-        TextView tvAvatar        = findViewById(R.id.tvAvatar);
-        TextView tvUserName      = findViewById(R.id.tvUserName);
-        TextView tvDistance      = findViewById(R.id.tvDistance);
-        TextView tvTime          = findViewById(R.id.tvTime);
-        Button btnCall           = findViewById(R.id.btnCall);
-        Button btnChat           = findViewById(R.id.btnChat);
-        ImageView btnBack        = findViewById(R.id.btnBack);
-        // ✅ FIXED: btnPlayAudio এখন layout এ আছে এবং কাজ করছে
+        ImageView ivPhoto           = findViewById(R.id.ivPhoto);
+        TextView tvCategory         = findViewById(R.id.tvCategory);
+        TextView tvTitle            = findViewById(R.id.tvTitle);
+        TextView tvDesc             = findViewById(R.id.tvDesc);
+        TextView tvAvatar           = findViewById(R.id.tvAvatar);
+        TextView tvUserName         = findViewById(R.id.tvUserName);
+        TextView tvDistance         = findViewById(R.id.tvDistance);
+        TextView tvTime             = findViewById(R.id.tvTime);
+        Button btnCall              = findViewById(R.id.btnCall);
+        Button btnChat              = findViewById(R.id.btnChat);
+        Button btnDirection         = findViewById(R.id.btnDirection); // ✅ NEW
+        ImageView btnBack           = findViewById(R.id.btnBack);
         MaterialButton btnPlayAudio = findViewById(R.id.btnPlayAudio);
 
         String title    = getIntent().getStringExtra(EXTRA_TITLE);
@@ -57,11 +59,14 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
         String category = getIntent().getStringExtra(EXTRA_CATEGORY);
         String phone    = getIntent().getStringExtra(EXTRA_PHONE);
         String imageUrl = getIntent().getStringExtra(EXTRA_IMAGE_URL);
-        String audioUrl = getIntent().getStringExtra(EXTRA_AUDIO_URL); // ✅ FIXED: এখন ব্যবহার হচ্ছে
+        String audioUrl = getIntent().getStringExtra(EXTRA_AUDIO_URL);
         String userName = getIntent().getStringExtra(EXTRA_USER_NAME);
         String distance = getIntent().getStringExtra(EXTRA_DISTANCE);
         String time     = getIntent().getStringExtra(EXTRA_TIME);
         String otherUid = getIntent().getStringExtra(EXTRA_OTHER_UID);
+        // ✅ NEW: get lat/lng
+        double destLat  = getIntent().getDoubleExtra(EXTRA_LAT, 0.0);
+        double destLng  = getIntent().getDoubleExtra(EXTRA_LNG, 0.0);
 
         tvCategory.setText(safe(category));
         tvTitle.setText(safe(title));
@@ -85,7 +90,7 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
             ivPhoto.setVisibility(View.GONE);
         }
 
-        // ✅ FIXED: Audio play button — audioUrl থাকলে button দেখাও
+        // Audio play button
         if (audioUrl != null && !audioUrl.isEmpty()) {
             if (btnPlayAudio != null) {
                 btnPlayAudio.setVisibility(View.VISIBLE);
@@ -113,17 +118,42 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
             i.putExtra(ChatActivity.EXTRA_OTHER_NAME, safe(userName));
             startActivity(i);
         });
+
+        // ✅ NEW: Direction button
+        if (btnDirection != null) {
+            if (destLat != 0.0 || destLng != 0.0) {
+                btnDirection.setVisibility(View.VISIBLE);
+                btnDirection.setOnClickListener(v -> openDirections(destLat, destLng));
+            } else {
+                btnDirection.setVisibility(View.GONE);
+            }
+        }
     }
 
-    // ✅ FIXED: Audio toggle — play/pause/stop logic
+    // ✅ NEW: Open Google Maps Navigation
+    private void openDirections(double destLat, double destLng) {
+        Uri gmmIntentUri = Uri.parse(
+                "google.navigation:q=" + destLat + "," + destLng + "&mode=d");
+        Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
+        mapIntent.setPackage("com.google.android.apps.maps");
+
+        if (mapIntent.resolveActivity(getPackageManager()) != null) {
+            startActivity(mapIntent);
+        } else {
+            // Fallback: browser
+            Uri web = Uri.parse("https://www.google.com/maps/dir/?api=1&destination="
+                    + destLat + "," + destLng + "&travelmode=driving");
+            startActivity(new Intent(Intent.ACTION_VIEW, web));
+        }
+    }
+
+    // ── Audio toggle ──────────────────────────────────────────────────────────
     private void toggleAudio(String url, MaterialButton btn) {
         if (isPlaying) {
-            // চলছে — stop করো
             stopAudio();
             btn.setText("🔊 Play Audio");
             isPlaying = false;
         } else {
-            // শুরু করো
             btn.setText("⏹ Stop Audio");
             btn.setEnabled(false);
             Toast.makeText(this, "Loading audio...", Toast.LENGTH_SHORT).show();

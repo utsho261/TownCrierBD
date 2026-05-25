@@ -47,7 +47,6 @@
                 android:textStyle="bold"
                 android:textSize="13sp" />
 
-            <!-- ✅ FIXED: tvAudioBadge এখন আছে -->
             <TextView
                 android:id="@+id/tvAudioBadge"
                 android:layout_width="wrap_content"
@@ -171,52 +170,89 @@
 
         </LinearLayout>
 
-        <!-- Feed mode: Listen / Chat / Call buttons -->
+        <!-- Feed mode: Listen / Chat / Call / Direction buttons -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_margin="12dp"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:weightSum="3">
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnListen"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            <!-- Listen + Chat row -->
+            <LinearLayout
                 android:layout_width="0dp"
-                android:layout_height="48dp"
+                android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Listen"
-                android:textAllCaps="false"
-                android:textSize="14sp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:layout_marginEnd="6dp"/>
+                android:orientation="horizontal">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnChat"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_weight="1"
-                android:text="Chat"
-                android:textAllCaps="false"
-                android:textSize="14sp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:layout_marginEnd="6dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnListen"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="Listen"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:layout_marginEnd="6dp"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnChat"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="Chat"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:layout_marginEnd="6dp"/>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Call + Direction row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="12dp"
+            android:orientation="horizontal">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnCall"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="0dp"
-                android:layout_height="48dp"
+                android:layout_height="44dp"
                 android:layout_weight="1"
-                android:text="Call"
+                android:text="📞 Call"
                 android:textAllCaps="false"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:insetTop="0dp"
-                android:insetBottom="0dp" />
+                android:insetBottom="0dp"
+                android:layout_marginEnd="6dp"/>
+
+            <!-- ✅ NEW: Direction button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDirection"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:text="🧭 Direction"
+                android:textAllCaps="false"
+                android:textSize="13sp"
+                android:textColor="@android:color/white"
+                android:backgroundTint="#FF7A00"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"/>
+
         </LinearLayout>
 
         <!-- Profile mode: Edit / Delete / Details buttons -->

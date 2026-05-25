@@ -12,7 +12,7 @@
         android:background="@android:color/transparent"
         android:fitsSystemWindows="true">
 
-        <!-- ✅ No Internet Banner -->
+        <!-- No Internet Banner -->
         <TextView
             android:id="@+id/bannerNoInternet"
             android:layout_width="match_parent"
@@ -191,7 +191,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingBottom="90dp"/>
+            android:paddingBottom="120dp"/>
 
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
@@ -230,19 +230,22 @@
 
     </LinearLayout>
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabAdd"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="18dp"
-        app:srcCompat="@android:drawable/ic_input_add" />
-
+    <!-- ✅ FIXED: BottomNavigationView FIRST (lower z-order) -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNav"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         app:menu="@menu/menu_bottom_nav" />
+
+    <!-- ✅ FIXED: FAB AFTER BottomNav (higher z-order), margin above nav bar -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabAdd"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="18dp"
+        android:layout_marginBottom="74dp"
+        app:srcCompat="@android:drawable/ic_input_add" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

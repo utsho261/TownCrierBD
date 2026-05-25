@@ -92,7 +92,7 @@
                     android:textSize="16sp"
                     android:lineSpacingMultiplier="1.4"/>
 
-                <!-- ✅ FIXED: Audio play button — এখন কাজ করবে -->
+                <!-- Audio play button -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnPlayAudio"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
@@ -183,9 +183,9 @@
                         android:layout_width="0dp"
                         android:layout_height="52dp"
                         android:layout_weight="1"
-                        android:text="Call"
+                        android:text="📞 Call"
                         android:textAllCaps="false"
-                        android:textSize="16sp"
+                        android:textSize="15sp"
                         android:backgroundTint="#1976F3"
                         android:textColor="@android:color/white"
                         android:layout_marginEnd="8dp"/>
@@ -195,12 +195,24 @@
                         android:layout_width="0dp"
                         android:layout_height="52dp"
                         android:layout_weight="1"
-                        android:text="Chat"
+                        android:text="💬 Chat"
                         android:textAllCaps="false"
-                        android:textSize="16sp"
+                        android:textSize="15sp"
                         android:backgroundTint="#25D366"
                         android:textColor="@android:color/white"/>
                 </LinearLayout>
+
+                <!-- ✅ NEW: Direction Button -->
+                <Button
+                    android:id="@+id/btnDirection"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="10dp"
+                    android:text="🧭 Get Directions"
+                    android:textAllCaps="false"
+                    android:textSize="16sp"
+                    android:backgroundTint="#FF7A00"
+                    android:textColor="@android:color/white"/>
 
             </LinearLayout>
         </androidx.cardview.widget.CardView>

@@ -51,8 +51,7 @@ import java.util.Locale;
 
 public class GeneralFeedActivity extends AppCompatActivity {
 
-    private TextView tvWelcome, tvLocationName, tvRadius;
-    private TextView tvToggleFilter;
+    private TextView tvWelcome, tvLocationName, tvRadius, tvToggleFilter;
     private View scrollChips;
     private ChipGroup chipGroup;
     private RecyclerView rvFeed;
@@ -81,7 +80,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
     private ValueEventListener unreadListener;
 
     private String selectedCategory = CategoryConfig.CAT_ALL;
-    private String myRole = "";
+    private String myRole  = "";
     private String wantRole = "";
     private String searchQuery = "";
     private double selectedRadius = Constants.FEED_RADIUS_KM;
@@ -93,19 +92,19 @@ public class GeneralFeedActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_general_feed);
 
-        tvWelcome       = findViewById(R.id.tvWelcome);
-        tvLocationName  = findViewById(R.id.tvLocationName);
-        tvRadius        = findViewById(R.id.tvRadius);
-        rvFeed          = findViewById(R.id.rvFeed);
-        fabAdd          = findViewById(R.id.fabAdd);
-        tvToggleFilter  = findViewById(R.id.tvToggleFilter);
-        scrollChips     = findViewById(R.id.scrollChips);
-        chipGroup       = findViewById(R.id.chipGroup);
-        layoutEmpty     = findViewById(R.id.layoutEmpty);
-        swipeRefresh    = findViewById(R.id.swipeRefresh);
-        etSearch        = findViewById(R.id.etSearch);
+        tvWelcome        = findViewById(R.id.tvWelcome);
+        tvLocationName   = findViewById(R.id.tvLocationName);
+        tvRadius         = findViewById(R.id.tvRadius);
+        rvFeed           = findViewById(R.id.rvFeed);
+        fabAdd           = findViewById(R.id.fabAdd);
+        tvToggleFilter   = findViewById(R.id.tvToggleFilter);
+        scrollChips      = findViewById(R.id.scrollChips);
+        chipGroup        = findViewById(R.id.chipGroup);
+        layoutEmpty      = findViewById(R.id.layoutEmpty);
+        swipeRefresh     = findViewById(R.id.swipeRefresh);
+        etSearch         = findViewById(R.id.etSearch);
         bannerNoInternet = findViewById(R.id.bannerNoInternet);
-        bottomNav       = findViewById(R.id.bottomNav);
+        bottomNav        = findViewById(R.id.bottomNav);
 
         adapter = new FeedAdapter(this);
         rvFeed.setLayoutManager(new LinearLayoutManager(this));
@@ -123,9 +122,8 @@ public class GeneralFeedActivity extends AppCompatActivity {
 
         updateRadiusText();
 
-        if (tvRadius != null) {
+        if (tvRadius != null)
             tvRadius.setOnClickListener(v -> showRadiusDialog());
-        }
 
         if (tvToggleFilter != null && scrollChips != null) {
             tvToggleFilter.setOnClickListener(v -> {
@@ -189,9 +187,6 @@ public class GeneralFeedActivity extends AppCompatActivity {
         });
     }
 
-    /**
-     * Listen for unread messages and show badge on inbox nav item.
-     */
     private void listenForUnreadMessages() {
         String myUid = auth.getUid();
         if (myUid == null || bottomNav == null) return;
@@ -200,29 +195,21 @@ public class GeneralFeedActivity extends AppCompatActivity {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 int totalUnread = 0;
-
                 for (DataSnapshot roomSnap : snapshot.getChildren()) {
                     String roomId = roomSnap.getKey();
                     if (roomId == null) continue;
-
-                    // Only my rooms
                     int sepIdx = roomId.indexOf('_');
                     if (sepIdx < 0) continue;
                     String p1 = roomId.substring(0, sepIdx);
                     String p2 = roomId.substring(sepIdx + 1);
                     if (!myUid.equals(p1) && !myUid.equals(p2)) continue;
-
                     String otherUid = myUid.equals(p1) ? p2 : p1;
-
                     for (DataSnapshot msgSnap : roomSnap.getChildren()) {
                         String senderId = msgSnap.child("senderId").getValue(String.class);
-                        Boolean read = msgSnap.child("read").getValue(Boolean.class);
-                        if (otherUid.equals(senderId) && (read == null || !read)) {
-                            totalUnread++;
-                        }
+                        Boolean read    = msgSnap.child("read").getValue(Boolean.class);
+                        if (otherUid.equals(senderId) && (read == null || !read)) totalUnread++;
                     }
                 }
-
                 final int unread = totalUnread;
                 runOnUiThread(() -> {
                     try {
@@ -237,20 +224,15 @@ public class GeneralFeedActivity extends AppCompatActivity {
                     } catch (Exception ignored) {}
                 });
             }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {}
+            @Override public void onCancelled(@NonNull DatabaseError error) {}
         };
-
         chatsRef.addValueEventListener(unreadListener);
     }
 
     private void requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this,
-                    Manifest.permission.POST_NOTIFICATIONS)
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
                     != PackageManager.PERMISSION_GRANTED) {
-
                 if (ActivityCompat.shouldShowRequestPermissionRationale(this,
                         Manifest.permission.POST_NOTIFICATIONS)) {
                     new AlertDialog.Builder(this)
@@ -260,8 +242,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
                                     ActivityCompat.requestPermissions(this,
                                             new String[]{Manifest.permission.POST_NOTIFICATIONS},
                                             NOTIFICATION_REQ))
-                            .setNegativeButton("Not now", null)
-                            .show();
+                            .setNegativeButton("Not now", null).show();
                 } else {
                     ActivityCompat.requestPermissions(this,
                             new String[]{Manifest.permission.POST_NOTIFICATIONS},
@@ -274,7 +255,6 @@ public class GeneralFeedActivity extends AppCompatActivity {
     private void startNetworkMonitoring() {
         networkMonitor = new NetworkMonitor(this);
         if (!networkMonitor.isConnected()) showNoBanner(true);
-
         networkMonitor.startMonitoring(new NetworkMonitor.NetworkCallback() {
             @Override public void onAvailable() { showNoBanner(false); }
             @Override public void onLost()      { showNoBanner(true);  }
@@ -282,9 +262,8 @@ public class GeneralFeedActivity extends AppCompatActivity {
     }
 
     private void showNoBanner(boolean show) {
-        if (bannerNoInternet != null) {
+        if (bannerNoInternet != null)
             bannerNoInternet.setVisibility(show ? View.VISIBLE : View.GONE);
-        }
     }
 
     @Override
@@ -307,15 +286,13 @@ public class GeneralFeedActivity extends AppCompatActivity {
     private void showRadiusDialog() {
         String[] options = {"1 km", "3 km", "5 km", "10 km"};
         double[] values  = {1.0, 3.0, 5.0, 10.0};
-
         new AlertDialog.Builder(this)
                 .setTitle("Select Radius")
                 .setItems(options, (d, which) -> {
                     selectedRadius = values[which];
                     updateRadiusText();
                     applyAndShow();
-                })
-                .show();
+                }).show();
     }
 
     private void updateRadiusText() {
@@ -345,6 +322,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
                 attachFeedListenerOnce();
                 startLiveLocation();
             }
+
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 Toast.makeText(GeneralFeedActivity.this,
@@ -368,13 +346,13 @@ public class GeneralFeedActivity extends AppCompatActivity {
                 }
                 applyAndShow();
             }
+
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 Toast.makeText(GeneralFeedActivity.this,
                         "Failed to load feed: " + error.getMessage(), Toast.LENGTH_SHORT).show();
             }
         };
-
         annRef.addValueEventListener(feedListener);
     }
 
@@ -413,10 +391,8 @@ public class GeneralFeedActivity extends AppCompatActivity {
         adapter.setData(out);
         if (locationReady) adapter.setMyLocation(myLat, myLng);
 
-        if (layoutEmpty != null) {
+        if (layoutEmpty != null)
             layoutEmpty.setVisibility(out.isEmpty() && locationReady ? View.VISIBLE : View.GONE);
-        }
-
     }
 
     private void buildCategoryChips() {
@@ -487,12 +463,12 @@ public class GeneralFeedActivity extends AppCompatActivity {
             Geocoder g = new Geocoder(this, Locale.getDefault());
             List<Address> list = g.getFromLocation(lat, lng, 1);
             if (list != null && !list.isEmpty()) {
-                Address a = list.get(0);
-                String subLocal = safe(a.getSubLocality());
-                String local    = safe(a.getLocality());
+                Address a    = list.get(0);
+                String sub   = safe(a.getSubLocality());
+                String local = safe(a.getLocality());
                 if (local.isEmpty()) local = safe(a.getSubAdminArea());
                 if (local.isEmpty()) local = safe(a.getAdminArea());
-                if (!subLocal.isEmpty() && !local.isEmpty()) return subLocal + ", " + local;
+                if (!sub.isEmpty() && !local.isEmpty()) return sub + ", " + local;
                 if (!local.isEmpty()) return local;
             }
         } catch (Exception ignored) {}

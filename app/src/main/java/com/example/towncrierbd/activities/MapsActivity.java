@@ -73,13 +73,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private TextView tvBadge, tvTitle, tvDesc, tvDistance;
     private Button btnDetails;
     private ImageButton btnChat, btnCall;
+    private ImageButton btnDirectionSheet; // ✅ NEW
 
     private FloatingActionButton fabMyLoc, fabDirections;
 
     private final Map<String, Announcement> markerMap = new HashMap<>();
     private Announcement lastSelected = null;
 
-    // ✅ FIX: keep single reference to announcements listener to avoid duplicates
     private ValueEventListener annListener = null;
 
     @Override
@@ -107,6 +107,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         btnDetails       = findViewById(R.id.btnDetails);
         btnChat          = findViewById(R.id.btnChat);
         btnCall          = findViewById(R.id.btnCall);
+        btnDirectionSheet = findViewById(R.id.btnDirectionSheet); // ✅ NEW
         fabMyLoc         = findViewById(R.id.fabMyLoc);
         fabDirections    = findViewById(R.id.fabDirections);
 
@@ -114,6 +115,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 sheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN));
 
         fabMyLoc.setOnClickListener(v -> requestLocation());
+
+        // ✅ FAB Direction — navigates to last selected marker
         fabDirections.setOnClickListener(v -> openDirectionsToSelected());
 
         SupportMapFragment mapFragment = (SupportMapFragment)
@@ -123,7 +126,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         loadMyRoleThenStart();
     }
 
-    // ✅ FIX: Remove listener on destroy to prevent leaks
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -188,7 +190,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             return false;
         });
 
-        // ✅ FIX: attach listener only once here if role already known
+        // ✅ Hide bottom sheet when clicking on map (not marker)
+        mMap.setOnMapClickListener(latLng ->
+                sheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN));
+
         if (!wantRole.isEmpty()) {
             attachAnnouncementsListener();
         }
@@ -224,10 +229,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         hasMyLoc = true;
 
         if (mMap != null) {
-            // ✅ FIX: Don't clear map here — listener's onDataChange handles redraw
             LatLng me = new LatLng(myLat, myLng);
             mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(me, 15f));
-            // Trigger listener refresh (it will clear + redraw everything)
             attachAnnouncementsListener();
         }
     }
@@ -251,11 +254,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    // ✅ FIX: Only attach ONE listener; remove old one before adding new
     private void attachAnnouncementsListener() {
         if (annRef == null) return;
 
-        // Remove previous listener if any
         if (annListener != null) {
             annRef.removeEventListener(annListener);
         }
@@ -288,7 +289,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     if (a.getId() == null) continue;
 
                     if (myUid != null && myUid.equals(a.getUserId())) continue;
-                    // ✅ FIX: filter expired posts on map too
                     if (a.getExpireAt() > 0 && now > a.getExpireAt()) continue;
 
                     String postRole = safe(a.getUserRole());
@@ -362,7 +362,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + phone)));
         });
 
-        // ✅ FIX: in-app chat from map bottom sheet too
         btnChat.setOnClickListener(v -> {
             String postOwnerUid = safe(a.getUserId());
             String myUidNow     = safe(auth.getUid());
@@ -380,6 +379,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             startActivity(i);
         });
 
+        // ✅ Direction button in bottom sheet — direct to this post's location
+        if (btnDirectionSheet != null) {
+            btnDirectionSheet.setOnClickListener(v ->
+                    openDirectionsTo(a.getLat(), a.getLng()));
+        }
+
         btnDetails.setOnClickListener(v -> {
             String dist = "";
             if (hasMyLoc) {
@@ -395,14 +400,17 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             intent.putExtra(AnnouncementDetailActivity.EXTRA_USER_NAME, safe(a.getUserName()));
             intent.putExtra(AnnouncementDetailActivity.EXTRA_DISTANCE,  dist);
             intent.putExtra(AnnouncementDetailActivity.EXTRA_TIME,      getRelativeTime(a.getTime()));
-            // ✅ FIX: pass otherUid for in-app chat from detail screen
             intent.putExtra(AnnouncementDetailActivity.EXTRA_OTHER_UID, safe(a.getUserId()));
+            // ✅ Pass lat/lng
+            intent.putExtra(AnnouncementDetailActivity.EXTRA_LAT, a.getLat());
+            intent.putExtra(AnnouncementDetailActivity.EXTRA_LNG, a.getLng());
             startActivity(intent);
         });
 
         sheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
     }
 
+    // ✅ FAB direction — goes to last selected marker
     private void openDirectionsToSelected() {
         if (!hasMyLoc) {
             Toast.makeText(this, "Location not ready", Toast.LENGTH_SHORT).show();
@@ -412,12 +420,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             Toast.makeText(this, "Select a marker first", Toast.LENGTH_SHORT).show();
             return;
         }
+        openDirectionsTo(lastSelected.getLat(), lastSelected.getLng());
+    }
 
-        double dLat = lastSelected.getLat();
-        double dLng = lastSelected.getLng();
-
+    // ✅ Shared directions helper
+    private void openDirectionsTo(double destLat, double destLng) {
         Uri gmmIntentUri = Uri.parse(
-                "google.navigation:q=" + dLat + "," + dLng + "&mode=d");
+                "google.navigation:q=" + destLat + "," + destLng + "&mode=d");
         Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
         mapIntent.setPackage("com.google.android.apps.maps");
 
@@ -425,7 +434,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             startActivity(mapIntent);
         } else {
             Uri web = Uri.parse("https://www.google.com/maps/dir/?api=1&destination="
-                    + dLat + "," + dLng + "&travelmode=driving");
+                    + destLat + "," + destLng + "&travelmode=driving");
             startActivity(new Intent(Intent.ACTION_VIEW, web));
         }
     }
