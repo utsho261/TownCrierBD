@@ -73,7 +73,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private TextView tvBadge, tvTitle, tvDesc, tvDistance;
     private Button btnDetails;
     private ImageButton btnChat, btnCall;
-    private ImageButton btnDirectionSheet; // ✅ NEW
+    private ImageButton btnDirectionSheet;
 
     private FloatingActionButton fabMyLoc, fabDirections;
 
@@ -92,36 +92,49 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         annRef   = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
         userRef  = FirebaseDatabase.getInstance().getReference(Constants.DB_USERS);
 
-        bottomSheet   = findViewById(R.id.bottomSheet);
-        sheetBehavior = BottomSheetBehavior.from(bottomSheet);
-        sheetBehavior.setHideable(true);
-        sheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+        // Bottom sheet setup
+        bottomSheet = findViewById(R.id.bottomSheet);
+        if (bottomSheet != null) {
+            sheetBehavior = BottomSheetBehavior.from(bottomSheet);
+            sheetBehavior.setHideable(true);
+            sheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+        }
 
-        ivCover          = findViewById(R.id.ivCover);
-        btnCloseSheet    = findViewById(R.id.btnCloseSheet);
-        coverPlaceholder = findViewById(R.id.coverPlaceholder);
-        tvBadge          = findViewById(R.id.tvBadge);
-        tvTitle          = findViewById(R.id.tvTitle);
-        tvDesc           = findViewById(R.id.tvDesc);
-        tvDistance       = findViewById(R.id.tvDistance);
-        btnDetails       = findViewById(R.id.btnDetails);
-        btnChat          = findViewById(R.id.btnChat);
-        btnCall          = findViewById(R.id.btnCall);
-        btnDirectionSheet = findViewById(R.id.btnDirectionSheet); // ✅ NEW
-        fabMyLoc         = findViewById(R.id.fabMyLoc);
-        fabDirections    = findViewById(R.id.fabDirections);
+        // Bind views safely
+        ivCover           = findViewById(R.id.ivCover);
+        btnCloseSheet     = findViewById(R.id.btnCloseSheet);
+        coverPlaceholder  = findViewById(R.id.coverPlaceholder);
+        tvBadge           = findViewById(R.id.tvBadge);
+        tvTitle           = findViewById(R.id.tvTitle);
+        tvDesc            = findViewById(R.id.tvDesc);
+        tvDistance        = findViewById(R.id.tvDistance);
+        btnDetails        = findViewById(R.id.btnDetails);
+        btnChat           = findViewById(R.id.btnChat);
+        btnCall           = findViewById(R.id.btnCall);
+        btnDirectionSheet = findViewById(R.id.btnDirectionSheet);
+        fabMyLoc          = findViewById(R.id.fabMyLoc);
+        fabDirections     = findViewById(R.id.fabDirections);
 
-        btnCloseSheet.setOnClickListener(v ->
-                sheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN));
+        if (btnCloseSheet != null) {
+            btnCloseSheet.setOnClickListener(v -> {
+                if (sheetBehavior != null)
+                    sheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+            });
+        }
 
-        fabMyLoc.setOnClickListener(v -> requestLocation());
+        if (fabMyLoc != null) {
+            fabMyLoc.setOnClickListener(v -> requestLocation());
+        }
 
-        // ✅ FAB Direction — navigates to last selected marker
-        fabDirections.setOnClickListener(v -> openDirectionsToSelected());
+        if (fabDirections != null) {
+            fabDirections.setOnClickListener(v -> openDirectionsToSelected());
+        }
 
         SupportMapFragment mapFragment = (SupportMapFragment)
                 getSupportFragmentManager().findFragmentById(R.id.map);
-        if (mapFragment != null) mapFragment.getMapAsync(this);
+        if (mapFragment != null) {
+            mapFragment.getMapAsync(this);
+        }
 
         loadMyRoleThenStart();
     }
@@ -190,9 +203,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             return false;
         });
 
-        // ✅ Hide bottom sheet when clicking on map (not marker)
-        mMap.setOnMapClickListener(latLng ->
-                sheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN));
+        mMap.setOnMapClickListener(latLng -> {
+            if (sheetBehavior != null)
+                sheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+        });
 
         if (!wantRole.isEmpty()) {
             attachAnnouncementsListener();
@@ -217,7 +231,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             if (loc != null) {
                 setMyLocation(loc);
             } else {
-                Toast.makeText(this, "Location not ready yet", Toast.LENGTH_SHORT).show();
                 attachAnnouncementsListener();
             }
         });
@@ -321,96 +334,108 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void showBottomSheet(Announcement a) {
+        if (a == null) return;
         lastSelected = a;
 
-        String badge = safe(a.getDisplayCategoryLabel());
-        if (badge.isEmpty()) badge = safe(a.getCategory());
-        if (badge.isEmpty()) badge = "Category";
-        tvBadge.setText(badge);
+        if (tvBadge != null) {
+            String badge = safe(a.getDisplayCategoryLabel());
+            if (badge.isEmpty()) badge = safe(a.getCategory());
+            if (badge.isEmpty()) badge = "Category";
+            tvBadge.setText(badge);
+        }
 
-        tvTitle.setText(safe(a.getTitle()));
-        tvDesc.setText(safe(a.getDescription()));
+        if (tvTitle != null) tvTitle.setText(safe(a.getTitle()));
+        if (tvDesc != null)  tvDesc.setText(safe(a.getDescription()));
 
-        if (hasMyLoc) {
-            double d = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
-            tvDistance.setText(String.format(Locale.getDefault(), "%.1f km away", d));
-        } else {
-            tvDistance.setText("Nearby");
+        if (tvDistance != null) {
+            if (hasMyLoc) {
+                double d = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
+                tvDistance.setText(String.format(Locale.getDefault(), "%.1f km away", d));
+            } else {
+                tvDistance.setText("Nearby");
+            }
         }
 
         String imgUrl = safe(a.getImageUrl());
-        if (!imgUrl.isEmpty()) {
-            ivCover.setVisibility(View.VISIBLE);
-            if (coverPlaceholder != null) coverPlaceholder.setVisibility(View.GONE);
-            Glide.with(this)
-                    .load(imgUrl)
-                    .centerCrop()
-                    .placeholder(android.R.drawable.ic_menu_gallery)
-                    .into(ivCover);
-        } else {
-            ivCover.setVisibility(View.GONE);
-            ivCover.setImageDrawable(null);
-            if (coverPlaceholder != null) coverPlaceholder.setVisibility(View.VISIBLE);
+        if (ivCover != null) {
+            if (!imgUrl.isEmpty()) {
+                ivCover.setVisibility(View.VISIBLE);
+                if (coverPlaceholder != null) coverPlaceholder.setVisibility(View.GONE);
+                Glide.with(this)
+                        .load(imgUrl)
+                        .centerCrop()
+                        .placeholder(android.R.drawable.ic_menu_gallery)
+                        .into(ivCover);
+            } else {
+                ivCover.setVisibility(View.GONE);
+                ivCover.setImageDrawable(null);
+                if (coverPlaceholder != null) coverPlaceholder.setVisibility(View.VISIBLE);
+            }
         }
 
-        btnCall.setOnClickListener(v -> {
-            String phone = safe(a.getPhone());
-            if (phone.isEmpty()) {
-                Toast.makeText(this, "No phone number", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + phone)));
-        });
+        if (btnCall != null) {
+            btnCall.setOnClickListener(v -> {
+                String phone = safe(a.getPhone());
+                if (phone.isEmpty()) {
+                    Toast.makeText(this, "No phone number", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + phone)));
+            });
+        }
 
-        btnChat.setOnClickListener(v -> {
-            String postOwnerUid = safe(a.getUserId());
-            String myUidNow     = safe(auth.getUid());
-            if (postOwnerUid.isEmpty()) {
-                Toast.makeText(this, "Cannot start chat", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (myUidNow.equals(postOwnerUid)) {
-                Toast.makeText(this, "Cannot chat with yourself", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            Intent i = new Intent(this, ChatActivity.class);
-            i.putExtra(ChatActivity.EXTRA_OTHER_UID,  postOwnerUid);
-            i.putExtra(ChatActivity.EXTRA_OTHER_NAME, safe(a.getUserName()));
-            startActivity(i);
-        });
+        if (btnChat != null) {
+            btnChat.setOnClickListener(v -> {
+                String postOwnerUid = safe(a.getUserId());
+                String myUidNow     = safe(auth.getUid());
+                if (postOwnerUid.isEmpty()) {
+                    Toast.makeText(this, "Cannot start chat", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (myUidNow.equals(postOwnerUid)) {
+                    Toast.makeText(this, "Cannot chat with yourself", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Intent i = new Intent(this, ChatActivity.class);
+                i.putExtra(ChatActivity.EXTRA_OTHER_UID,  postOwnerUid);
+                i.putExtra(ChatActivity.EXTRA_OTHER_NAME, safe(a.getUserName()));
+                startActivity(i);
+            });
+        }
 
-        // ✅ Direction button in bottom sheet — direct to this post's location
         if (btnDirectionSheet != null) {
             btnDirectionSheet.setOnClickListener(v ->
                     openDirectionsTo(a.getLat(), a.getLng()));
         }
 
-        btnDetails.setOnClickListener(v -> {
-            String dist = "";
-            if (hasMyLoc) {
-                double d = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
-                dist = String.format(Locale.getDefault(), "%.1f km away", d);
-            }
-            Intent intent = new Intent(MapsActivity.this, AnnouncementDetailActivity.class);
-            intent.putExtra(AnnouncementDetailActivity.EXTRA_TITLE,     safe(a.getTitle()));
-            intent.putExtra(AnnouncementDetailActivity.EXTRA_DESC,      safe(a.getDescription()));
-            intent.putExtra(AnnouncementDetailActivity.EXTRA_CATEGORY,  safe(a.getDisplayCategoryLabel()));
-            intent.putExtra(AnnouncementDetailActivity.EXTRA_PHONE,     safe(a.getPhone()));
-            intent.putExtra(AnnouncementDetailActivity.EXTRA_IMAGE_URL, safe(a.getImageUrl()));
-            intent.putExtra(AnnouncementDetailActivity.EXTRA_USER_NAME, safe(a.getUserName()));
-            intent.putExtra(AnnouncementDetailActivity.EXTRA_DISTANCE,  dist);
-            intent.putExtra(AnnouncementDetailActivity.EXTRA_TIME,      getRelativeTime(a.getTime()));
-            intent.putExtra(AnnouncementDetailActivity.EXTRA_OTHER_UID, safe(a.getUserId()));
-            // ✅ Pass lat/lng
-            intent.putExtra(AnnouncementDetailActivity.EXTRA_LAT, a.getLat());
-            intent.putExtra(AnnouncementDetailActivity.EXTRA_LNG, a.getLng());
-            startActivity(intent);
-        });
+        if (btnDetails != null) {
+            btnDetails.setOnClickListener(v -> {
+                String dist = "";
+                if (hasMyLoc) {
+                    double d = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
+                    dist = String.format(Locale.getDefault(), "%.1f km away", d);
+                }
+                Intent intent = new Intent(MapsActivity.this, AnnouncementDetailActivity.class);
+                intent.putExtra(AnnouncementDetailActivity.EXTRA_TITLE,     safe(a.getTitle()));
+                intent.putExtra(AnnouncementDetailActivity.EXTRA_DESC,      safe(a.getDescription()));
+                intent.putExtra(AnnouncementDetailActivity.EXTRA_CATEGORY,  safe(a.getDisplayCategoryLabel()));
+                intent.putExtra(AnnouncementDetailActivity.EXTRA_PHONE,     safe(a.getPhone()));
+                intent.putExtra(AnnouncementDetailActivity.EXTRA_IMAGE_URL, safe(a.getImageUrl()));
+                intent.putExtra(AnnouncementDetailActivity.EXTRA_USER_NAME, safe(a.getUserName()));
+                intent.putExtra(AnnouncementDetailActivity.EXTRA_DISTANCE,  dist);
+                intent.putExtra(AnnouncementDetailActivity.EXTRA_TIME,      getRelativeTime(a.getTime()));
+                intent.putExtra(AnnouncementDetailActivity.EXTRA_OTHER_UID, safe(a.getUserId()));
+                intent.putExtra(AnnouncementDetailActivity.EXTRA_LAT,       a.getLat());
+                intent.putExtra(AnnouncementDetailActivity.EXTRA_LNG,       a.getLng());
+                startActivity(intent);
+            });
+        }
 
-        sheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+        if (sheetBehavior != null) {
+            sheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+        }
     }
 
-    // ✅ FAB direction — goes to last selected marker
     private void openDirectionsToSelected() {
         if (!hasMyLoc) {
             Toast.makeText(this, "Location not ready", Toast.LENGTH_SHORT).show();
@@ -423,7 +448,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         openDirectionsTo(lastSelected.getLat(), lastSelected.getLng());
     }
 
-    // ✅ Shared directions helper
     private void openDirectionsTo(double destLat, double destLng) {
         Uri gmmIntentUri = Uri.parse(
                 "google.navigation:q=" + destLat + "," + destLng + "&mode=d");

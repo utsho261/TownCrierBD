@@ -9,6 +9,7 @@ import android.speech.tts.TextToSpeech;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -48,20 +49,35 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
     public FeedAdapter(Context context) {
         this.context = context;
         tts = new TextToSpeech(context, status -> {
-            if (status == TextToSpeech.SUCCESS) tts.setLanguage(Locale.ENGLISH);
+            if (status == TextToSpeech.SUCCESS && tts != null) {
+                tts.setLanguage(Locale.ENGLISH);
+            }
         });
     }
 
-    public void setShowEditDelete(boolean show)      { this.showEditDelete   = show;    notifyDataSetChanged(); }
-    public void setDisableCardClick(boolean disable) { this.disableCardClick = disable; notifyDataSetChanged(); }
+    public void setShowEditDelete(boolean show) {
+        this.showEditDelete = show;
+        notifyDataSetChanged();
+    }
+
+    public void setDisableCardClick(boolean disable) {
+        this.disableCardClick = disable;
+        notifyDataSetChanged();
+    }
 
     public void release() {
-        try { if (tts != null)         { tts.stop();         tts.shutdown();          tts = null;         } } catch (Exception ignored) {}
-        try { if (mediaPlayer != null) { mediaPlayer.stop(); mediaPlayer.release();   mediaPlayer = null; } } catch (Exception ignored) {}
+        try {
+            if (tts != null) { tts.stop(); tts.shutdown(); tts = null; }
+        } catch (Exception ignored) {}
+        try {
+            if (mediaPlayer != null) { mediaPlayer.stop(); mediaPlayer.release(); mediaPlayer = null; }
+        } catch (Exception ignored) {}
     }
 
     public void setMyLocation(double lat, double lng) {
-        myLat = lat; myLng = lng; hasMyLoc = true;
+        myLat = lat;
+        myLng = lng;
+        hasMyLoc = true;
         notifyDataSetChanged();
     }
 
@@ -85,17 +101,19 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
 
         // Badge
         String b = safe(a.getDisplayCategoryLabel());
-        h.tvBadge.setText(b.isEmpty() ? safe(a.getCategory()) : b);
+        if (h.tvBadge != null)
+            h.tvBadge.setText(b.isEmpty() ? safe(a.getCategory()) : b);
 
-        h.tvTitle.setText(safe(a.getTitle()));
-        h.tvDesc.setText(safe(a.getDescription()));
+        if (h.tvTitle != null) h.tvTitle.setText(safe(a.getTitle()));
+        if (h.tvDesc  != null) h.tvDesc.setText(safe(a.getDescription()));
 
         String nm = safe(a.getUserName());
-        h.tvName.setText(nm);
-        h.tvAvatar.setText(nm.isEmpty() ? "U" :
-                String.valueOf(Character.toUpperCase(nm.charAt(0))));
+        if (h.tvName   != null) h.tvName.setText(nm);
+        if (h.tvAvatar != null)
+            h.tvAvatar.setText(nm.isEmpty() ? "U" :
+                    String.valueOf(Character.toUpperCase(nm.charAt(0))));
 
-        h.tvTime.setText(getRelativeTime(a.getTime()));
+        if (h.tvTime != null) h.tvTime.setText(getRelativeTime(a.getTime()));
 
         // Expiry countdown
         if (h.tvExpiry != null) {
@@ -113,6 +131,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             }
         }
 
+        // Audio badge
         if (h.tvAudioBadge != null) {
             boolean hasAudio = a.getAudioUrl() != null && !a.getAudioUrl().isEmpty();
             h.tvAudioBadge.setVisibility(hasAudio ? View.VISIBLE : View.GONE);
@@ -120,29 +139,33 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
 
         // Image
         String imgUrl = safe(a.getImageUrl());
-        if (!imgUrl.isEmpty()) {
-            h.ivPhoto.setVisibility(View.VISIBLE);
-            Glide.with(context).load(imgUrl).centerCrop()
-                    .placeholder(android.R.drawable.ic_menu_gallery).into(h.ivPhoto);
-        } else {
-            h.ivPhoto.setVisibility(View.GONE);
-            h.ivPhoto.setImageDrawable(null);
+        if (h.ivPhoto != null) {
+            if (!imgUrl.isEmpty()) {
+                h.ivPhoto.setVisibility(View.VISIBLE);
+                Glide.with(context).load(imgUrl).centerCrop()
+                        .placeholder(android.R.drawable.ic_menu_gallery).into(h.ivPhoto);
+            } else {
+                h.ivPhoto.setVisibility(View.GONE);
+                h.ivPhoto.setImageDrawable(null);
+            }
         }
 
         // Distance
-        if (hasMyLoc) {
-            double d = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
-            h.tvDistance.setText(String.format(Locale.getDefault(), "%.1f km away", d));
-        } else {
-            h.tvDistance.setText("Nearby");
+        if (h.tvDistance != null) {
+            if (hasMyLoc) {
+                double d = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
+                h.tvDistance.setText(String.format(Locale.getDefault(), "%.1f km away", d));
+            } else {
+                h.tvDistance.setText("Nearby");
+            }
         }
 
         if (showEditDelete) {
             // ── Profile mode ──────────────────────────────────────────────
-            if (h.btnListen != null)        h.btnListen.setVisibility(View.GONE);
-            if (h.btnChat != null)          h.btnChat.setVisibility(View.GONE);
-            if (h.btnCall != null)          h.btnCall.setVisibility(View.GONE);
-            if (h.btnDirection != null)     h.btnDirection.setVisibility(View.GONE);
+            if (h.btnListen        != null) h.btnListen.setVisibility(View.GONE);
+            if (h.btnChat          != null) h.btnChat.setVisibility(View.GONE);
+            if (h.btnCall          != null) h.btnCall.setVisibility(View.GONE);
+            if (h.btnDirection     != null) h.btnDirection.setVisibility(View.GONE);
             if (h.layoutEditDelete != null) h.layoutEditDelete.setVisibility(View.VISIBLE);
 
             if (h.btnEdit != null)
@@ -162,10 +185,10 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
 
         } else {
             // ── Feed mode ─────────────────────────────────────────────────
-            if (h.btnListen != null)        h.btnListen.setVisibility(View.VISIBLE);
-            if (h.btnChat != null)          h.btnChat.setVisibility(View.VISIBLE);
-            if (h.btnCall != null)          h.btnCall.setVisibility(View.VISIBLE);
-            if (h.btnDirection != null)     h.btnDirection.setVisibility(View.VISIBLE);
+            if (h.btnListen        != null) h.btnListen.setVisibility(View.VISIBLE);
+            if (h.btnChat          != null) h.btnChat.setVisibility(View.VISIBLE);
+            if (h.btnCall          != null) h.btnCall.setVisibility(View.VISIBLE);
+            if (h.btnDirection     != null) h.btnDirection.setVisibility(View.VISIBLE);
             if (h.layoutEditDelete != null) h.layoutEditDelete.setVisibility(View.GONE);
 
             if (h.btnCall != null) {
@@ -199,12 +222,10 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                 });
             }
 
-            // ✅ Direction button — Google Maps Navigation
             if (h.btnDirection != null) {
                 h.btnDirection.setOnClickListener(v -> openDirections(a.getLat(), a.getLng()));
             }
 
-            // ── Listen: play audio if exists, else TTS ───────────────────
             if (h.btnListen != null) {
                 h.btnListen.setOnClickListener(v -> playAudioOrTts(a));
             }
@@ -218,7 +239,6 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         }
     }
 
-    // ✅ NEW: Open Google Maps Navigation
     private void openDirections(double destLat, double destLng) {
         Uri gmmIntentUri = Uri.parse(
                 "google.navigation:q=" + destLat + "," + destLng + "&mode=d");
@@ -228,14 +248,11 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         if (mapIntent.resolveActivity(context.getPackageManager()) != null) {
             context.startActivity(mapIntent);
         } else {
-            // Fallback: browser
             Uri web = Uri.parse("https://www.google.com/maps/dir/?api=1&destination="
                     + destLat + "," + destLng + "&travelmode=driving");
             context.startActivity(new Intent(Intent.ACTION_VIEW, web));
         }
     }
-
-    // ─── Audio / TTS ─────────────────────────────────────────────────────────
 
     private void playAudioOrTts(Announcement a) {
         String audioUrl = safe(a.getAudioUrl());
@@ -279,8 +296,6 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         }
     }
 
-    // ─── Expiry text ─────────────────────────────────────────────────────────
-
     private String getExpiryText(long expireAt) {
         if (expireAt <= 0) return "";
         long remaining = expireAt - System.currentTimeMillis();
@@ -292,8 +307,6 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         if (minutes >= 1) return "⏳ Expires in " + minutes + " min";
         return "⏳ Expiring soon";
     }
-
-    // ─── Open detail ─────────────────────────────────────────────────────────
 
     private void openDetail(Announcement a) {
         String dist = "";
@@ -312,13 +325,10 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         intent.putExtra(AnnouncementDetailActivity.EXTRA_DISTANCE,  dist);
         intent.putExtra(AnnouncementDetailActivity.EXTRA_TIME,      getRelativeTime(a.getTime()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_OTHER_UID, safe(a.getUserId()));
-        // ✅ Pass lat/lng for direction
-        intent.putExtra(AnnouncementDetailActivity.EXTRA_LAT, a.getLat());
-        intent.putExtra(AnnouncementDetailActivity.EXTRA_LNG, a.getLng());
+        intent.putExtra(AnnouncementDetailActivity.EXTRA_LAT,       a.getLat());
+        intent.putExtra(AnnouncementDetailActivity.EXTRA_LNG,       a.getLng());
         context.startActivity(intent);
     }
-
-    // ─── Edit / Delete ───────────────────────────────────────────────────────
 
     private void showEditDialog(Announcement a, int pos) {
         LinearLayout layout = new LinearLayout(context);
@@ -372,7 +382,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
 
     private void deletePost(Announcement a, int pos) {
         if (a.getId() == null) return;
-        if (pos == RecyclerView.NO_ID || pos < 0 || pos >= items.size()) return;
+        if (pos < 0 || pos >= items.size()) return;
 
         FirebaseDatabase.getInstance()
                 .getReference(Constants.DB_ANNOUNCEMENTS)
@@ -391,7 +401,8 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                         Toast.makeText(context, "Delete failed", Toast.LENGTH_SHORT).show());
     }
 
-    @Override public int getItemCount() { return items.size(); }
+    @Override
+    public int getItemCount() { return items.size(); }
 
     private String getRelativeTime(long timeMillis) {
         if (timeMillis == 0) return "";
@@ -406,15 +417,14 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
     }
 
     // ─── ViewHolder ──────────────────────────────────────────────────────────
-
     public static class VH extends RecyclerView.ViewHolder {
         ImageView ivPhoto;
-        TextView tvBadge, tvTitle, tvDesc, tvAvatar, tvName, tvDistance, tvTime;
-        TextView tvExpiry, tvAudioBadge;
-        View btnListen, btnChat, btnCall;
-        View btnDirection; // ✅ NEW
-        View layoutEditDelete;
-        com.google.android.material.button.MaterialButton btnEdit, btnDelete, btnDetails;
+        TextView  tvBadge, tvTitle, tvDesc, tvAvatar, tvName, tvDistance, tvTime;
+        TextView  tvExpiry, tvAudioBadge;
+        // Use Button instead of MaterialButton for safe casting from XML
+        Button    btnListen, btnChat, btnCall, btnDirection;
+        View      layoutEditDelete;
+        Button    btnEdit, btnDelete, btnDetails;
 
         public VH(@NonNull View itemView) {
             super(itemView);

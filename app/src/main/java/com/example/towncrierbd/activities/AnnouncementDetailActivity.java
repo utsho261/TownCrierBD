@@ -28,7 +28,6 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
     public static final String EXTRA_DISTANCE   = "distance";
     public static final String EXTRA_TIME       = "time";
     public static final String EXTRA_OTHER_UID  = "otherUid";
-    // ✅ NEW: lat/lng for directions
     public static final String EXTRA_LAT        = "lat";
     public static final String EXTRA_LNG        = "lng";
 
@@ -40,20 +39,22 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_announcement_detail);
 
-        ImageView ivPhoto           = findViewById(R.id.ivPhoto);
-        TextView tvCategory         = findViewById(R.id.tvCategory);
-        TextView tvTitle            = findViewById(R.id.tvTitle);
-        TextView tvDesc             = findViewById(R.id.tvDesc);
-        TextView tvAvatar           = findViewById(R.id.tvAvatar);
-        TextView tvUserName         = findViewById(R.id.tvUserName);
-        TextView tvDistance         = findViewById(R.id.tvDistance);
-        TextView tvTime             = findViewById(R.id.tvTime);
-        Button btnCall              = findViewById(R.id.btnCall);
-        Button btnChat              = findViewById(R.id.btnChat);
-        Button btnDirection         = findViewById(R.id.btnDirection); // ✅ NEW
-        ImageView btnBack           = findViewById(R.id.btnBack);
+        // Bind views
+        ImageView    ivPhoto       = findViewById(R.id.ivPhoto);
+        TextView     tvCategory    = findViewById(R.id.tvCategory);
+        TextView     tvTitle       = findViewById(R.id.tvTitle);
+        TextView     tvDesc        = findViewById(R.id.tvDesc);
+        TextView     tvAvatar      = findViewById(R.id.tvAvatar);
+        TextView     tvUserName    = findViewById(R.id.tvUserName);
+        TextView     tvDistance    = findViewById(R.id.tvDistance);
+        TextView     tvTime        = findViewById(R.id.tvTime);
+        Button       btnCall       = findViewById(R.id.btnCall);
+        Button       btnChat       = findViewById(R.id.btnChat);
+        Button       btnDirection  = findViewById(R.id.btnDirection);
+        ImageView    btnBack       = findViewById(R.id.btnBack);
         MaterialButton btnPlayAudio = findViewById(R.id.btnPlayAudio);
 
+        // Read intent extras
         String title    = getIntent().getStringExtra(EXTRA_TITLE);
         String desc     = getIntent().getStringExtra(EXTRA_DESC);
         String category = getIntent().getStringExtra(EXTRA_CATEGORY);
@@ -64,62 +65,79 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
         String distance = getIntent().getStringExtra(EXTRA_DISTANCE);
         String time     = getIntent().getStringExtra(EXTRA_TIME);
         String otherUid = getIntent().getStringExtra(EXTRA_OTHER_UID);
-        // ✅ NEW: get lat/lng
         double destLat  = getIntent().getDoubleExtra(EXTRA_LAT, 0.0);
         double destLng  = getIntent().getDoubleExtra(EXTRA_LNG, 0.0);
 
-        tvCategory.setText(safe(category));
-        tvTitle.setText(safe(title));
-        tvDesc.setText(safe(desc));
-        tvUserName.setText(safe(userName));
-        tvDistance.setText(safe(distance));
-        tvTime.setText(safe(time));
+        // Populate views safely
+        if (tvCategory != null) tvCategory.setText(safe(category));
+        if (tvTitle    != null) tvTitle.setText(safe(title));
+        if (tvDesc     != null) tvDesc.setText(safe(desc));
+        if (tvUserName != null) tvUserName.setText(safe(userName));
+        if (tvDistance != null) tvDistance.setText(safe(distance));
+        if (tvTime     != null) tvTime.setText(safe(time));
 
-        String nm = safe(userName);
-        tvAvatar.setText(nm.isEmpty() ? "U" :
-                String.valueOf(Character.toUpperCase(nm.charAt(0))));
-
-        if (imageUrl != null && !imageUrl.isEmpty()) {
-            ivPhoto.setVisibility(View.VISIBLE);
-            Glide.with(this)
-                    .load(imageUrl)
-                    .centerCrop()
-                    .placeholder(android.R.drawable.ic_menu_gallery)
-                    .into(ivPhoto);
-        } else {
-            ivPhoto.setVisibility(View.GONE);
+        if (tvAvatar != null) {
+            String nm = safe(userName);
+            tvAvatar.setText(nm.isEmpty() ? "U" :
+                    String.valueOf(Character.toUpperCase(nm.charAt(0))));
         }
 
-        // Audio play button
-        if (audioUrl != null && !audioUrl.isEmpty()) {
-            if (btnPlayAudio != null) {
+        // Image
+        if (ivPhoto != null) {
+            if (imageUrl != null && !imageUrl.isEmpty()) {
+                ivPhoto.setVisibility(View.VISIBLE);
+                Glide.with(this)
+                        .load(imageUrl)
+                        .centerCrop()
+                        .placeholder(android.R.drawable.ic_menu_gallery)
+                        .into(ivPhoto);
+            } else {
+                ivPhoto.setVisibility(View.GONE);
+            }
+        }
+
+        // Audio button
+        if (btnPlayAudio != null) {
+            if (audioUrl != null && !audioUrl.isEmpty()) {
                 btnPlayAudio.setVisibility(View.VISIBLE);
-                btnPlayAudio.setOnClickListener(v -> toggleAudio(audioUrl, btnPlayAudio));
+                final String finalAudioUrl = audioUrl;
+                btnPlayAudio.setOnClickListener(v -> toggleAudio(finalAudioUrl, btnPlayAudio));
+            } else {
+                btnPlayAudio.setVisibility(View.GONE);
             }
         }
 
-        btnBack.setOnClickListener(v -> finish());
+        // Back button
+        if (btnBack != null) {
+            btnBack.setOnClickListener(v -> finish());
+        }
 
-        btnCall.setOnClickListener(v -> {
-            if (phone == null || phone.isEmpty()) {
-                Toast.makeText(this, "No phone number", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + phone)));
-        });
+        // Call button
+        if (btnCall != null) {
+            btnCall.setOnClickListener(v -> {
+                if (phone == null || phone.isEmpty()) {
+                    Toast.makeText(this, "No phone number", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + phone)));
+            });
+        }
 
-        btnChat.setOnClickListener(v -> {
-            if (otherUid == null || otherUid.isEmpty()) {
-                Toast.makeText(this, "Cannot start chat", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            Intent i = new Intent(this, ChatActivity.class);
-            i.putExtra(ChatActivity.EXTRA_OTHER_UID,  otherUid);
-            i.putExtra(ChatActivity.EXTRA_OTHER_NAME, safe(userName));
-            startActivity(i);
-        });
+        // Chat button
+        if (btnChat != null) {
+            btnChat.setOnClickListener(v -> {
+                if (otherUid == null || otherUid.isEmpty()) {
+                    Toast.makeText(this, "Cannot start chat", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Intent i = new Intent(this, ChatActivity.class);
+                i.putExtra(ChatActivity.EXTRA_OTHER_UID,  otherUid);
+                i.putExtra(ChatActivity.EXTRA_OTHER_NAME, safe(userName));
+                startActivity(i);
+            });
+        }
 
-        // ✅ NEW: Direction button
+        // Direction button — show only if valid coordinates
         if (btnDirection != null) {
             if (destLat != 0.0 || destLng != 0.0) {
                 btnDirection.setVisibility(View.VISIBLE);
@@ -130,7 +148,6 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
         }
     }
 
-    // ✅ NEW: Open Google Maps Navigation
     private void openDirections(double destLat, double destLng) {
         Uri gmmIntentUri = Uri.parse(
                 "google.navigation:q=" + destLat + "," + destLng + "&mode=d");
@@ -140,14 +157,12 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
         if (mapIntent.resolveActivity(getPackageManager()) != null) {
             startActivity(mapIntent);
         } else {
-            // Fallback: browser
             Uri web = Uri.parse("https://www.google.com/maps/dir/?api=1&destination="
                     + destLat + "," + destLng + "&travelmode=driving");
             startActivity(new Intent(Intent.ACTION_VIEW, web));
         }
     }
 
-    // ── Audio toggle ──────────────────────────────────────────────────────────
     private void toggleAudio(String url, MaterialButton btn) {
         if (isPlaying) {
             stopAudio();
@@ -217,5 +232,7 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
         stopAudio();
     }
 
-    private String safe(String s) { return s == null ? "" : s.trim(); }
+    private String safe(String s) {
+        return s == null ? "" : s.trim();
+    }
 }

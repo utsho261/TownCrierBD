@@ -54,7 +54,8 @@
                     android:layout_height="36dp"
                     android:padding="6dp"
                     android:src="@android:drawable/ic_menu_sort_by_size"
-                    app:tint="@android:color/white" />
+                    app:tint="@android:color/white"
+                    android:contentDescription="Filter" />
             </LinearLayout>
 
             <TextView
@@ -69,7 +70,7 @@
 
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- ✅ FABs — fixed position, above bottom sheet, NO anchor to map -->
+    <!-- FABs — positioned above bottom sheet safely -->
     <LinearLayout
         android:id="@+id/fabRow"
         android:layout_width="wrap_content"
@@ -77,15 +78,16 @@
         android:orientation="vertical"
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="440dp"
+        android:layout_marginBottom="250dp"
         android:gravity="center"
-        android:elevation="30dp">
+        android:elevation="16dp">
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/fabMyLoc"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:src="@android:drawable/ic_menu_mylocation"
+            android:contentDescription="My Location"
             app:tint="@android:color/white" />
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -94,6 +96,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:src="@android:drawable/ic_menu_directions"
+            android:contentDescription="Directions"
             app:tint="@android:color/white" />
 
     </LinearLayout>
@@ -102,13 +105,16 @@
     <LinearLayout
         android:id="@+id/bottomSheet"
         android:layout_width="match_parent"
-        android:layout_height="430dp"
+        android:layout_height="wrap_content"
+        android:minHeight="200dp"
         android:orientation="vertical"
         android:background="@android:color/white"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
-        android:paddingBottom="12dp"
-        app:layout_behavior="@string/bottom_sheet_behavior">
+        android:paddingBottom="16dp"
+        app:layout_behavior="@string/bottom_sheet_behavior"
+        app:behavior_hideable="true"
+        app:behavior_peekHeight="0dp">
 
         <!-- Drag handle -->
         <View
@@ -135,7 +141,7 @@
                 android:layout_height="match_parent"
                 android:scaleType="centerCrop"
                 android:visibility="gone"
-                android:contentDescription="@string/app_name" />
+                android:contentDescription="Post image" />
 
             <TextView
                 android:id="@+id/tvBadge"
@@ -159,6 +165,7 @@
                 android:layout_margin="10dp"
                 android:padding="6dp"
                 android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:contentDescription="Close"
                 app:tint="@android:color/white"/>
         </FrameLayout>
 
@@ -169,7 +176,9 @@
             android:text="Title"
             android:textStyle="bold"
             android:textSize="17sp"
-            android:layout_marginTop="8dp" />
+            android:layout_marginTop="8dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"/>
 
         <TextView
             android:id="@+id/tvDesc"
@@ -177,6 +186,8 @@
             android:layout_height="wrap_content"
             android:text="Description..."
             android:layout_marginTop="4dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
             android:maxLines="2"
             android:ellipsize="end"
             android:alpha="0.85"/>
@@ -187,15 +198,17 @@
             android:layout_height="wrap_content"
             android:text="0.0 km away"
             android:layout_marginTop="6dp"
+            android:layout_marginStart="4dp"
             android:textColor="#1976F3"
             android:textStyle="bold"
             android:alpha="0.9"/>
 
-        <!-- ✅ Buttons row: Details + Chat + Call + Direction -->
+        <!-- Buttons: Details + Chat + Call + Direction -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp"
             android:orientation="horizontal">
 
             <Button
@@ -205,6 +218,7 @@
                 android:layout_weight="2"
                 android:text="View Details"
                 android:textSize="13sp"
+                android:textAllCaps="false"
                 android:layout_marginEnd="6dp"/>
 
             <ImageButton
@@ -214,6 +228,7 @@
                 android:layout_marginEnd="6dp"
                 android:background="@android:color/holo_green_light"
                 android:src="@android:drawable/ic_dialog_email"
+                android:contentDescription="Chat"
                 app:tint="@android:color/white"/>
 
             <ImageButton
@@ -223,15 +238,17 @@
                 android:layout_marginEnd="6dp"
                 android:background="@android:color/holo_orange_light"
                 android:src="@android:drawable/ic_menu_call"
+                android:contentDescription="Call"
                 app:tint="@android:color/white" />
 
-            <!-- ✅ NEW: Direction button in bottom sheet -->
+            <!-- Direction button in bottom sheet -->
             <ImageButton
                 android:id="@+id/btnDirectionSheet"
                 android:layout_width="46dp"
                 android:layout_height="46dp"
                 android:background="#FF7A00"
                 android:src="@android:drawable/ic_menu_directions"
+                android:contentDescription="Directions"
                 app:tint="@android:color/white" />
 
         </LinearLayout>

@@ -38,7 +38,6 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyBTW0Gqht1oDxfnt8txbb6K9eTBeWgSyJ4"/>
 
-        <!-- FCM Service -->
         <service
             android:name=".MyFirebaseMessagingService"
             android:exported="false">
@@ -46,6 +45,9 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT"/>
             </intent-filter>
         </service>
+
+        <activity android:name="com.example.towncrierbd.activities.HawkerCategoryActivity"
+            android:windowSoftInputMode="adjustResize"/>
 
         <activity android:name="com.example.towncrierbd.activities.ForgotPasswordActivity"/>
         <activity android:name="com.example.towncrierbd.activities.AnnouncementDetailActivity"/>
@@ -58,8 +60,6 @@
         <activity android:name="com.example.towncrierbd.activities.SignupActivity"/>
         <activity android:name="com.example.towncrierbd.activities.ChatActivity"/>
         <activity android:name="com.example.towncrierbd.activities.InboxActivity"/>
-        <activity android:name="com.example.towncrierbd.activities.HawkerCategoryActivity"
-            android:windowSoftInputMode="adjustResize"/>
 
         <activity
             android:name="com.example.towncrierbd.activities.LoginActivity"

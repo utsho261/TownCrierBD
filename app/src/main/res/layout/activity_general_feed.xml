@@ -7,10 +7,11 @@
     android:background="#F4F7FF">
 
     <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@android:color/transparent"
-        android:fitsSystemWindows="true">
+        android:elevation="0dp">
 
         <!-- No Internet Banner -->
         <TextView
@@ -149,7 +150,7 @@
                 android:layout_weight="1"
                 android:text="Filter by Category"
                 android:textStyle="bold"
-                android:textSize="18sp"
+                android:textSize="16sp"
                 android:textColor="#333333"/>
 
             <TextView
@@ -158,8 +159,10 @@
                 android:layout_height="wrap_content"
                 android:text="Show"
                 android:textStyle="bold"
-                android:textSize="16sp"
-                android:textColor="#1976F3"/>
+                android:textSize="14sp"
+                android:textColor="#1976F3"
+                android:clickable="true"
+                android:focusable="true"/>
         </LinearLayout>
 
         <HorizontalScrollView
@@ -168,7 +171,8 @@
             android:layout_height="wrap_content"
             android:visibility="gone"
             android:paddingStart="12dp"
-            android:paddingEnd="12dp">
+            android:paddingEnd="12dp"
+            android:paddingBottom="8dp">
 
             <com.google.android.material.chip.ChipGroup
                 android:id="@+id/chipGroup"
@@ -191,7 +195,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingBottom="120dp"/>
+            android:paddingBottom="100dp"/>
 
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
@@ -230,22 +234,25 @@
 
     </LinearLayout>
 
-    <!-- ✅ FIXED: BottomNavigationView FIRST (lower z-order) -->
+    <!-- BottomNavigationView -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNav"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
+        android:background="@android:color/white"
+        android:elevation="8dp"
         app:menu="@menu/menu_bottom_nav" />
 
-    <!-- ✅ FIXED: FAB AFTER BottomNav (higher z-order), margin above nav bar -->
+    <!-- FAB above BottomNav -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAdd"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="18dp"
-        android:layout_marginBottom="74dp"
+        android:layout_marginBottom="72dp"
+        android:contentDescription="Add post"
         app:srcCompat="@android:drawable/ic_input_add" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
