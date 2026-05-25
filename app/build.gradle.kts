@@ -37,8 +37,8 @@ dependencies {
     // ✅ DataStore — firebase-messaging এর জন্য দরকার
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
-    implementation(platform("com.google.firebase:firebase-bom:32.7.4"))
-    implementation("com.google.firebase:firebase-auth")
+    implementation(platform("com.google.firebase:firebase-bom:32.3.1"))
+    implementation("com.google.firebase:firebase-auth:22.1.2")
     implementation("com.google.firebase:firebase-database")
     implementation("com.google.firebase:firebase-storage")
     implementation("com.google.firebase:firebase-functions")
