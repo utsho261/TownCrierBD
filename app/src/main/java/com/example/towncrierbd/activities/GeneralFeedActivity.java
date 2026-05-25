@@ -85,6 +85,10 @@ public class GeneralFeedActivity extends AppCompatActivity {
     private String searchQuery = "";
     private double selectedRadius = Constants.FEED_RADIUS_KM;
 
+    // User's preferred categories (set during signup or profile edit)
+    private List<String> myPreferredCategories = new ArrayList<>();
+    private List<String> myPreferredSubcategories = new ArrayList<>();
+
     private NetworkMonitor networkMonitor;
 
     @Override
@@ -207,6 +211,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
                     for (DataSnapshot msgSnap : roomSnap.getChildren()) {
                         String senderId = msgSnap.child("senderId").getValue(String.class);
                         Boolean read    = msgSnap.child("read").getValue(Boolean.class);
+                        // FIX: Only count messages from the OTHER user, not our own
                         if (otherUid.equals(senderId) && (read == null || !read)) totalUnread++;
                     }
                 }
@@ -316,6 +321,10 @@ public class GeneralFeedActivity extends AppCompatActivity {
                 wantRole = Constants.ROLE_ANNOUNCER.equals(myRole)
                         ? Constants.ROLE_USER : Constants.ROLE_ANNOUNCER;
 
+                // Load user's preferred categories for notification filtering
+                myPreferredCategories    = u.getHawkerCategories();
+                myPreferredSubcategories = u.getHawkerSubcategories();
+
                 if (u.getName() != null)
                     tvWelcome.setText("Welcome Back, " + u.getName() + "!");
 
@@ -369,6 +378,23 @@ public class GeneralFeedActivity extends AppCompatActivity {
             String postRole = safe(a.getUserRole());
             if (!wantRole.equals(postRole)) continue;
 
+            // FIX #5/#6: If user has preferred categories set, only show matching posts
+            if (!myPreferredCategories.isEmpty()) {
+                boolean matchesPreference = false;
+                List<String> postCategories = a.getSelectedCategories();
+                if (postCategories != null) {
+                    for (String pc : postCategories) {
+                        if (myPreferredCategories.contains(pc)) { matchesPreference = true; break; }
+                    }
+                }
+                // Also check primary category field
+                if (!matchesPreference) {
+                    String primaryCat = safe(a.getCategory());
+                    if (myPreferredCategories.contains(primaryCat)) matchesPreference = true;
+                }
+                if (!matchesPreference) continue;
+            }
+
             if (!CategoryConfig.CAT_ALL.equals(selectedCategory)) {
                 String c = a.getCategory() == null ? "" : a.getCategory().trim();
                 if (!selectedCategory.equals(c)) continue;
@@ -419,7 +445,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
 
     private void startLiveLocation() {
         if (!isLocationEnabled()) {
-            tvLocationName.setText("Turn ON GPS");
+            if (tvLocationName != null) tvLocationName.setText("Turn ON GPS");
             startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
             return;
         }
@@ -447,7 +473,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
                 locationReady = true;
 
                 String nice = getNiceLocationName(myLat, myLng);
-                tvLocationName.setText(nice);
+                if (tvLocationName != null) tvLocationName.setText(nice);
 
                 updateUserLocationInFirebase(myLat, myLng, nice);
                 adapter.setMyLocation(myLat, myLng);
@@ -501,7 +527,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             startLiveLocation();
         } else if (requestCode == LOCATION_REQ) {
-            tvLocationName.setText("Permission denied");
+            if (tvLocationName != null) tvLocationName.setText("Permission denied");
             Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show();
         }
     }
