@@ -40,22 +40,18 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     private static final int UNIT_MINUTES = 0, UNIT_HOURS = 1, UNIT_DAYS = 2;
     private static final long MIN_MINUTES = 1, MAX_MINUTES = 7 * 24 * 60;
 
-    // ── Step containers ────────────────────────────────────────────────────
     private View   stepCategory, stepProducts, stepDetails;
     private TextView tvStepIndicator, tvPostTypeHeader;
 
-    // Step 1 — Category (from user's profile selection)
     private LinearLayout llCategoryList;
     private final Set<String> selectedCategories = new LinkedHashSet<>();
 
-    // Step 2 — Products (only from user's signup selections)
     private LinearLayout  llProductList;
     private EditText      etCustomCategoryText;
     private final Set<String> selectedProducts      = new LinkedHashSet<>();
     private final Set<String> selectedSubcategories = new LinkedHashSet<>();
     private final List<CheckBox> productCheckBoxes  = new ArrayList<>();
 
-    // Step 3 — Details
     private Spinner  spExpiryUnit;
     private EditText etTitle, etDesc, etExpiryValue;
     private TextView tvExpiryPreview;
@@ -64,19 +60,15 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     private TextView tvImageStatus, tvAudioStatus;
     private View     btnAddImage, btnRecordAudio;
 
-    // Post type
     private String postType = "announcement";
 
-    // Firebase
     private FirebaseAuth      auth;
     private DatabaseReference annRef, userRef;
 
-    // User's profile categories (from signup)
     private List<String> userHawkerCategories    = new ArrayList<>();
     private List<String> userHawkerSubcategories = new ArrayList<>();
     private String       userHawkerOthersName    = "";
 
-    // Media
     private Bitmap            selectedBitmap;
     private AudioRecorderHelper audioRecorder;
     private String            recordedAudioPath;
@@ -95,7 +87,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         userRef = FirebaseDatabase.getInstance().getReference(Constants.DB_USERS);
         audioRecorder = new AudioRecorderHelper(this);
 
-        // ── Bind views ───────────────────────────────────────────────────
         tvStepIndicator  = findViewById(R.id.tvStepIndicator);
         tvPostTypeHeader = findViewById(R.id.tvPostTypeHeader);
         stepCategory     = findViewById(R.id.stepCategory);
@@ -139,13 +130,124 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         setupLaunchers();
         setupExpiryUI();
 
-        // Load user profile first, then build UI
         loadUserProfileThenInit();
         showStep(1);
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // Load user profile (role + hawker categories from signup)
+    // Expiry UI — FIXED: use android.R.layout.simple_spinner_item with dark text
+    // ════════════════════════════════════════════════════════════════════════
+
+    private void setupExpiryUI() {
+        if (spExpiryUnit == null) return;
+
+        String[] units = new String[]{"Minutes", "Hours", "Days"};
+
+        // ✅ FIX: Use simple_spinner_item (black text) instead of spinner_selected_white (white text)
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
+                android.R.layout.simple_spinner_item, units) {
+
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                View v = super.getView(position, convertView, parent);
+                TextView tv = v.findViewById(android.R.id.text1);
+                tv.setTextColor(0xFF111111);   // always dark text — visible on white bg
+                tv.setTextSize(15f);
+                tv.setTypeface(null, Typeface.BOLD);
+                tv.setPadding(dp(12), 0, dp(12), 0);
+                return v;
+            }
+
+            @Override
+            public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                View v = super.getDropDownView(position, convertView, parent);
+                TextView tv = v.findViewById(android.R.id.text1);
+                tv.setTextColor(0xFF111111);
+                tv.setTextSize(15f);
+                tv.setPadding(dp(16), dp(14), dp(16), dp(14));
+                // Highlight selected
+                if (position == spExpiryUnit.getSelectedItemPosition()) {
+                    v.setBackgroundColor(0xFFE3F2FD);
+                } else {
+                    v.setBackgroundColor(0xFFFFFFFF);
+                }
+                return v;
+            }
+        };
+
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spExpiryUnit.setAdapter(adapter);
+        spExpiryUnit.setSelection(UNIT_HOURS); // default to Hours
+
+        if (etExpiryValue != null) {
+            etExpiryValue.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int st, int c, int af) {}
+                @Override public void afterTextChanged(Editable s) {}
+                @Override public void onTextChanged(CharSequence s, int st, int b, int c) {
+                    updateExpiryPreview();
+                }
+            });
+        }
+
+        spExpiryUnit.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
+                updateExpiryPreview();
+            }
+            @Override public void onNothingSelected(AdapterView<?> p) {}
+        });
+    }
+
+    private long getExpiryMillis() {
+        if (etExpiryValue == null) return -1;
+        String raw = etExpiryValue.getText().toString().trim();
+        if (raw.isEmpty()) return -1;
+        double value;
+        try { value = Double.parseDouble(raw); } catch (NumberFormatException e) { return -1; }
+        if (value <= 0) return -1;
+        int unit = (spExpiryUnit != null) ? spExpiryUnit.getSelectedItemPosition() : UNIT_HOURS;
+        long minutes;
+        switch (unit) {
+            case UNIT_MINUTES: minutes = (long) value;            break;
+            case UNIT_DAYS:    minutes = (long)(value * 24 * 60); break;
+            default:           minutes = (long)(value * 60);      break; // UNIT_HOURS
+        }
+        if (minutes < MIN_MINUTES) return -1;
+        if (minutes > MAX_MINUTES) return -2;
+        return minutes * 60_000L;
+    }
+
+    private void updateExpiryPreview() {
+        if (tvExpiryPreview == null) return;
+        long millis = getExpiryMillis();
+        if (millis == -1) {
+            tvExpiryPreview.setText("");
+            tvExpiryPreview.setVisibility(View.GONE);
+            return;
+        }
+        tvExpiryPreview.setVisibility(View.VISIBLE);
+        if (millis == -2) {
+            tvExpiryPreview.setText("⚠️ Maximum 7 days allowed");
+            tvExpiryPreview.setTextColor(0xFFEF4444);
+            tvExpiryPreview.setBackgroundColor(0xFFFEE2E2);
+            return;
+        }
+        tvExpiryPreview.setTextColor(0xFF1976F3);
+        tvExpiryPreview.setBackgroundColor(0xFFE3F2FD);
+        tvExpiryPreview.setText("⏳ Post will expire in " + humanReadable(millis));
+    }
+
+    private String humanReadable(long millis) {
+        long tot = millis / 60_000L;
+        long d = tot / (24 * 60), h = (tot % (24 * 60)) / 60, m = tot % 60;
+        StringBuilder sb = new StringBuilder();
+        if (d > 0) sb.append(d).append(d == 1 ? " day" : " days");
+        if (h > 0) { if (sb.length() > 0) sb.append(" "); sb.append(h).append(h == 1 ? " hour" : " hours"); }
+        if (m > 0) { if (sb.length() > 0) sb.append(" "); sb.append(m).append(m == 1 ? " minute" : " minutes"); }
+        return sb.length() > 0 ? sb.toString() : "less than a minute";
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // Load user profile
     // ════════════════════════════════════════════════════════════════════════
 
     private void loadUserProfileThenInit() {
@@ -161,7 +263,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 postType = Constants.ROLE_ANNOUNCER.equals(role) ? "announcement" : "request";
                 updatePostTypeHeader();
 
-                // Store user's signup-selected categories
                 userHawkerCategories    = u.getHawkerCategories();
                 userHawkerSubcategories = u.getHawkerSubcategories();
                 userHawkerOthersName    = u.getHawkerOthersName();
@@ -203,31 +304,25 @@ public class AddAnnouncementActivity extends AppCompatActivity {
 
     // ════════════════════════════════════════════════════════════════════════
     // STEP 1 — Category selection
-    // Shows ONLY the categories the user selected during signup (if ANNOUNCER)
-    // For General User, shows all categories
     // ════════════════════════════════════════════════════════════════════════
 
     private void buildCategoryStep() {
         if (llCategoryList == null) return;
         llCategoryList.removeAllViews();
 
-        // Determine which categories to show
         List<CategoryConfig.HawkerCategory> categoriesToShow = new ArrayList<>();
 
         if (Constants.ROLE_ANNOUNCER.equals(postType.equals("announcement") ? Constants.ROLE_ANNOUNCER : "")
                 && !userHawkerCategories.isEmpty()) {
-            // ANNOUNCER: only show their signup-selected categories
             for (CategoryConfig.HawkerCategory cat : CategoryConfig.HAWKER_CATEGORIES) {
                 if (userHawkerCategories.contains(cat.name)) {
                     categoriesToShow.add(cat);
                 }
             }
         } else {
-            // General user or no hawker categories set: show all
             categoriesToShow = CategoryConfig.HAWKER_CATEGORIES;
         }
 
-        // If announcer but no categories set (old account), show all
         if (categoriesToShow.isEmpty()) {
             categoriesToShow = CategoryConfig.HAWKER_CATEGORIES;
         }
@@ -256,7 +351,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                     0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
             tvLabel.setLayoutParams(tlp);
 
-            // Count how many items user selected for this category
             int selectedCount = 0;
             for (String sub : userHawkerSubcategories) {
                 for (CategoryConfig.SubGroup g : cat.subGroups) {
@@ -296,7 +390,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             });
         }
 
-        // Add hint for announcer about editing categories
         if ("announcement".equals(postType) && !userHawkerCategories.isEmpty()) {
             TextView tvHint = new TextView(this);
             tvHint.setText("💡 To add more categories, go to Profile → Edit Categories");
@@ -309,8 +402,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
 
     // ════════════════════════════════════════════════════════════════════════
     // STEP 2 — Product selection
-    // ANNOUNCER: only shows items from their signup selections
-    // General User: shows all items
     // ════════════════════════════════════════════════════════════════════════
 
     private void buildProductStep() {
@@ -323,7 +414,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
 
         if (etCustomCategoryText != null) {
             etCustomCategoryText.setVisibility(hasOthers ? View.VISIBLE : View.GONE);
-            // Pre-fill others name if set during signup
             if (hasOthers && !userHawkerOthersName.isEmpty()) {
                 etCustomCategoryText.setHint("e.g. " + userHawkerOthersName);
             }
@@ -335,7 +425,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             if (!selectedCategories.contains(cat.name)) continue;
             if ("Others".equals(cat.name)) continue;
 
-            // Category header
             TextView tvCatHeader = new TextView(this);
             tvCatHeader.setText(cat.emoji + "  " + cat.name);
             tvCatHeader.setTextSize(15);
@@ -348,7 +437,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             llProductList.addView(tvCatHeader);
             anyAdded = true;
 
-            // "Select All" only for non-announcer or announcer with no pre-selections
             boolean hasPreSelected = isAnnouncer && !userHawkerSubcategories.isEmpty();
             if (!hasPreSelected) {
                 TextView tvSelectAll = new TextView(this);
@@ -362,7 +450,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             }
 
             for (CategoryConfig.SubGroup group : cat.subGroups) {
-                // For announcer: only show items they selected during signup
                 List<String> itemsToShow;
                 if (isAnnouncer && !userHawkerSubcategories.isEmpty()) {
                     itemsToShow = new ArrayList<>();
@@ -376,7 +463,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                     itemsToShow = group.items;
                 }
 
-                // Subcategory label
                 TextView tvSub = new TextView(this);
                 tvSub.setText("▸ " + group.groupName);
                 tvSub.setTextSize(12);
@@ -459,78 +545,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // Expiry UI
-    // ════════════════════════════════════════════════════════════════════════
-
-    private void setupExpiryUI() {
-        if (spExpiryUnit == null) return;
-        ArrayAdapter<String> a = new ArrayAdapter<>(this,
-                R.layout.spinner_selected_white, new String[]{"Minutes", "Hours", "Days"});
-        a.setDropDownViewResource(R.layout.spinner_dropdown_dark);
-        spExpiryUnit.setAdapter(a);
-        spExpiryUnit.setSelection(UNIT_HOURS);
-
-        if (etExpiryValue != null) {
-            etExpiryValue.addTextChangedListener(new TextWatcher() {
-                @Override public void beforeTextChanged(CharSequence s, int st, int c, int af) {}
-                @Override public void afterTextChanged(Editable s) {}
-                @Override public void onTextChanged(CharSequence s, int st, int b, int c) {
-                    updateExpiryPreview();
-                }
-            });
-        }
-
-        spExpiryUnit.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
-                updateExpiryPreview();
-            }
-            @Override public void onNothingSelected(AdapterView<?> p) {}
-        });
-    }
-
-    private long getExpiryMillis() {
-        if (etExpiryValue == null) return -1;
-        String raw = etExpiryValue.getText().toString().trim();
-        if (raw.isEmpty()) return -1;
-        double value;
-        try { value = Double.parseDouble(raw); } catch (NumberFormatException e) { return -1; }
-        if (value <= 0) return -1;
-        int unit = spExpiryUnit.getSelectedItemPosition();
-        long minutes;
-        switch (unit) {
-            case UNIT_MINUTES: minutes = (long) value;            break;
-            case UNIT_DAYS:    minutes = (long)(value * 24 * 60); break;
-            default:           minutes = (long)(value * 60);      break;
-        }
-        if (minutes < MIN_MINUTES) return -1;
-        if (minutes > MAX_MINUTES) return -2;
-        return minutes * 60_000L;
-    }
-
-    private void updateExpiryPreview() {
-        if (tvExpiryPreview == null) return;
-        long millis = getExpiryMillis();
-        if (millis == -1) { tvExpiryPreview.setText(""); return; }
-        if (millis == -2) {
-            tvExpiryPreview.setText("⚠️ Maximum 7 days allowed");
-            tvExpiryPreview.setTextColor(0xFFEF4444);
-            return;
-        }
-        tvExpiryPreview.setTextColor(0xFF6B7280);
-        tvExpiryPreview.setText("⏳ Post will expire in " + humanReadable(millis));
-    }
-
-    private String humanReadable(long millis) {
-        long tot = millis / 60_000L;
-        long d = tot / (24 * 60), h = (tot % (24 * 60)) / 60, m = tot % 60;
-        StringBuilder sb = new StringBuilder();
-        if (d > 0) sb.append(d).append(d == 1 ? " day" : " days");
-        if (h > 0) { if (sb.length() > 0) sb.append(" "); sb.append(h).append(h == 1 ? " hour" : " hours"); }
-        if (m > 0) { if (sb.length() > 0) sb.append(" "); sb.append(m).append(m == 1 ? " minute" : " minutes"); }
-        return sb.length() > 0 ? sb.toString() : "less than a minute";
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
     // Publish
     // ════════════════════════════════════════════════════════════════════════
 
@@ -544,7 +558,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         if (desc.isEmpty())  { toast("Description is required"); etDesc.requestFocus(); return; }
 
         long expiryMillis = getExpiryMillis();
-        if (expiryMillis == -1) { toast("Please set an expiry time"); etExpiryValue.requestFocus(); return; }
+        if (expiryMillis == -1) { toast("Please enter a valid expiry time"); etExpiryValue.requestFocus(); return; }
         if (expiryMillis == -2) { toast("Maximum expiry is 7 days"); etExpiryValue.requestFocus(); return; }
 
         String uid = auth.getUid();
@@ -760,7 +774,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             for (int i = 0; i < ll.getChildCount(); i++) {
                 View child = ll.getChildAt(i);
                 if (child instanceof TextView)
-                    ((TextView) child).setText(recording ? "⏹ Stop" : "Audio");
+                    ((TextView) child).setText(recording ? "⏹ Stop" : "Add Audio");
             }
         }
     }
@@ -785,7 +799,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                                 ivPreview.setVisibility(View.VISIBLE);
                                 ivPreview.setImageBitmap(selectedBitmap);
                             }
-                            if (tvImageStatus != null) tvImageStatus.setText("Image selected ✅");
+                            if (tvImageStatus != null) tvImageStatus.setText("✅ Image selected");
                         } catch (IOException e) { toast("Image read failed"); }
                     }
                 });
@@ -799,7 +813,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     private void showImageChooser() {
         new AlertDialog.Builder(this)
                 .setTitle("Add Image")
-                .setItems(new String[]{"Gallery"}, (d, w) -> {
+                .setItems(new String[]{"📷 Gallery"}, (d, w) -> {
                     Intent i = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
                     i.setType("image/*");
                     galleryLauncher.launch(i);
@@ -811,10 +825,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         super.onDestroy();
         if (audioRecorder != null && isRecording) audioRecorder.cancelRecording();
     }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // Helpers
-    // ════════════════════════════════════════════════════════════════════════
 
     private GradientDrawable roundedBg(int color, int radius) {
         GradientDrawable gd = new GradientDrawable();
