@@ -136,10 +136,10 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
             });
         }
 
-        // FAB - ensure it's visible and clickable
+        // ✅ FIX: Use .show() instead of setVisibility + bringToFront
+        // FloatingActionButton.show() properly handles CoordinatorLayout z-ordering
         if (fabAdd != null) {
-            fabAdd.setVisibility(View.VISIBLE);
-            fabAdd.bringToFront();
+            fabAdd.show();
             fabAdd.setOnClickListener(v ->
                     startActivity(new Intent(AnnouncerFeedActivity.this, AddAnnouncementActivity.class)));
         }
@@ -157,12 +157,10 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // Re-ensure FAB is visible on resume
+        // ✅ FIX: .show() re-animates FAB into view if it was hidden
         if (fabAdd != null) {
-            fabAdd.setVisibility(View.VISIBLE);
-            fabAdd.bringToFront();
+            fabAdd.show();
         }
-        // Re-select feed tab
         if (bottomNav != null) {
             bottomNav.setSelectedItemId(R.id.menu_feed);
         }
@@ -326,7 +324,6 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
                     currentUser = u;
                     if (u.getName() != null) {
                         String name = u.getName().trim();
-                        // Show friendly greeting with first name only
                         String firstName = name.contains(" ") ? name.split(" ")[0] : name;
                         if (tvWelcome != null)
                             tvWelcome.setText("Hello, " + firstName + "! 👋");
@@ -383,11 +380,9 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
             if (myUid != null && myUid.equals(a.getUserId())) continue;
             if (a.getExpireAt() > 0 && now > a.getExpireAt()) continue;
 
-            // Announcer sees posts from General Users (requests)
             String postRole = resolvePostRole(a);
             if (!Constants.ROLE_USER.equals(postRole)) continue;
 
-            // If announcer has set categories, only show posts that match
             if (!myHawkerCategories.isEmpty()) {
                 boolean matches = false;
                 String primaryCat = safe(a.getCategory());
@@ -421,10 +416,9 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
             layoutEmpty.setVisibility(out.isEmpty() && locationReady ? View.VISIBLE : View.GONE);
         }
 
-        // Keep FAB visible after data updates
+        // ✅ FIX: .show() is idempotent — safe to call every time
         if (fabAdd != null) {
-            fabAdd.setVisibility(View.VISIBLE);
-            fabAdd.bringToFront();
+            fabAdd.show();
         }
     }
 

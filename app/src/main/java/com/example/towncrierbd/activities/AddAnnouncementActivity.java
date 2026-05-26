@@ -135,7 +135,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // Expiry UI — FIXED: use android.R.layout.simple_spinner_item with dark text
+    // Expiry UI
     // ════════════════════════════════════════════════════════════════════════
 
     private void setupExpiryUI() {
@@ -143,29 +143,32 @@ public class AddAnnouncementActivity extends AppCompatActivity {
 
         String[] units = new String[]{"Minutes", "Hours", "Days"};
 
-        // ✅ FIX: Use simple_spinner_item (black text) instead of spinner_selected_white (white text)
+        // ✅ FIX: Custom adapter — always dark text regardless of spinner background color
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
                 android.R.layout.simple_spinner_item, units) {
 
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
+                // This is the "selected item" view shown inside the spinner box
                 View v = super.getView(position, convertView, parent);
                 TextView tv = v.findViewById(android.R.id.text1);
-                tv.setTextColor(0xFF111111);   // always dark text — visible on white bg
-                tv.setTextSize(15f);
+                tv.setTextColor(0xFF111111);   // ✅ Always dark — visible on white bg
+                tv.setTextSize(16f);
                 tv.setTypeface(null, Typeface.BOLD);
-                tv.setPadding(dp(12), 0, dp(12), 0);
+                tv.setPadding(dp(14), 0, dp(14), 0);
+                tv.setGravity(Gravity.CENTER_VERTICAL);
                 return v;
             }
 
             @Override
             public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                // This is the dropdown list item view
                 View v = super.getDropDownView(position, convertView, parent);
                 TextView tv = v.findViewById(android.R.id.text1);
-                tv.setTextColor(0xFF111111);
+                tv.setTextColor(0xFF111111);   // ✅ Dark text in dropdown
                 tv.setTextSize(15f);
                 tv.setPadding(dp(16), dp(14), dp(16), dp(14));
-                // Highlight selected
+                // Highlight selected item in dropdown
                 if (position == spExpiryUnit.getSelectedItemPosition()) {
                     v.setBackgroundColor(0xFFE3F2FD);
                 } else {
@@ -177,7 +180,13 @@ public class AddAnnouncementActivity extends AppCompatActivity {
 
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spExpiryUnit.setAdapter(adapter);
-        spExpiryUnit.setSelection(UNIT_HOURS); // default to Hours
+        spExpiryUnit.setSelection(UNIT_HOURS); // Default: Hours
+
+        // ✅ FIX: Hide preview on initial load — nothing entered yet
+        if (tvExpiryPreview != null) {
+            tvExpiryPreview.setVisibility(View.GONE);
+            tvExpiryPreview.setText("");
+        }
 
         if (etExpiryValue != null) {
             etExpiryValue.addTextChangedListener(new TextWatcher() {
@@ -212,26 +221,33 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             default:           minutes = (long)(value * 60);      break; // UNIT_HOURS
         }
         if (minutes < MIN_MINUTES) return -1;
-        if (minutes > MAX_MINUTES) return -2;
+        if (minutes > MAX_MINUTES) return -2; // Over limit
         return minutes * 60_000L;
     }
 
     private void updateExpiryPreview() {
         if (tvExpiryPreview == null) return;
         long millis = getExpiryMillis();
+
         if (millis == -1) {
-            tvExpiryPreview.setText("");
+            // Empty or invalid input — hide preview
             tvExpiryPreview.setVisibility(View.GONE);
+            tvExpiryPreview.setText("");
             return;
         }
+
         tvExpiryPreview.setVisibility(View.VISIBLE);
+
         if (millis == -2) {
+            // Over 7 days
             tvExpiryPreview.setText("⚠️ Maximum 7 days allowed");
             tvExpiryPreview.setTextColor(0xFFEF4444);
             tvExpiryPreview.setBackgroundColor(0xFFFEE2E2);
             return;
         }
-        tvExpiryPreview.setTextColor(0xFF1976F3);
+
+        // Valid — show human-readable duration
+        tvExpiryPreview.setTextColor(0xFF1565C0);
         tvExpiryPreview.setBackgroundColor(0xFFE3F2FD);
         tvExpiryPreview.setText("⏳ Post will expire in " + humanReadable(millis));
     }
@@ -558,8 +574,16 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         if (desc.isEmpty())  { toast("Description is required"); etDesc.requestFocus(); return; }
 
         long expiryMillis = getExpiryMillis();
-        if (expiryMillis == -1) { toast("Please enter a valid expiry time"); etExpiryValue.requestFocus(); return; }
-        if (expiryMillis == -2) { toast("Maximum expiry is 7 days"); etExpiryValue.requestFocus(); return; }
+        if (expiryMillis == -1) {
+            toast("Please enter expiry time (e.g. 2 Hours)");
+            if (etExpiryValue != null) etExpiryValue.requestFocus();
+            return;
+        }
+        if (expiryMillis == -2) {
+            toast("Maximum expiry is 7 days");
+            if (etExpiryValue != null) etExpiryValue.requestFocus();
+            return;
+        }
 
         String uid = auth.getUid();
         if (uid == null) return;

@@ -39,7 +39,7 @@
                 android:contentDescription="Close"/>
         </RelativeLayout>
 
-        <!-- Step progress bar -->
+        <!-- Step progress -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -56,46 +56,15 @@
                 android:textColor="#EAF0FF"
                 android:textSize="12sp"/>
 
-            <!-- Visual dots -->
-            <View
-                android:id="@+id/dot1"
-                android:layout_width="10dp"
-                android:layout_height="10dp"
-                android:background="#FFFFFF"/>
-
-            <View
-                android:layout_width="20dp"
-                android:layout_height="2dp"
-                android:background="#FFFFFF"
-                android:alpha="0.4"
-                android:layout_marginStart="4dp"
-                android:layout_marginEnd="4dp"/>
-
-            <View
-                android:id="@+id/dot2"
-                android:layout_width="10dp"
-                android:layout_height="10dp"
-                android:background="#FFFFFF"
-                android:alpha="0.4"/>
-
-            <View
-                android:layout_width="20dp"
-                android:layout_height="2dp"
-                android:background="#FFFFFF"
-                android:alpha="0.4"
-                android:layout_marginStart="4dp"
-                android:layout_marginEnd="4dp"/>
-
-            <View
-                android:id="@+id/dot3"
-                android:layout_width="10dp"
-                android:layout_height="10dp"
-                android:background="#FFFFFF"
-                android:alpha="0.4"/>
+            <View android:layout_width="10dp" android:layout_height="10dp" android:background="#FFFFFF"/>
+            <View android:layout_width="20dp" android:layout_height="2dp" android:background="#FFFFFF" android:alpha="0.4" android:layout_marginStart="4dp" android:layout_marginEnd="4dp"/>
+            <View android:layout_width="10dp" android:layout_height="10dp" android:background="#FFFFFF" android:alpha="0.4"/>
+            <View android:layout_width="20dp" android:layout_height="2dp" android:background="#FFFFFF" android:alpha="0.4" android:layout_marginStart="4dp" android:layout_marginEnd="4dp"/>
+            <View android:layout_width="10dp" android:layout_height="10dp" android:background="#FFFFFF" android:alpha="0.4"/>
         </LinearLayout>
     </LinearLayout>
 
-    <!-- ══ STEP 1: CATEGORY SELECTION ══ -->
+    <!-- ══ STEP 1: CATEGORY ══ -->
     <ScrollView
         android:id="@+id/stepCategory"
         android:layout_width="match_parent"
@@ -143,7 +112,7 @@
         </LinearLayout>
     </ScrollView>
 
-    <!-- ══ STEP 2: PRODUCT / ITEM SELECTION ══ -->
+    <!-- ══ STEP 2: PRODUCTS ══ -->
     <ScrollView
         android:id="@+id/stepProducts"
         android:layout_width="match_parent"
@@ -355,9 +324,9 @@
                 android:textSize="12sp"
                 android:textColor="#4B5563"/>
 
-            <!-- ════════════════════════════════════════ -->
-            <!--        EXPIRY SECTION - FIXED           -->
-            <!-- ════════════════════════════════════════ -->
+            <!-- ════════════════════════════════════════════════ -->
+            <!--  EXPIRY SECTION — FIXED spinner text visibility  -->
+            <!-- ════════════════════════════════════════════════ -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -405,7 +374,7 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
-                    <!-- Number input -->
+                    <!-- Number input (1/3 width) -->
                     <EditText
                         android:id="@+id/etExpiryValue"
                         android:layout_width="0dp"
@@ -415,35 +384,33 @@
                         android:inputType="numberDecimal"
                         android:background="@drawable/bg_input"
                         android:padding="14dp"
-                        android:textSize="20sp"
+                        android:textSize="22sp"
                         android:textStyle="bold"
                         android:textColor="#111111"
                         android:gravity="center"/>
 
                     <Space android:layout_width="10dp" android:layout_height="1dp"/>
 
-                    <!-- Unit selector — styled as card buttons, NOT a spinner -->
-                    <!-- Using RadioGroup so the selected unit is always visible -->
-                    <LinearLayout
+                    <!--
+                        ✅ FIX: Spinner background changed from bg_input (white) + inner Spinner
+                        to direct Spinner with bg_spinner_white. The spinner_selected_white.xml
+                        was using white text — now fixed to dark text (#111111).
+                        Using android:background directly on Spinner for reliable text visibility.
+                    -->
+                    <Spinner
+                        android:id="@+id/spExpiryUnit"
                         android:layout_width="0dp"
                         android:layout_height="60dp"
                         android:layout_weight="2"
-                        android:orientation="horizontal"
-                        android:background="@drawable/bg_input"
-                        android:padding="4dp">
+                        android:background="@drawable/bg_spinner_white"
+                        android:spinnerMode="dropdown"
+                        android:popupBackground="@drawable/bg_spinner_popup_white"
+                        android:paddingStart="4dp"
+                        android:paddingEnd="4dp"/>
 
-                        <Spinner
-                            android:id="@+id/spExpiryUnit"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:background="@android:color/transparent"
-                            android:spinnerMode="dropdown"
-                            android:popupBackground="@drawable/bg_spinner_popup_white"/>
-
-                    </LinearLayout>
                 </LinearLayout>
 
-                <!-- Live preview -->
+                <!-- Live expiry preview — hidden until user types -->
                 <TextView
                     android:id="@+id/tvExpiryPreview"
                     android:layout_width="match_parent"
@@ -455,6 +422,7 @@
                     android:textStyle="bold"
                     android:textColor="#1976F3"
                     android:gravity="center"
+                    android:visibility="gone"
                     android:background="#E3F2FD"/>
 
             </LinearLayout>

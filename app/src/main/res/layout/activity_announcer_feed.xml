@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    ✅ FIX: In CoordinatorLayout, z-order = declaration order.
+    FAB must be declared AFTER BottomNavigationView so it renders on top.
+    Previously FAB was before BottomNav — CoordinatorLayout was drawing BottomNav over FAB.
+-->
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -218,7 +223,27 @@
             android:textColor="#888888"/>
     </LinearLayout>
 
-    <!-- FAB -->
+    <!--
+        ✅ FIX: BottomNav declared BEFORE FAB.
+        In CoordinatorLayout, views declared later are drawn on top.
+        So FAB (declared after) will always be above BottomNav.
+    -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="@android:color/white"
+        android:elevation="8dp"
+        app:menu="@menu/menu_bottom_nav"
+        app:itemIconTint="@android:color/holo_blue_dark"
+        app:itemTextColor="@android:color/holo_blue_dark"/>
+
+    <!--
+        ✅ FIX: FAB declared AFTER BottomNav — higher z-order in CoordinatorLayout.
+        elevation="16dp" ensures it stays above everything.
+        layout_marginBottom="76dp" clears the BottomNav height (56dp) + extra margin.
+    -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAdd"
         android:layout_width="wrap_content"
@@ -226,19 +251,9 @@
         android:layout_gravity="bottom|end"
         android:layout_margin="18dp"
         android:layout_marginBottom="76dp"
+        android:elevation="16dp"
         app:srcCompat="@android:drawable/ic_input_add"
-        app:backgroundTint="#1565C0"/>
-
-    <!-- Bottom Nav -->
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/bottomNav"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:background="@android:color/white"
-        android:elevation="12dp"
-        app:menu="@menu/menu_bottom_nav"
-        app:itemIconTint="@android:color/holo_blue_dark"
-        app:itemTextColor="@android:color/holo_blue_dark"/>
+        app:backgroundTint="#1565C0"
+        android:contentDescription="Add announcement"/>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
