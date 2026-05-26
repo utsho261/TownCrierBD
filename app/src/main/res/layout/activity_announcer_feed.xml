@@ -175,6 +175,8 @@
     </com.google.android.material.appbar.AppBarLayout>
 
     <!-- Feed list -->
+
+    <!-- Empty State -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipeRefresh"
         android:layout_width="match_parent"
@@ -186,10 +188,9 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingBottom="90dp"/>
+            android:paddingBottom="90dp" />
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-    <!-- Empty State -->
     <LinearLayout
         android:id="@+id/layoutEmpty"
         android:layout_width="match_parent"
@@ -239,17 +240,12 @@
         app:itemIconTint="@android:color/holo_blue_dark"
         app:itemTextColor="@android:color/holo_blue_dark"/>
 
-    <!--
-        ✅ FIX: FAB declared AFTER BottomNav — higher z-order in CoordinatorLayout.
-        elevation="16dp" ensures it stays above everything.
-        layout_marginBottom="76dp" clears the BottomNav height (56dp) + extra margin.
-    -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAdd"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:layout_margin="18dp"
+        android:layout_marginEnd="18dp"
         android:layout_marginBottom="76dp"
         android:elevation="16dp"
         app:srcCompat="@android:drawable/ic_input_add"
