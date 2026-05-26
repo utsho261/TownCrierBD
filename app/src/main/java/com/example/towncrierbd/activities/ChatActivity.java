@@ -34,6 +34,10 @@ public class ChatActivity extends AppCompatActivity {
     public static final String EXTRA_OTHER_UID  = "otherUid";
     public static final String EXTRA_OTHER_NAME = "otherName";
 
+    // ✅ FIX: Use "|" as separator — Firebase push keys never contain "|"
+    // Previously "_" was used which exists in Firebase UIDs, breaking inbox room parsing
+    private static final String ROOM_SEP = "|";
+
     private RecyclerView rvMessages;
     private EditText etMessage;
     private View btnSend;
@@ -68,19 +72,16 @@ public class ChatActivity extends AppCompatActivity {
         myUid = FirebaseAuth.getInstance().getUid();
         if (myUid == null) { finish(); return; }
 
-        // ✅ FIX: নিজের সাথে চ্যাট করা যাবে না
         if (myUid.equals(otherUid)) {
             Toast.makeText(this, "Cannot chat with yourself", Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
 
-        // ✅ FIX: chatRoomId — UID compare করে consistent room ID তৈরি করো
-        // UID তে "_" থাকতে পারে তাই separator হিসেবে "_" ব্যবহার করা ঠিক না
-        // বরং lexicographic order maintain করো যাতে দুইদিক থেকে একই room পাওয়া যায়
-        chatRoomId = myUid.compareTo(otherUid) < 0
-                ? myUid + "_" + otherUid
-                : otherUid + "_" + myUid;
+        // ✅ FIX: Use "|" separator — safe because Firebase push keys only contain
+        // [-0-9A-Za-z_] and "|" is not in that set, so splitting on "|" is always correct.
+        // Lexicographic order kept so both sides generate the same roomId.
+        chatRoomId = buildRoomId(myUid, otherUid);
 
         rvMessages     = findViewById(R.id.rvMessages);
         etMessage      = findViewById(R.id.etMessage);
@@ -96,7 +97,6 @@ public class ChatActivity extends AppCompatActivity {
             tvHeaderAvatar.setText(String.valueOf(Character.toUpperCase(nm.charAt(0))));
         }
 
-        // ✅ FIX: myUid pass করো adapter এ — এটাই sent/received ঠিক করে
         adapter = new ChatAdapter(myUid);
         LinearLayoutManager lm = new LinearLayoutManager(this);
         lm.setStackFromEnd(true);
@@ -112,6 +112,40 @@ public class ChatActivity extends AppCompatActivity {
 
         loadMyName();
         listenMessages();
+    }
+
+    /**
+     * ✅ FIX: Central room ID builder — always call this, never construct inline.
+     * Uses "|" separator which cannot appear in Firebase UIDs or push keys.
+     * Lexicographic sort ensures roomId is identical regardless of who opens the chat first.
+     */
+    public static String buildRoomId(String uid1, String uid2) {
+        if (uid1.compareTo(uid2) <= 0) {
+            return uid1 + "|" + uid2;
+        } else {
+            return uid2 + "|" + uid1;
+        }
+    }
+
+    /**
+     * ✅ FIX: Splits a roomId built with "|" separator and returns the other participant's UID.
+     * Returns null if this room does not involve myUid.
+     */
+    public static String getOtherUidFromRoom(String roomId, String myUid) {
+        int sep = roomId.indexOf('|');
+        if (sep < 0) return null;
+        String part1 = roomId.substring(0, sep);
+        String part2 = roomId.substring(sep + 1);
+        if (myUid.equals(part1)) return part2;
+        if (myUid.equals(part2)) return part1;
+        return null; // not my room
+    }
+
+    /**
+     * ✅ FIX: Check if a roomId involves myUid.
+     */
+    public static boolean isMyRoom(String roomId, String myUid) {
+        return getOtherUidFromRoom(roomId, myUid) != null;
     }
 
     private void loadMyName() {
@@ -139,7 +173,7 @@ public class ChatActivity extends AppCompatActivity {
                     if (msg.getId() == null) msg.setId(s.getKey());
                     list.add(msg);
 
-                    // ✅ FIX: অপরজনের message read হিসেবে mark করো
+                    // Mark other person's messages as read
                     if (otherUid.equals(msg.getSenderId()) && !msg.isRead()) {
                         s.getRef().child("read").setValue(true);
                     }
@@ -156,7 +190,6 @@ public class ChatActivity extends AppCompatActivity {
                         Toast.LENGTH_SHORT).show();
             }
         };
-        // ✅ timestamp অনুযায়ী sort করো
         chatRef.orderByChild("timestamp").addValueEventListener(chatListener);
     }
 
@@ -167,11 +200,10 @@ public class ChatActivity extends AppCompatActivity {
         String msgId = chatRef.push().getKey();
         if (msgId == null) return;
 
-        // ✅ FIX: senderId = myUid, receiverId = otherUid সঠিকভাবে set করো
         ChatMessage msg = new ChatMessage(
-                myUid,      // senderId
-                myName,     // senderName
-                otherUid,   // receiverId
+                myUid,
+                myName,
+                otherUid,
                 text,
                 System.currentTimeMillis()
         );

@@ -72,10 +72,10 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     private ValueEventListener feedListener;
     private ValueEventListener unreadListener;
 
-    private final Map<String, String> roleCache = new HashMap<>();
-    private final Set<String> roleFetching = new HashSet<>();
+    private final Map<String, String> roleCache   = new HashMap<>();
+    private final Set<String>         roleFetching = new HashSet<>();
 
-    private String searchQuery = "";
+    private String searchQuery   = "";
     private double selectedRadius = Constants.FEED_RADIUS_KM;
 
     private List<String> myHawkerCategories    = new ArrayList<>();
@@ -109,7 +109,7 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         userRef  = FirebaseDatabase.getInstance().getReference(Constants.DB_USERS);
         chatsRef = FirebaseDatabase.getInstance().getReference(Constants.DB_CHATS);
 
-        ExpiredPostCleaner.cleanExpired();
+        ExpiredPostCleaner.cleanExpired(auth.getUid());
 
         updateRadiusText();
 
@@ -130,14 +130,12 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
 
         if (swipeRefresh != null) {
             swipeRefresh.setOnRefreshListener(() -> {
-                ExpiredPostCleaner.cleanExpired();
+                ExpiredPostCleaner.cleanExpired(auth.getUid());
                 applyAndShow();
                 swipeRefresh.setRefreshing(false);
             });
         }
 
-        // ✅ FIX: Use .show() instead of setVisibility + bringToFront
-        // FloatingActionButton.show() properly handles CoordinatorLayout z-ordering
         if (fabAdd != null) {
             fabAdd.show();
             fabAdd.setOnClickListener(v ->
@@ -157,13 +155,8 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // ✅ FIX: .show() re-animates FAB into view if it was hidden
-        if (fabAdd != null) {
-            fabAdd.show();
-        }
-        if (bottomNav != null) {
-            bottomNav.setSelectedItemId(R.id.menu_feed);
-        }
+        if (fabAdd != null) fabAdd.show();
+        if (bottomNav != null) bottomNav.setSelectedItemId(R.id.menu_feed);
     }
 
     private void setupBottomNav() {
@@ -198,20 +191,16 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
                     String roomId = roomSnap.getKey();
                     if (roomId == null) continue;
 
-                    int sepIdx = roomId.indexOf('_');
-                    if (sepIdx < 0) continue;
-                    String p1 = roomId.substring(0, sepIdx);
-                    String p2 = roomId.substring(sepIdx + 1);
-                    if (!myUid.equals(p1) && !myUid.equals(p2)) continue;
-
-                    String otherUid = myUid.equals(p1) ? p2 : p1;
+                    // ✅ FIX: Use ChatActivity helpers — "|" separator, no "_" splitting bug
+                    if (!ChatActivity.isMyRoom(roomId, myUid)) continue;
+                    String otherUid = ChatActivity.getOtherUidFromRoom(roomId, myUid);
+                    if (otherUid == null) continue;
 
                     for (DataSnapshot msgSnap : roomSnap.getChildren()) {
                         String senderId = msgSnap.child("senderId").getValue(String.class);
-                        Boolean read = msgSnap.child("read").getValue(Boolean.class);
-                        if (otherUid.equals(senderId) && (read == null || !read)) {
-                            totalUnread++;
-                        }
+                        Boolean read    = msgSnap.child("read").getValue(Boolean.class);
+                        // Only count messages from the OTHER user
+                        if (otherUid.equals(senderId) && (read == null || !read)) totalUnread++;
                     }
                 }
 
@@ -242,7 +231,6 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
             if (ContextCompat.checkSelfPermission(this,
                     Manifest.permission.POST_NOTIFICATIONS)
                     != PackageManager.PERMISSION_GRANTED) {
-
                 if (ActivityCompat.shouldShowRequestPermissionRationale(this,
                         Manifest.permission.POST_NOTIFICATIONS)) {
                     new AlertDialog.Builder(this)
@@ -266,7 +254,6 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     private void startNetworkMonitoring() {
         networkMonitor = new NetworkMonitor(this);
         if (!networkMonitor.isConnected()) showNoBanner(true);
-
         networkMonitor.startMonitoring(new NetworkMonitor.NetworkCallback() {
             @Override public void onAvailable() { showNoBanner(false); }
             @Override public void onLost()      { showNoBanner(true);  }
@@ -328,7 +315,6 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
                         if (tvWelcome != null)
                             tvWelcome.setText("Hello, " + firstName + "! 👋");
                     }
-
                     myHawkerCategories    = u.getHawkerCategories();
                     myHawkerSubcategories = u.getHawkerSubcategories();
                 }
@@ -416,10 +402,7 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
             layoutEmpty.setVisibility(out.isEmpty() && locationReady ? View.VISIBLE : View.GONE);
         }
 
-        // ✅ FIX: .show() is idempotent — safe to call every time
-        if (fabAdd != null) {
-            fabAdd.show();
-        }
+        if (fabAdd != null) fabAdd.show();
     }
 
     private String resolvePostRole(Announcement a) {

@@ -85,8 +85,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
     private String searchQuery = "";
     private double selectedRadius = Constants.FEED_RADIUS_KM;
 
-    // User's preferred categories (set during signup or profile edit)
-    private List<String> myPreferredCategories = new ArrayList<>();
+    private List<String> myPreferredCategories    = new ArrayList<>();
     private List<String> myPreferredSubcategories = new ArrayList<>();
 
     private NetworkMonitor networkMonitor;
@@ -119,7 +118,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
         userRef  = FirebaseDatabase.getInstance().getReference(Constants.DB_USERS);
         chatsRef = FirebaseDatabase.getInstance().getReference(Constants.DB_CHATS);
 
-        ExpiredPostCleaner.cleanExpired();
+        ExpiredPostCleaner.cleanExpired(auth.getUid());
 
         fabAdd.setOnClickListener(v ->
                 startActivity(new Intent(this, AddAnnouncementActivity.class)));
@@ -156,7 +155,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
 
         if (swipeRefresh != null) {
             swipeRefresh.setOnRefreshListener(() -> {
-                ExpiredPostCleaner.cleanExpired();
+                ExpiredPostCleaner.cleanExpired(auth.getUid());
                 applyAndShow();
                 swipeRefresh.setRefreshing(false);
             });
@@ -199,22 +198,24 @@ public class GeneralFeedActivity extends AppCompatActivity {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 int totalUnread = 0;
+
                 for (DataSnapshot roomSnap : snapshot.getChildren()) {
                     String roomId = roomSnap.getKey();
                     if (roomId == null) continue;
-                    int sepIdx = roomId.indexOf('_');
-                    if (sepIdx < 0) continue;
-                    String p1 = roomId.substring(0, sepIdx);
-                    String p2 = roomId.substring(sepIdx + 1);
-                    if (!myUid.equals(p1) && !myUid.equals(p2)) continue;
-                    String otherUid = myUid.equals(p1) ? p2 : p1;
+
+                    // ✅ FIX: Use ChatActivity helpers — "|" separator, no "_" splitting bug
+                    if (!ChatActivity.isMyRoom(roomId, myUid)) continue;
+                    String otherUid = ChatActivity.getOtherUidFromRoom(roomId, myUid);
+                    if (otherUid == null) continue;
+
                     for (DataSnapshot msgSnap : roomSnap.getChildren()) {
                         String senderId = msgSnap.child("senderId").getValue(String.class);
                         Boolean read    = msgSnap.child("read").getValue(Boolean.class);
-                        // FIX: Only count messages from the OTHER user, not our own
+                        // Only count messages from the OTHER user
                         if (otherUid.equals(senderId) && (read == null || !read)) totalUnread++;
                     }
                 }
+
                 final int unread = totalUnread;
                 runOnUiThread(() -> {
                     try {
@@ -321,7 +322,6 @@ public class GeneralFeedActivity extends AppCompatActivity {
                 wantRole = Constants.ROLE_ANNOUNCER.equals(myRole)
                         ? Constants.ROLE_USER : Constants.ROLE_ANNOUNCER;
 
-                // Load user's preferred categories for notification filtering
                 myPreferredCategories    = u.getHawkerCategories();
                 myPreferredSubcategories = u.getHawkerSubcategories();
 
@@ -378,7 +378,6 @@ public class GeneralFeedActivity extends AppCompatActivity {
             String postRole = safe(a.getUserRole());
             if (!wantRole.equals(postRole)) continue;
 
-            // FIX #5/#6: If user has preferred categories set, only show matching posts
             if (!myPreferredCategories.isEmpty()) {
                 boolean matchesPreference = false;
                 List<String> postCategories = a.getSelectedCategories();
@@ -387,7 +386,6 @@ public class GeneralFeedActivity extends AppCompatActivity {
                         if (myPreferredCategories.contains(pc)) { matchesPreference = true; break; }
                     }
                 }
-                // Also check primary category field
                 if (!matchesPreference) {
                     String primaryCat = safe(a.getCategory());
                     if (myPreferredCategories.contains(primaryCat)) matchesPreference = true;

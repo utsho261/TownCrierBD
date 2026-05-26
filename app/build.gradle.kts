@@ -1,6 +1,15 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("com.google.gms.google-services")
+}
+
+// ✅ FIX: Read secrets from local.properties instead of hardcoding in source
+// local.properties is already in .gitignore by default in Android projects
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) load(f.inputStream())
 }
 
 android {
@@ -13,12 +22,30 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
+
+        // ✅ Inject secrets as BuildConfig fields — accessible at runtime, not in source
+        buildConfigField("String", "MAPS_API_KEY",
+            "\"${localProps["MAPS_API_KEY"] ?: ""}\"")
+        buildConfigField("String", "CLOUDINARY_CLOUD_NAME",
+            "\"${localProps["CLOUDINARY_CLOUD_NAME"] ?: ""}\"")
+        buildConfigField("String", "CLOUDINARY_UPLOAD_PRESET",
+            "\"${localProps["CLOUDINARY_UPLOAD_PRESET"] ?: ""}\"")
+        buildConfigField("String", "SERVER_URL",
+            "\"${localProps["SERVER_URL"] ?: ""}\"")
+
+        // ✅ Also inject Maps API key for AndroidManifest placeholder
+        manifestPlaceholders["MAPS_API_KEY"] = localProps["MAPS_API_KEY"] ?: ""
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
         }
+    }
+
+    // ✅ Enable BuildConfig generation (disabled by default in AGP 8+)
+    buildFeatures {
+        buildConfig = true
     }
 
     compileOptions {
@@ -33,8 +60,6 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
-
-    // ✅ DataStore — firebase-messaging এর জন্য দরকার
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
     implementation(platform("com.google.firebase:firebase-bom:32.3.1"))

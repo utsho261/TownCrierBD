@@ -39,12 +39,12 @@ public class InboxActivity extends AppCompatActivity {
         public int    unreadCount;
 
         public Conversation(String roomId, String otherUid) {
-            this.roomId = roomId;
-            this.otherUid = otherUid;
-            this.otherName = "";
-            this.lastMessage = "";
+            this.roomId       = roomId;
+            this.otherUid     = otherUid;
+            this.otherName    = "";
+            this.lastMessage  = "";
             this.lastTimestamp = 0;
-            this.unreadCount = 0;
+            this.unreadCount  = 0;
         }
     }
 
@@ -106,13 +106,11 @@ public class InboxActivity extends AppCompatActivity {
         @Override public int getItemCount() { return items.size(); }
 
         private String formatTime(long millis) {
-            long now = System.currentTimeMillis();
+            long now  = System.currentTimeMillis();
             long diff = now - millis;
-            if (diff < 60_000) return "Now";
-            if (diff < 3_600_000) return (diff / 60_000) + "m";
-            if (diff < 86_400_000) {
-                return new SimpleDateFormat("h:mm a", Locale.getDefault()).format(new Date(millis));
-            }
+            if (diff < 60_000)      return "Now";
+            if (diff < 3_600_000)   return (diff / 60_000) + "m";
+            if (diff < 86_400_000)  return new SimpleDateFormat("h:mm a", Locale.getDefault()).format(new Date(millis));
             return new SimpleDateFormat("MMM d", Locale.getDefault()).format(new Date(millis));
         }
 
@@ -131,7 +129,7 @@ public class InboxActivity extends AppCompatActivity {
 
     private RecyclerView rv;
     private InboxAdapter adapter;
-    private View tvEmpty;  // ✅ FIX: TextView থেকে View এ পরিবর্তন করা হয়েছে
+    private View tvEmpty;
     private String myUid;
     private final List<Conversation> conversations = new ArrayList<>();
     private ValueEventListener inboxListener;
@@ -144,8 +142,8 @@ public class InboxActivity extends AppCompatActivity {
         myUid = FirebaseAuth.getInstance().getUid();
         if (myUid == null) { finish(); return; }
 
-        rv = findViewById(R.id.rvInbox);
-        tvEmpty = findViewById(R.id.tvEmpty);  // ✅ FIX: এখন View হিসেবে সঠিকভাবে cast হবে
+        rv      = findViewById(R.id.rvInbox);
+        tvEmpty = findViewById(R.id.tvEmpty);
         rv.setLayoutManager(new LinearLayoutManager(this));
         adapter = new InboxAdapter(myUid);
         rv.setAdapter(adapter);
@@ -176,16 +174,18 @@ public class InboxActivity extends AppCompatActivity {
                     String roomId = roomSnap.getKey();
                     if (roomId == null) continue;
 
-                    if (!isMyRoom(roomId)) continue;
+                    // ✅ FIX: Use ChatActivity helper — correctly splits on "|" separator
+                    // Old code used indexOf('_') which is wrong since Firebase UIDs contain "_"
+                    if (!ChatActivity.isMyRoom(roomId, myUid)) continue;
 
-                    String otherUid = getOtherUid(roomId);
+                    String otherUid = ChatActivity.getOtherUidFromRoom(roomId, myUid);
                     if (otherUid == null || otherUid.isEmpty()) continue;
 
                     Conversation conv = new Conversation(roomId, otherUid);
 
-                    long lastTs = 0;
-                    String lastText = "";
-                    int unreadCount = 0;
+                    long   lastTs    = 0;
+                    String lastText  = "";
+                    int    unreadCount = 0;
 
                     for (DataSnapshot msgSnap : roomSnap.getChildren()) {
                         ChatMessage msg = msgSnap.getValue(ChatMessage.class);
@@ -197,6 +197,7 @@ public class InboxActivity extends AppCompatActivity {
                             lastText = msg.getText() != null ? msg.getText() : "";
                         }
 
+                        // ✅ FIX: Count only messages from the OTHER user that are unread
                         if (otherUid.equals(msg.getSenderId()) && !msg.isRead()) {
                             unreadCount++;
                         }
@@ -221,22 +222,6 @@ public class InboxActivity extends AppCompatActivity {
         FirebaseDatabase.getInstance()
                 .getReference(Constants.DB_CHATS)
                 .addValueEventListener(inboxListener);
-    }
-
-    private boolean isMyRoom(String roomId) {
-        int sepIdx = roomId.indexOf('_');
-        if (sepIdx < 0) return false;
-        String part1 = roomId.substring(0, sepIdx);
-        String part2 = roomId.substring(sepIdx + 1);
-        return myUid.equals(part1) || myUid.equals(part2);
-    }
-
-    private String getOtherUid(String roomId) {
-        int sepIdx = roomId.indexOf('_');
-        if (sepIdx < 0) return null;
-        String part1 = roomId.substring(0, sepIdx);
-        String part2 = roomId.substring(sepIdx + 1);
-        return myUid.equals(part1) ? part2 : part1;
     }
 
     private void resolveNamesAndShow() {

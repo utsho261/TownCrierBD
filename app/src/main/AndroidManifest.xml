@@ -34,9 +34,10 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- ✅ FIX: ${MAPS_API_KEY} — build time এ local.properties থেকে inject হবে -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyBTW0Gqht1oDxfnt8txbb6K9eTBeWgSyJ4"/>
+            android:value="${MAPS_API_KEY}"/>
 
         <service
             android:name=".MyFirebaseMessagingService"
@@ -48,7 +49,6 @@
 
         <activity android:name="com.example.towncrierbd.activities.HawkerCategoryActivity"
             android:windowSoftInputMode="adjustResize"/>
-
         <activity android:name="com.example.towncrierbd.activities.ForgotPasswordActivity"/>
         <activity android:name="com.example.towncrierbd.activities.AnnouncementDetailActivity"/>
         <activity android:name="com.example.towncrierbd.activities.AddAnnouncementActivity"
