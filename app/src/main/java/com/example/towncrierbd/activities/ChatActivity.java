@@ -29,7 +29,7 @@ import com.google.firebase.database.ValueEventListener;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ChatActivity extends AppCompatActivity {
+public class ChatActivity extends BaseActivity {
 
     public static final String EXTRA_OTHER_UID  = "otherUid";
     public static final String EXTRA_OTHER_NAME = "otherName";

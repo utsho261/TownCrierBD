@@ -35,7 +35,7 @@ import com.google.firebase.database.*;
 import java.io.*;
 import java.util.*;
 
-public class AddAnnouncementActivity extends AppCompatActivity {
+public class AddAnnouncementActivity extends BaseActivity {
 
     private static final int UNIT_MINUTES = 0, UNIT_HOURS = 1, UNIT_DAYS = 2;
     private static final long MIN_MINUTES = 1, MAX_MINUTES = 7 * 24 * 60;

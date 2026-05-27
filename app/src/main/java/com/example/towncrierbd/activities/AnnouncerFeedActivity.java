@@ -44,7 +44,7 @@ import com.google.firebase.database.*;
 
 import java.util.*;
 
-public class AnnouncerFeedActivity extends AppCompatActivity {
+public class AnnouncerFeedActivity extends BaseActivity {
 
     private TextView tvWelcome, tvLocationName, tvRadius;
     private RecyclerView rvFeed;

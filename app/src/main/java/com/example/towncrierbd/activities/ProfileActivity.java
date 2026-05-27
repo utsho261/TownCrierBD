@@ -27,7 +27,7 @@ import com.google.firebase.database.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ProfileActivity extends AppCompatActivity {
+public class ProfileActivity extends BaseActivity {
 
     private TextView tvName, tvRole, tvEmail, tvPhone, tvAvatarLarge;
     private Button btnLogout, btnEditProfile, btnEditCategories;

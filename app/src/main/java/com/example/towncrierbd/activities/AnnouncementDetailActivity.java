@@ -16,7 +16,7 @@ import com.bumptech.glide.Glide;
 import com.example.towncrierbd.R;
 import com.google.android.material.button.MaterialButton;
 
-public class AnnouncementDetailActivity extends AppCompatActivity {
+public class AnnouncementDetailActivity extends BaseActivity {
 
     public static final String EXTRA_TITLE      = "title";
     public static final String EXTRA_DESC       = "desc";

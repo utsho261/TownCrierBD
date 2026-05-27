@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">টাউন ক্রায়ার বিডি</string>
+
+    <!-- Common -->
+    <string name="cancel">বাতিল</string>
+    <string name="save">সংরক্ষণ</string>
+    <string name="done">সম্পন্ন</string>
+    <string name="back">পিছনে</string>
+    <string name="delete">মুছুন</string>
+    <string name="edit">সম্পাদনা</string>
+    <string name="details">বিস্তারিত</string>
+    <string name="publish">প্রকাশ করুন</string>
+    <string name="next">পরবর্তী</string>
+    <string name="search_hint">শিরোনাম, বিভাগ দিয়ে খুঁজুন...</string>
+    <string name="nearby">কাছাকাছি</string>
+    <string name="just_now">এইমাত্র</string>
+    <string name="no_internet">⚠️  ইন্টারনেট সংযোগ নেই</string>
+
+    <!-- Login -->
+    <string name="login_title">টাউন ক্রায়ার বিডি</string>
+    <string name="login_subtitle">আপনার এলাকার সাথে সংযুক্ত হন</string>
+    <string name="hint_email_phone">নম্বর বা ইমেইল</string>
+    <string name="hint_password">পাসওয়ার্ড</string>
+    <string name="btn_login">লগইন</string>
+    <string name="go_to_signup">অ্যাকাউন্ট নেই? সাইন আপ করুন</string>
+    <string name="forgot_password">পাসওয়ার্ড ভুলে গেছেন?</string>
+    <string name="wrong_credentials">ভুল ইমেইল বা পাসওয়ার্ড</string>
+    <string name="fields_required">ইমেইল/ফোন এবং পাসওয়ার্ড প্রয়োজন</string>
+    <string name="phone_not_found">ফোন নম্বর পাওয়া যায়নি</string>
+    <string name="wrong_password">ভুল পাসওয়ার্ড</string>
+    <string name="login_failed">লগইন ব্যর্থ হয়েছে</string>
+
+    <!-- Signup -->
+    <string name="signup_title">সাইন আপ</string>
+    <string name="hint_name">আপনার নাম লিখুন</string>
+    <string name="hint_phone">+880 1XXX-XXXXXX</string>
+    <string name="hint_email">example@email.com</string>
+    <string name="hint_dob">জন্ম তারিখ নির্বাচন করুন</string>
+    <string name="i_am_a">আমি একজন</string>
+    <string name="general_user">সাধারণ ব্যবহারকারী</string>
+    <string name="announcer">ঘোষক</string>
+    <string name="btn_signup">সাইন আপ</string>
+    <string name="already_have_account">ইতিমধ্যে অ্যাকাউন্ট আছে? লগইন করুন</string>
+    <string name="name_email_pass_required">নাম, ইমেইল, পাসওয়ার্ড প্রয়োজন</string>
+    <string name="password_min_length">পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে</string>
+    <string name="invalid_email">সঠিক ইমেইল ঠিকানা দিন</string>
+    <string name="creating_account">অ্যাকাউন্ট তৈরি হচ্ছে...</string>
+    <string name="welcome_message">স্বাগতম, %s! 🎉</string>
+    <string name="email_already_used">এই ইমেইল ইতিমধ্যে নিবন্ধিত। লগইন করুন।</string>
+    <string name="signup_failed">সাইন আপ ব্যর্থ হয়েছে</string>
+    <string name="select_categories_to_complete">সাইন আপ সম্পন্ন করতে আপনার বিক্রয় বিভাগ নির্বাচন করুন</string>
+
+    <!-- Forgot Password -->
+    <string name="forgot_password_title">পাসওয়ার্ড ভুলে গেছেন?</string>
+    <string name="forgot_password_subtitle">রিসেট লিঙ্ক পেতে আপনার ইমেইল লিখুন</string>
+    <string name="btn_send_reset">রিসেট লিঙ্ক পাঠান</string>
+    <string name="back_to_login">লগইনে ফিরুন</string>
+    <string name="enter_email">আপনার ইমেইল লিখুন</string>
+    <string name="valid_email_required">সঠিক ইমেইল লিখুন</string>
+    <string name="sending">পাঠানো হচ্ছে...</string>
+    <string name="reset_link_sent">রিসেট লিঙ্ক পাঠানো হয়েছে! আপনার ইমেইল চেক করুন ✅</string>
+
+    <!-- Feed -->
+    <string name="welcome_back">স্বাগতম ফিরে আসায়!</string>
+    <string name="good_day">শুভ দিন!</string>
+    <string name="see_nearby">কাছাকাছি কী হচ্ছে দেখুন</string>
+    <string name="detecting_location">অবস্থান শনাক্ত হচ্ছে...</string>
+    <string name="your_location">আপনার অবস্থান</string>
+    <string name="within_km">%d কিমির মধ্যে  ▾</string>
+    <string name="filter_by_category">বিভাগ অনুযায়ী ফিল্টার</string>
+    <string name="show">দেখান</string>
+    <string name="hide">লুকান</string>
+    <string name="no_announcements">কাছাকাছি কোনো ঘোষণা নেই</string>
+    <string name="try_expanding">অনুসন্ধান এলাকা বাড়ানোর চেষ্টা করুন</string>
+    <string name="no_posts_nearby">কাছাকাছি কোনো পোস্ট নেই</string>
+    <string name="general_users_appear_here">কাছের সাধারণ ব্যবহারকারীরা এখানে দেখাবে</string>
+    <string name="select_radius">ব্যাসার্ধ নির্বাচন করুন</string>
+    <string name="turn_on_gps">জিপিএস চালু করুন</string>
+    <string name="permission_denied">অনুমতি প্রত্যাখ্যাত</string>
+    <string name="location_permission_denied">অবস্থান অনুমতি প্রত্যাখ্যাত</string>
+    <string name="failed_load_profile">প্রোফাইল লোড ব্যর্থ। ইন্টারনেট চেক করুন।</string>
+    <string name="failed_load_feed">ফিড লোড ব্যর্থ: %s</string>
+
+    <!-- Add Announcement -->
+    <string name="create_announcement">📢 ঘোষণা তৈরি করুন</string>
+    <string name="create_request">📋 অনুরোধ তৈরি করুন</string>
+    <string name="step_indicator">ধাপ %d / ৩</string>
+    <string name="select_categories">বিভাগ নির্বাচন করুন</string>
+    <string name="choose_all_apply">প্রযোজ্য সব নির্বাচন করুন</string>
+    <string name="next_choose_products">পরবর্তী: পণ্য নির্বাচন →</string>
+    <string name="select_products">পণ্য নির্বাচন করুন</string>
+    <string name="buyers_filter_hint">ক্রেতারা নির্দিষ্ট পণ্য দিয়ে ফিল্টার করতে পারবে (ঐচ্ছিক)</string>
+    <string name="next_post_details">পরবর্তী: পোস্টের বিবরণ →</string>
+    <string name="title_required">শিরোনাম *</string>
+    <string name="title_hint">যেমন: আজ তাজা সবজি পাওয়া যাচ্ছে</string>
+    <string name="description_required">বিবরণ *</string>
+    <string name="description_hint">আপনার পোস্ট সম্পর্কে বিস্তারিত লিখুন...</string>
+    <string name="add_image">ছবি যোগ করুন</string>
+    <string name="add_audio">অডিও যোগ করুন</string>
+    <string name="post_expiry">পোস্ট মেয়াদ *</string>
+    <string name="expiry_hint">এই সময়ের পর পোস্ট স্বয়ংক্রিয়ভাবে মুছে যাবে</string>
+    <string name="max_7_days">সর্বোচ্চ ৭ দিন</string>
+    <string name="expiry_value_hint">যেমন: ২</string>
+    <string name="publish_btn">প্রকাশ করুন ✅</string>
+    <string name="please_select_category">অন্তত একটি বিভাগ নির্বাচন করুন</string>
+    <string name="title_required_msg">শিরোনাম প্রয়োজন</string>
+    <string name="description_required_msg">বিবরণ প্রয়োজন</string>
+    <string name="enter_expiry">মেয়াদকাল লিখুন (যেমন: ২ ঘণ্টা)</string>
+    <string name="max_expiry_7_days">সর্বোচ্চ মেয়াদ ৭ দিন</string>
+    <string name="stop_recording_first">আগে রেকর্ডিং বন্ধ করুন</string>
+    <string name="uploading_image">ছবি আপলোড হচ্ছে...</string>
+    <string name="uploading_audio">অডিও আপলোড হচ্ছে...</string>
+    <string name="publishing">প্রকাশ হচ্ছে...</string>
+    <string name="published_success">প্রকাশিত হয়েছে ✅</string>
+    <string name="request_posted">অনুরোধ পোস্ট হয়েছে ✅</string>
+    <string name="location_not_detected">অবস্থান শনাক্ত হয়নি। আগে ফিড খুলুন।</string>
+    <string name="minutes">মিনিট</string>
+    <string name="hours">ঘণ্টা</string>
+    <string name="days">দিন</string>
+    <string name="recording_start">🔴 রেকর্ড হচ্ছে... থামাতে আবার ট্যাপ করুন</string>
+    <string name="audio_recorded">✅ অডিও রেকর্ড হয়েছে</string>
+    <string name="audio_selected">✅ অডিও ফাইল নির্বাচিত</string>
+    <string name="image_selected">✅ ছবি নির্বাচিত</string>
+    <string name="please_wait">অপেক্ষা করুন...</string>
+    <string name="stop">⏹ থামুন</string>
+    <string name="record_audio">🎙️ অডিও রেকর্ড</string>
+    <string name="select_audio_file">📁 অডিও ফাইল নির্বাচন</string>
+    <string name="add_audio_title">অডিও যোগ করুন</string>
+    <string name="post_wont_publish_without_expiry">মেয়াদ ছাড়া পোস্ট প্রকাশ হবে না</string>
+    <string name="expiry_preview">⏳ পোস্ট %s পর মেয়াদ শেষ হবে</string>
+    <string name="max_expiry_warning">⚠️ সর্বোচ্চ ৭ দিন অনুমোদিত</string>
+
+    <!-- Announcement Detail -->
+    <string name="play_audio">🔊 অডিও চালান</string>
+    <string name="stop_audio">⏹ অডিও থামান</string>
+    <string name="call">📞 কল করুন</string>
+    <string name="chat">💬 চ্যাট</string>
+    <string name="get_directions">🧭 দিকনির্দেশনা পান</string>
+    <string name="no_phone_number">ফোন নম্বর নেই</string>
+    <string name="cannot_start_chat">চ্যাট শুরু করা যাচ্ছে না</string>
+    <string name="loading_audio">অডিও লোড হচ্ছে...</string>
+    <string name="playing">▶ চলছে</string>
+    <string name="playback_error">প্লেব্যাক ত্রুটি</string>
+    <string name="cannot_play_audio">অডিও চালানো সম্ভব না</string>
+
+    <!-- Chat -->
+    <string name="messages_title">বার্তা</string>
+    <string name="type_message">বার্তা লিখুন...</string>
+    <string name="invalid_chat">অবৈধ চ্যাট</string>
+    <string name="cannot_chat_yourself">নিজের সাথে চ্যাট করা যাবে না</string>
+    <string name="send_failed">পাঠানো ব্যর্থ: %s</string>
+
+    <!-- Inbox -->
+    <string name="no_messages_yet">এখনো কোনো বার্তা নেই</string>
+    <string name="chat_with_announcers">যেকোনো পোস্টে চ্যাট ট্যাপ করে ঘোষকের সাথে কথা বলুন</string>
+    <string name="tap_to_chat">চ্যাট করতে ট্যাপ করুন</string>
+
+    <!-- Profile -->
+    <string name="my_posts">আমার পোস্ট</string>
+    <string name="edit_profile">প্রোফাইল সম্পাদনা</string>
+    <string name="logout">লগআউট</string>
+    <string name="edit_categories">🛒 বিক্রয় বিভাগ সম্পাদনা</string>
+    <string name="name_label">নাম</string>
+    <string name="phone_label">ফোন</string>
+    <string name="name_cannot_empty">নাম খালি রাখা যাবে না</string>
+    <string name="profile_updated">প্রোফাইল আপডেট হয়েছে ✅</string>
+    <string name="categories_updated">বিভাগ আপডেট হয়েছে ✅</string>
+    <string name="profile_not_loaded">প্রোফাইল এখনো লোড হয়নি</string>
+    <string name="updated_success">আপডেট হয়েছে ✅</string>
+    <string name="deleted_success">মুছে গেছে ✅</string>
+    <string name="delete_failed">মুছতে ব্যর্থ</string>
+    <string name="confirm_delete_title">পোস্ট মুছুন</string>
+    <string name="confirm_delete_msg">আপনি কি এই পোস্টটি মুছতে চান?</string>
+    <string name="edit_post_title">পোস্ট সম্পাদনা</string>
+    <string name="title_label">শিরোনাম</string>
+    <string name="description_label">বিবরণ</string>
+    <string name="title_cannot_empty">শিরোনাম খালি রাখা যাবে না</string>
+
+    <!-- Maps -->
+    <string name="map_view">মানচিত্র দৃশ্য</string>
+    <string name="nearby_announcements">কাছের ঘোষণাসমূহ</string>
+    <string name="location_not_ready">অবস্থান প্রস্তুত নয়</string>
+    <string name="select_marker_first">আগে একটি মার্কার নির্বাচন করুন</string>
+    <string name="km_away">%.1f কিমি দূরে</string>
+
+    <!-- Category -->
+    <string name="what_do_you_sell">আপনি কী বিক্রি করেন?</string>
+    <string name="buyers_find_you">কাছের ক্রেতারা আপনাকে খুঁজে পাবে</string>
+    <string name="tap_category_hint">বিভাগে ট্যাপ করে নির্বাচন করুন। নির্দিষ্ট পণ্য দেখতে আবার ট্যাপ করুন।</string>
+    <string name="others_category_name">বিভাগের নাম *</string>
+    <string name="others_name_hint">যেমন: ফুলের টব বিক্রেতা</string>
+    <string name="add_items_optional">আপনি যা বিক্রি করেন তা যোগ করুন (ঐচ্ছিক)</string>
+    <string name="type_item_name">একটি পণ্যের নাম লিখুন</string>
+    <string name="add_btn">+ যোগ করুন</string>
+    <string name="select_all_items">✓ %s থেকে সব পণ্য নির্বাচন করুন</string>
+    <string name="done_btn_text">সম্পন্ন  (%s নির্বাচিত) →</string>
+    <string name="please_select_one_category">অন্তত একটি বিভাগ নির্বাচন করুন</string>
+    <string name="enter_others_name">\'অন্যান্য\' বিভাগের জন্য একটি নাম লিখুন</string>
+    <string name="deselected">%s অনির্বাচিত হয়েছে</string>
+    <string name="edit_categories_hint">💡 আরো বিভাগ যোগ করতে, প্রোফাইল → বিভাগ সম্পাদনা তে যান</string>
+    <string name="select_all_from">✓ %s থেকে সব নির্বাচন</string>
+
+    <!-- Expiry time display -->
+    <string name="expires_in_days">⏳ %d দিনে মেয়াদ শেষ</string>
+    <string name="expires_in_hours">⏳ %d ঘণ্টায় মেয়াদ শেষ</string>
+    <string name="expires_in_minutes">⏳ %d মিনিটে মেয়াদ শেষ</string>
+    <string name="expiring_soon">⏳ শীঘ্রই মেয়াদ শেষ</string>
+    <string name="expired">মেয়াদ শেষ</string>
+
+    <!-- Notifications -->
+    <string name="enable_notifications">বিজ্ঞপ্তি সক্ষম করুন</string>
+    <string name="notification_rationale_announce">টাউন ক্রায়ার বিডি কাছাকাছি নতুন ঘোষণা হলে বিজ্ঞপ্তি পাঠায়।</string>
+    <string name="notification_rationale_request">টাউন ক্রায়ার বিডি আপনার বিভাগের নতুন অনুরোধ হলে বিজ্ঞপ্তি পাঠায়।</string>
+    <string name="allow">অনুমতি দিন</string>
+    <string name="not_now">এখন নয়</string>
+
+    <!-- Language toggle -->
+    <string name="switch_to_english">English</string>
+    <string name="switch_to_bangla">বাংলা</string>
+</resources>

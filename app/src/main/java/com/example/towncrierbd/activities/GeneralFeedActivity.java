@@ -49,7 +49,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-public class GeneralFeedActivity extends AppCompatActivity {
+public class GeneralFeedActivity extends BaseActivity {
 
     private TextView tvWelcome, tvLocationName, tvRadius, tvToggleFilter;
     private View scrollChips;
