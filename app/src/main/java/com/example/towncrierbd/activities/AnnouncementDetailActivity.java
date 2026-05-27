@@ -14,6 +14,8 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.bumptech.glide.Glide;
 import com.example.towncrierbd.R;
+import com.example.towncrierbd.utils.AppStrings;
+import com.example.towncrierbd.utils.LanguageManager;
 import com.example.towncrierbd.utils.TranslationHelper;
 import com.google.android.material.button.MaterialButton;
 
@@ -110,9 +112,16 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
 
         // ── ✅ Translate Button ─────────────────────────────────────────────
         if (btnTranslate != null) {
-            // Detect post language and set button label
+            AppStrings strings = AppStrings.get(this);
             boolean isBanglaPost = TranslationHelper.isBangla(originalTitle + originalDesc);
-            btnTranslate.setText(isBanglaPost ? "🌐 English" : "🌐 বাংলা");
+            boolean isViewerBn = !LanguageManager.isEnglish(this);
+
+            if ((isBanglaPost && !isViewerBn) || (!isBanglaPost && isViewerBn)) {
+                btnTranslate.setVisibility(View.VISIBLE);
+                btnTranslate.setText(isBanglaPost ? strings.detailTranslateToEn() : strings.detailTranslateToBn());
+            } else {
+                btnTranslate.setVisibility(View.GONE);
+            }
             btnTranslate.setVisibility(View.VISIBLE);
 
             String langPair = isBanglaPost ? "bn|en" : "en|bn";
@@ -140,7 +149,7 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
                     }
 
                     btnTranslate.setEnabled(false);
-                    btnTranslate.setText("⏳ Translating...");
+                    btnTranslate.setText(strings.detailTranslating());
 
                     String[] fields = {originalCategory, originalTitle, originalDesc};
 
@@ -158,10 +167,10 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
                             if (tvDesc     != null && !translatedDesc.isEmpty())
                                 tvDesc.setText(translatedDesc);
                         } else {
-                            Toast.makeText(this, "Translation failed", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(this, strings.detailTranslateFail(), Toast.LENGTH_SHORT).show();
                         }
                         btnTranslate.setEnabled(true);
-                        btnTranslate.setText(isBanglaPost ? "🌐 বাংলা" : "🌐 English");
+                        btnTranslate.setText(isBanglaPost ? strings.detailTranslateToBn() : strings.detailTranslateToEn());
                     });
                 }
             });

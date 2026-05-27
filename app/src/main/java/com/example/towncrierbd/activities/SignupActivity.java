@@ -314,6 +314,8 @@ public class SignupActivity extends AppCompatActivity {
                         }
                     }
 
+                    LanguageManager.saveToFirebase(SignupActivity.this, uid);
+
                     btnSignup.setEnabled(true);
                     Class<?> dest = Constants.ROLE_ANNOUNCER.equals(user.getRole())
                             ? AnnouncerFeedActivity.class

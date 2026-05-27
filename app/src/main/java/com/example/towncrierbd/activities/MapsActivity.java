@@ -24,6 +24,7 @@ import com.bumptech.glide.Glide;
 import com.example.towncrierbd.R;
 import com.example.towncrierbd.models.Announcement;
 import com.example.towncrierbd.models.UserModel;
+import com.example.towncrierbd.utils.AppStrings;
 import com.example.towncrierbd.utils.Constants;
 import com.example.towncrierbd.utils.DistanceUtil;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -81,7 +82,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private Announcement lastSelected = null;
 
     private ValueEventListener annListener = null;
-
+    AppStrings strings = AppStrings.get(this);
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -215,7 +216,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void requestLocation() {
         if (!isLocationEnabled()) {
-            Toast.makeText(this, "Turn ON GPS", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, strings.mapTurnOnGps(), Toast.LENGTH_SHORT).show();
             startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
             return;
         }
@@ -263,7 +264,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             requestLocation();
         } else if (requestCode == LOCATION_REQ) {
-            Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, strings.mapPermDenied(), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -286,7 +287,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     LatLng me = new LatLng(myLat, myLng);
                     mMap.addMarker(new MarkerOptions()
                             .position(me)
-                            .title("You")
+                            .title(strings.mapYou())
                             .icon(BitmapDescriptorFactory.defaultMarker(
                                     BitmapDescriptorFactory.HUE_AZURE)));
                 }
@@ -340,7 +341,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (tvBadge != null) {
             String badge = safe(a.getDisplayCategoryLabel());
             if (badge.isEmpty()) badge = safe(a.getCategory());
-            if (badge.isEmpty()) badge = "Category";
+            if (badge.isEmpty()) badge = strings.mapCategory();
             tvBadge.setText(badge);
         }
 
@@ -350,9 +351,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (tvDistance != null) {
             if (hasMyLoc) {
                 double d = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
-                tvDistance.setText(String.format(Locale.getDefault(), "%.1f km away", d));
+                tvDistance.setText(String.format(Locale.getDefault(),  strings.mapKmAway(d), d));
             } else {
-                tvDistance.setText("Nearby");
+                tvDistance.setText(strings.nearby());
             }
         }
 
@@ -377,7 +378,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             btnCall.setOnClickListener(v -> {
                 String phone = safe(a.getPhone());
                 if (phone.isEmpty()) {
-                    Toast.makeText(this, "No phone number", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this,  strings.mapNoPhone(), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + phone)));
@@ -389,11 +390,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 String postOwnerUid = safe(a.getUserId());
                 String myUidNow     = safe(auth.getUid());
                 if (postOwnerUid.isEmpty()) {
-                    Toast.makeText(this, "Cannot start chat", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, strings.mapCannotChat(), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 if (myUidNow.equals(postOwnerUid)) {
-                    Toast.makeText(this, "Cannot chat with yourself", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, strings.mapChatSelf(), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 Intent i = new Intent(this, ChatActivity.class);
@@ -413,7 +414,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 String dist = "";
                 if (hasMyLoc) {
                     double d = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
-                    dist = String.format(Locale.getDefault(), "%.1f km away", d);
+                    dist = String.format(Locale.getDefault(), strings.mapKmAway(d), d);
                 }
                 Intent intent = new Intent(MapsActivity.this, AnnouncementDetailActivity.class);
                 intent.putExtra(AnnouncementDetailActivity.EXTRA_TITLE,     safe(a.getTitle()));
@@ -438,11 +439,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void openDirectionsToSelected() {
         if (!hasMyLoc) {
-            Toast.makeText(this, "Location not ready", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, strings.mapNoLocation(), Toast.LENGTH_SHORT).show();
             return;
         }
         if (lastSelected == null) {
-            Toast.makeText(this, "Select a marker first", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,  strings.mapSelectMarker(), Toast.LENGTH_SHORT).show();
             return;
         }
         openDirectionsTo(lastSelected.getLat(), lastSelected.getLng());
@@ -469,10 +470,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         long minutes = diff / 60000;
         long hours   = minutes / 60;
         long days    = hours / 24;
-        if (minutes < 1)  return "Just now";
-        if (minutes < 60) return minutes + " min ago";
-        if (hours < 24)   return hours + " hr ago";
-        return days + " day" + (days > 1 ? "s" : "") + " ago";
+        if (minutes < 1)  return strings.justNow();
+        if (minutes < 60) return minutes + strings.timeMinAgo(minutes);
+        if (hours < 24)   return hours + strings.timeHrAgo(hours);
+        return days + " day" + (days > 1 ? "s" : "") + strings.timeDayAgo(days);
     }
 
     private String safe(String s) {

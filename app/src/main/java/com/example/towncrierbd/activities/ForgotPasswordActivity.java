@@ -9,6 +9,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.towncrierbd.R;
+import com.example.towncrierbd.utils.AppStrings;
 import com.google.firebase.auth.FirebaseAuth;
 
 public class ForgotPasswordActivity extends AppCompatActivity {
@@ -16,6 +17,7 @@ public class ForgotPasswordActivity extends AppCompatActivity {
     private EditText etEmail;
     private Button btnSendOTP;
     private FirebaseAuth auth;
+    AppStrings strings = AppStrings.get(this);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,7 +28,6 @@ public class ForgotPasswordActivity extends AppCompatActivity {
         etEmail    = findViewById(R.id.etEmail);
         btnSendOTP = findViewById(R.id.btnSendOTP);
 
-        // ✅ FIXED: tvBackToLogin click listener was missing
         TextView tvBackToLogin = findViewById(R.id.tvBackToLogin);
         if (tvBackToLogin != null) {
             tvBackToLogin.setOnClickListener(v -> finish());
@@ -39,26 +40,26 @@ public class ForgotPasswordActivity extends AppCompatActivity {
         String email = etEmail.getText().toString().trim();
 
         if (email.isEmpty()) {
-            toast("Please enter your email");
+            toast(strings.forgotEnterEmail());
             return;
         }
 
         if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            toast("Enter a valid email");
+            toast(strings.forgotInvalidEmail());
             return;
         }
 
         btnSendOTP.setEnabled(false);
-        btnSendOTP.setText("Sending...");
+        btnSendOTP.setText(strings.forgotSending());
 
         auth.sendPasswordResetEmail(email)
                 .addOnSuccessListener(v -> {
-                    toast("Reset link sent! Check your email ✅");
+                    toast(strings.forgotSent());
                     finish();
                 })
                 .addOnFailureListener(e -> {
                     btnSendOTP.setEnabled(true);
-                    btnSendOTP.setText("Send Reset Link");
+                    btnSendOTP.setText(strings.forgotSendBtn());
                     toast("Failed: " + e.getMessage());
                 });
     }

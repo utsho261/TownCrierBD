@@ -277,18 +277,19 @@ public class LoginActivity extends AppCompatActivity {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         if (btnLogin != null) btnLogin.setEnabled(true);
-
                         UserModel user = snapshot.getValue(UserModel.class);
                         if (user == null) {
                             goTo(GeneralFeedActivity.class);
                             return;
                         }
 
-                        if (Constants.ROLE_ANNOUNCER.equals(user.getRole())) {
-                            goTo(AnnouncerFeedActivity.class);
-                        } else {
-                            goTo(GeneralFeedActivity.class);
-                        }
+                        LanguageManager.syncFromFirebase(LoginActivity.this, uid, () -> {
+                            if (Constants.ROLE_ANNOUNCER.equals(user.getRole())) {
+                                goTo(AnnouncerFeedActivity.class);
+                            } else {
+                                goTo(GeneralFeedActivity.class);
+                            }
+                        });
                     }
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {

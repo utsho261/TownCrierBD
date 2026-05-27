@@ -103,6 +103,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         AppStrings s = AppStrings.get(context);
         String annId = safe(a.getId());
 
+
         // Badge — show in app's current language if we have a translation cached
         String badgeEn = safe(a.getDisplayCategoryLabel());
         if (badgeEn.isEmpty()) badgeEn = safe(a.getCategory());

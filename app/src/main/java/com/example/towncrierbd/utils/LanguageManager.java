@@ -3,21 +3,8 @@ package com.example.towncrierbd.utils;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-/**
- * LanguageManager — App-wide language preference manager.
- *
- * Supports two languages:
- *   LANG_EN = "en"  → English (default)
- *   LANG_BN = "bn"  → Bangla (বাংলা)
- *
- * Language is stored in SharedPreferences so it persists across sessions.
- * Call setLanguage() from Settings/Profile, and isEnglish() / isBangla()
- * everywhere else to check the current language.
- *
- * Usage:
- *   LanguageManager.setLanguage(context, LanguageManager.LANG_BN);
- *   String title = LanguageManager.isEnglish(context) ? "Feed" : "ফিড";
- */
+import com.google.firebase.database.FirebaseDatabase;
+
 public class LanguageManager {
 
     public static final String LANG_EN = "en";
@@ -58,12 +45,6 @@ public class LanguageManager {
         }
     }
 
-    // ── Pick string based on current language ──────────────────────────────
-
-    /**
-     * Returns en if language is English, bn if Bangla.
-     * Convenience wrapper for all UI text.
-     */
     public static String pick(Context context, String en, String bn) {
         return isEnglish(context) ? en : bn;
     }
@@ -77,4 +58,40 @@ public class LanguageManager {
     public static String getToggleLabel(Context context) {
         return isEnglish(context) ? "Switch to বাংলা" : "Switch to English";
     }
+
+    public static void syncFromFirebase(Context ctx, String uid, Runnable onDone) {
+        FirebaseDatabase.getInstance()
+                .getReference("users")
+                .child(uid)
+                .child("language")
+                .addListenerForSingleValueEvent(new com.google.firebase.database.ValueEventListener() {
+                    @Override
+                    public void onDataChange(@androidx.annotation.NonNull com.google.firebase.database.DataSnapshot snapshot) {
+                        String lang = snapshot.getValue(String.class);
+                        if (lang != null && (lang.equals(LANG_EN) || lang.equals(LANG_BN))) {
+                            setLanguage(ctx, lang);
+                        }
+                        if (onDone != null) onDone.run();
+                    }
+                    @Override
+                    public void onCancelled(@androidx.annotation.NonNull com.google.firebase.database.DatabaseError error) {
+                        if (onDone != null) onDone.run();
+                    }
+                });
+    }
+
+    public static void saveToFirebase(String uid) {
+        if (uid == null || uid.isEmpty()) return;
+    }
+
+    public static void saveToFirebase(Context ctx, String uid) {
+        if (uid == null || uid.isEmpty()) return;
+        String lang = getLanguage(ctx);
+        FirebaseDatabase.getInstance()
+                .getReference("users")
+                .child(uid)
+                .child("language")
+                .setValue(lang);
+    }
+
 }

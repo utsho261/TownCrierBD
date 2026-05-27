@@ -13,6 +13,7 @@ public class UserModel {
     private String locationName;
     private double lat;
     private double lng;
+    private String language = "en";
 
     // ── Hawker profile ─────────────────────────────────────────────────────
     // e.g. ["Vegetable Seller", "Fish Seller", "Others"]
@@ -80,4 +81,7 @@ public class UserModel {
     public void setHawkerOthersName(String hawkerOthersName) {
         this.hawkerOthersName = hawkerOthersName;
     }
+
+    public String getLanguage() { return language == null ? "en" : language; }
+    public void setLanguage(String language) { this.language = language; }
 }

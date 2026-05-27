@@ -110,8 +110,8 @@ public class AppStrings {
     // ══════════════════════════════════════════════════════════════════════
 
     public String feedGoodDay()           { return p("Good day!", "শুভ দিন!"); }
-    public String feedWelcomeBack(String name) { return p("Welcome Back, " + name + "!", "স্বাগতম, " + name + "!"); }
-    public String feedHello(String name)  { return p("Hello, " + name + "! 👋", "হ্যালো, " + name + "! 👋"); }
+    public String feedWelcomeBack() { return p("Welcome Back, ", "স্বাগতম, "); }
+    public String feedHello()  { return p("Hello, ", "হ্যালো, "); }
     public String feedSeeNearby()         { return p("See what's happening nearby", "কাছাকাছি কী হচ্ছে দেখুন"); }
     public String feedNearbyPosts()       { return p("Nearby Posts", "কাছাকাছি পোস্ট"); }
     public String feedYourLocation()      { return p("YOUR LOCATION", "আপনার অবস্থান"); }
@@ -128,7 +128,7 @@ public class AppStrings {
     public String feedEmptyAnnouncerSub() { return p("General users nearby will appear here", "কাছাকাছি সাধারণ ব্যবহারকারীরা এখানে দেখাবে"); }
     public String feedTurnOnGps()         { return p("Turn ON GPS", "GPS চালু করুন"); }
     public String feedPermissionDenied()  { return p("Location permission denied", "লোকেশন অনুমতি নাকচ"); }
-    public String feedLoadFailed(String msg) { return p("Failed to load feed: " + msg, "ফিড লোড ব্যর্থ: " + msg); }
+    public String feedLoadFailed() { return p("Failed to load feed: ", "ফিড লোড ব্যর্থ: "); }
     public String feedProfileFailed()     { return p("Failed to load profile. Check internet.", "প্রোফাইল লোড ব্যর্থ। ইন্টারনেট চেক করুন।"); }
     public String feedSelectRadius()      { return p("Select Radius", "রেডিয়াস নির্বাচন করুন"); }
     public String feedNoInternet()        { return p("⚠️  No internet connection", "⚠️  ইন্টারনেট সংযোগ নেই"); }

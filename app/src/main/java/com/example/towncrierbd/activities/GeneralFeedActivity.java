@@ -31,10 +31,12 @@ import com.example.towncrierbd.R;
 import com.example.towncrierbd.adapters.FeedAdapter;
 import com.example.towncrierbd.models.Announcement;
 import com.example.towncrierbd.models.UserModel;
+import com.example.towncrierbd.utils.AppStrings;
 import com.example.towncrierbd.utils.CategoryConfig;
 import com.example.towncrierbd.utils.Constants;
 import com.example.towncrierbd.utils.DistanceUtil;
 import com.example.towncrierbd.utils.ExpiredPostCleaner;
+import com.example.towncrierbd.utils.LanguageManager;
 import com.example.towncrierbd.utils.NetworkMonitor;
 import com.google.android.gms.location.*;
 import com.google.android.material.badge.BadgeDrawable;
@@ -89,6 +91,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
     private List<String> myPreferredSubcategories = new ArrayList<>();
 
     private NetworkMonitor networkMonitor;
+    AppStrings strings = AppStrings.get(this);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -132,10 +135,10 @@ public class GeneralFeedActivity extends AppCompatActivity {
             tvToggleFilter.setOnClickListener(v -> {
                 if (scrollChips.getVisibility() == View.GONE) {
                     scrollChips.setVisibility(View.VISIBLE);
-                    tvToggleFilter.setText("Hide");
+                    tvToggleFilter.setText(strings.feedHideFilter());
                 } else {
                     scrollChips.setVisibility(View.GONE);
-                    tvToggleFilter.setText("Show");
+                    tvToggleFilter.setText(strings.feedShowFilter());
                 }
             });
         }
@@ -158,6 +161,19 @@ public class GeneralFeedActivity extends AppCompatActivity {
                 ExpiredPostCleaner.cleanExpired(auth.getUid());
                 applyAndShow();
                 swipeRefresh.setRefreshing(false);
+            });
+        }
+
+        TextView tvLangToggle = findViewById(R.id.tvLangToggle);
+        if (tvLangToggle != null) {
+            tvLangToggle.setText(LanguageManager.getToggleLabel(this));
+            tvLangToggle.setOnClickListener(v -> {
+                LanguageManager.toggle(this);
+                // Firebase-এ save করো
+                String uid = auth.getUid();
+                if (uid != null) LanguageManager.saveToFirebase(this, uid);
+                // Activity recreate করো language apply করতে
+                recreate();
             });
         }
 
@@ -290,11 +306,11 @@ public class GeneralFeedActivity extends AppCompatActivity {
     }
 
     private void showRadiusDialog() {
-        String[] options = {"1 km", "3 km", "5 km", "10 km"};
-        double[] values  = {1.0, 3.0, 5.0, 10.0};
+        AppStrings s = AppStrings.get(this);
+        double[] values = {1.0, 3.0, 5.0, 10.0};
         new AlertDialog.Builder(this)
-                .setTitle("Select Radius")
-                .setItems(options, (d, which) -> {
+                .setTitle(s.feedSelectRadius())
+                .setItems(s.feedRadiusOptions(), (d, which) -> {
                     selectedRadius = values[which];
                     updateRadiusText();
                     applyAndShow();
@@ -303,7 +319,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
 
     private void updateRadiusText() {
         if (tvRadius != null)
-            tvRadius.setText("within " + (int) selectedRadius + " km  ▾");
+            tvRadius.setText(AppStrings.get(this).feedWithinKmBanner(selectedRadius));
     }
 
     private void loadMyRoleThenStart() {
@@ -326,16 +342,22 @@ public class GeneralFeedActivity extends AppCompatActivity {
                 myPreferredSubcategories = u.getHawkerSubcategories();
 
                 if (u.getName() != null)
-                    tvWelcome.setText("Welcome Back, " + u.getName() + "!");
+                    tvWelcome.setText(strings.feedWelcomeBack() + u.getName() + "!");
+
+                if (u.getLanguage() != null && !u.getLanguage().isEmpty()) {
+                    LanguageManager.setLanguage(GeneralFeedActivity.this, u.getLanguage());
+                }
 
                 attachFeedListenerOnce();
                 startLiveLocation();
             }
 
+
+
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 Toast.makeText(GeneralFeedActivity.this,
-                        "Failed to load profile. Check internet.", Toast.LENGTH_SHORT).show();
+                        strings.feedProfileFailed() , Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -359,7 +381,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 Toast.makeText(GeneralFeedActivity.this,
-                        "Failed to load feed: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                        strings.feedLoadFailed() + error.getMessage(), Toast.LENGTH_SHORT).show();
             }
         };
         annRef.addValueEventListener(feedListener);
@@ -443,7 +465,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
 
     private void startLiveLocation() {
         if (!isLocationEnabled()) {
-            if (tvLocationName != null) tvLocationName.setText("Turn ON GPS");
+            if (tvLocationName != null) tvLocationName.setText(strings.feedTurnOnGps());
             startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
             return;
         }
@@ -526,7 +548,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
             startLiveLocation();
         } else if (requestCode == LOCATION_REQ) {
             if (tvLocationName != null) tvLocationName.setText("Permission denied");
-            Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, strings.feedPermissionDenied(), Toast.LENGTH_SHORT).show();
         }
     }
 }

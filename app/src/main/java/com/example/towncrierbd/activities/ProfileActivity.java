@@ -87,8 +87,9 @@ public class ProfileActivity extends AppCompatActivity {
         if (tvLangToggle != null) {
             tvLangToggle.setOnClickListener(v -> {
                 LanguageManager.toggle(this);
+                String uid = auth.getUid();
+                if (uid != null) LanguageManager.saveToFirebase(this, uid);
                 applyStrings();
-                // Refresh adapter
                 if (myPostsAdapter != null) myPostsAdapter.notifyDataSetChanged();
             });
         }
