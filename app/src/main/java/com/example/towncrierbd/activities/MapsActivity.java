@@ -49,7 +49,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
-public class MapsActivity extends BaseActivity implements OnMapReadyCallback {
+public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private static final int LOCATION_REQ = 909;
 

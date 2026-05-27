@@ -26,7 +26,7 @@ import java.util.*;
  *   EXTRA_SUBCATEGORIES   -> ArrayList<String>  (selected sub-item names)
  *   EXTRA_OTHERS_NAME     -> String             (custom name if Others selected)
  */
-public class HawkerCategoryActivity extends BaseActivity {
+public class HawkerCategoryActivity extends AppCompatActivity {
 
     public static final String EXTRA_CATEGORIES    = "hawker_categories";
     public static final String EXTRA_SUBCATEGORIES = "hawker_subcategories";

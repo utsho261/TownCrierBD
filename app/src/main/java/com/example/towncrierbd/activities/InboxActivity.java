@@ -28,7 +28,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-public class InboxActivity extends BaseActivity {
+public class InboxActivity extends AppCompatActivity {
 
     public static class Conversation {
         public String roomId;

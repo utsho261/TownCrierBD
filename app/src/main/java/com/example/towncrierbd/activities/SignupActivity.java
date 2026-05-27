@@ -34,7 +34,7 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
-public class SignupActivity extends BaseActivity {
+public class SignupActivity extends AppCompatActivity {
 
     private EditText etName, etPhone, etEmail, etPassword, etDob;
     private RadioButton rbGeneral, rbAnnouncer;

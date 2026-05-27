@@ -11,7 +11,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.example.towncrierbd.R;
 import com.google.firebase.auth.FirebaseAuth;
 
-public class ForgotPasswordActivity extends BaseActivity {
+public class ForgotPasswordActivity extends AppCompatActivity {
 
     private EditText etEmail;
     private Button btnSendOTP;
@@ -39,26 +39,26 @@ public class ForgotPasswordActivity extends BaseActivity {
         String email = etEmail.getText().toString().trim();
 
         if (email.isEmpty()) {
-            toast(getString(R.string.enter_email));
+            toast("Please enter your email");
             return;
         }
 
         if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            toast(getString(R.string.valid_email_required));
+            toast("Enter a valid email");
             return;
         }
 
         btnSendOTP.setEnabled(false);
-        btnSendOTP.setText(getString(R.string.sending));
+        btnSendOTP.setText("Sending...");
 
         auth.sendPasswordResetEmail(email)
                 .addOnSuccessListener(v -> {
-                    toast(getString(R.string.reset_link_sent));
+                    toast("Reset link sent! Check your email ✅");
                     finish();
                 })
                 .addOnFailureListener(e -> {
                     btnSendOTP.setEnabled(true);
-                    btnSendOTP.setText(getString(R.string.btn_send_reset));
+                    btnSendOTP.setText("Send Reset Link");
                     toast("Failed: " + e.getMessage());
                 });
     }
