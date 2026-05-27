@@ -3,11 +3,7 @@ package com.example.towncrierbd.activities;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.LinearLayout;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.widget.*;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -20,7 +16,9 @@ import com.example.towncrierbd.R;
 import com.example.towncrierbd.adapters.FeedAdapter;
 import com.example.towncrierbd.models.Announcement;
 import com.example.towncrierbd.models.UserModel;
+import com.example.towncrierbd.utils.AppStrings;
 import com.example.towncrierbd.utils.Constants;
+import com.example.towncrierbd.utils.LanguageManager;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.*;
 
@@ -31,6 +29,7 @@ public class ProfileActivity extends AppCompatActivity {
 
     private TextView tvName, tvRole, tvEmail, tvPhone, tvAvatarLarge;
     private Button btnLogout, btnEditProfile, btnEditCategories;
+    private TextView tvLangToggle;
     private RecyclerView rvMyPosts;
     private FeedAdapter myPostsAdapter;
 
@@ -55,6 +54,7 @@ public class ProfileActivity extends AppCompatActivity {
         btnLogout         = findViewById(R.id.btnLogout);
         btnEditProfile    = findViewById(R.id.btnEditProfile);
         btnEditCategories = findViewById(R.id.btnEditCategories);
+        tvLangToggle      = findViewById(R.id.tvLangToggle);
         rvMyPosts         = findViewById(R.id.rvMyPosts);
 
         myPostsAdapter = new FeedAdapter(this);
@@ -81,6 +81,18 @@ public class ProfileActivity extends AppCompatActivity {
                     }
                 });
 
+        applyStrings();
+
+        // Language toggle
+        if (tvLangToggle != null) {
+            tvLangToggle.setOnClickListener(v -> {
+                LanguageManager.toggle(this);
+                applyStrings();
+                // Refresh adapter
+                if (myPostsAdapter != null) myPostsAdapter.notifyDataSetChanged();
+            });
+        }
+
         btnLogout.setOnClickListener(v -> {
             auth.signOut();
             Intent intent = new Intent(this, LoginActivity.class);
@@ -97,6 +109,31 @@ public class ProfileActivity extends AppCompatActivity {
 
         loadProfile();
         loadMyPosts();
+    }
+
+    private void applyStrings() {
+        AppStrings s = AppStrings.get(this);
+        if (btnEditProfile    != null) btnEditProfile.setText(s.profileEditBtn());
+        if (btnLogout         != null) btnLogout.setText(s.profileLogout());
+        if (btnEditCategories != null) btnEditCategories.setText(s.profileEditCategories());
+        if (tvLangToggle      != null) tvLangToggle.setText(LanguageManager.getToggleLabel(this));
+
+        // Refresh contact info if user already loaded
+        if (currentUser != null) {
+            tvEmail.setText(s.profileEmailPrefix() + safe(currentUser.getEmail()));
+            tvPhone.setText(s.profilePhonePrefix() + safe(currentUser.getPhone()));
+
+            // Role display
+            String role = safe(currentUser.getRole());
+            if (Constants.ROLE_ANNOUNCER.equals(role)) {
+                tvRole.setText(LanguageManager.isEnglish(this) ? "ANNOUNCER" : "বিক্রেতা/ঘোষক");
+            } else {
+                tvRole.setText(LanguageManager.isEnglish(this) ? "General User" : "সাধারণ ব্যবহারকারী");
+            }
+        }
+
+        TextView tvMyPostsTitle = findViewById(R.id.tvMyPostsTitle);
+        if (tvMyPostsTitle != null) tvMyPostsTitle.setText(s.profileMyPosts());
     }
 
     private void openCategoryEditor() {
@@ -134,7 +171,7 @@ public class ProfileActivity extends AppCompatActivity {
             if (currentUser != null) currentUser.setHawkerOthersName(othersName);
         }
 
-        Toast.makeText(this, "Categories updated ✅", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, AppStrings.get(this).profileCatsUpdated(), Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -162,27 +199,31 @@ public class ProfileActivity extends AppCompatActivity {
                 if (u == null) return;
                 currentUser = u;
 
+                AppStrings s = AppStrings.get(ProfileActivity.this);
                 String name = safe(u.getName());
                 tvName.setText(name);
-                tvRole.setText(safe(u.getRole()));
-                tvEmail.setText("Email: " + safe(u.getEmail()));
-                tvPhone.setText("Phone: " + safe(u.getPhone()));
 
-                // ── Avatar letter ─────────────────────────────────────
+                String role = safe(u.getRole());
+                if (Constants.ROLE_ANNOUNCER.equals(role)) {
+                    tvRole.setText(LanguageManager.isEnglish(ProfileActivity.this) ? "ANNOUNCER" : "বিক্রেতা/ঘোষক");
+                } else {
+                    tvRole.setText(LanguageManager.isEnglish(ProfileActivity.this) ? "General User" : "সাধারণ ব্যবহারকারী");
+                }
+
+                tvEmail.setText(s.profileEmailPrefix() + safe(u.getEmail()));
+                tvPhone.setText(s.profilePhonePrefix() + safe(u.getPhone()));
+
                 if (tvAvatarLarge != null && !name.isEmpty())
-                    tvAvatarLarge.setText(
-                            String.valueOf(Character.toUpperCase(name.charAt(0))));
+                    tvAvatarLarge.setText(String.valueOf(Character.toUpperCase(name.charAt(0))));
 
                 myPostsAdapter.setMyLocation(u.getLat(), u.getLng());
 
-                // Show Edit Categories only for ANNOUNCERs
                 if (btnEditCategories != null) {
                     boolean isAnnouncer = Constants.ROLE_ANNOUNCER.equals(u.getRole());
                     btnEditCategories.setVisibility(
                             isAnnouncer ? android.view.View.VISIBLE : android.view.View.GONE);
                 }
             }
-
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
         });
@@ -207,7 +248,6 @@ public class ProfileActivity extends AppCompatActivity {
                 }
                 myPostsAdapter.setData(list);
             }
-
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
         };
@@ -217,8 +257,10 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     private void showEditProfileDialog() {
+        AppStrings s = AppStrings.get(this);
+
         if (currentUser == null) {
-            Toast.makeText(this, "Profile not loaded yet", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, s.profileNotLoaded(), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -227,13 +269,13 @@ public class ProfileActivity extends AppCompatActivity {
         layout.setPadding(48, 16, 48, 0);
 
         TextView labelName = new TextView(this);
-        labelName.setText("Name");
+        labelName.setText(s.profileLabelName());
         labelName.setTextSize(14);
         EditText etName = new EditText(this);
         etName.setText(currentUser.getName());
 
         TextView labelPhone = new TextView(this);
-        labelPhone.setText("Phone");
+        labelPhone.setText(s.profileLabelPhone());
         labelPhone.setTextSize(14);
         labelPhone.setPadding(0, 16, 0, 0);
         EditText etPhone = new EditText(this);
@@ -246,13 +288,13 @@ public class ProfileActivity extends AppCompatActivity {
         layout.addView(etPhone);
 
         new AlertDialog.Builder(this)
-                .setTitle("Edit Profile")
+                .setTitle(s.profileEditDialogTitle())
                 .setView(layout)
-                .setPositiveButton("Save", (d, w) -> {
+                .setPositiveButton(s.save(), (d, w) -> {
                     String newName  = etName.getText().toString().trim();
                     String newPhone = etPhone.getText().toString().trim();
                     if (newName.isEmpty()) {
-                        Toast.makeText(this, "Name cannot be empty", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, s.profileNameEmpty(), Toast.LENGTH_SHORT).show();
                         return;
                     }
                     String uid = auth.getUid();
@@ -262,14 +304,12 @@ public class ProfileActivity extends AppCompatActivity {
                     currentUser.setName(newName);
                     currentUser.setPhone(newPhone);
                     tvName.setText(newName);
-                    tvPhone.setText("Phone: " + newPhone);
-                    // Also update avatar letter
+                    tvPhone.setText(s.profilePhonePrefix() + newPhone);
                     if (tvAvatarLarge != null && !newName.isEmpty())
-                        tvAvatarLarge.setText(
-                                String.valueOf(Character.toUpperCase(newName.charAt(0))));
-                    Toast.makeText(this, "Profile updated ✅", Toast.LENGTH_SHORT).show();
+                        tvAvatarLarge.setText(String.valueOf(Character.toUpperCase(newName.charAt(0))));
+                    Toast.makeText(this, s.profileUpdated(), Toast.LENGTH_SHORT).show();
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(s.cancel(), null)
                 .show();
     }
 

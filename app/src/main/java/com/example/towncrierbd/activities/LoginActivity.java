@@ -13,7 +13,9 @@ import androidx.appcompat.app.AppCompatDelegate;
 
 import com.example.towncrierbd.R;
 import com.example.towncrierbd.models.UserModel;
+import com.example.towncrierbd.utils.AppStrings;
 import com.example.towncrierbd.utils.Constants;
+import com.example.towncrierbd.utils.LanguageManager;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.*;
@@ -22,7 +24,7 @@ public class LoginActivity extends AppCompatActivity {
 
     private EditText etEmail, etPassword;
     private Button btnLogin;
-    private TextView tvGotoSignup, tvForgotPassword;
+    private TextView tvGotoSignup, tvForgotPassword, tvLangToggle;
 
     private FirebaseAuth auth;
 
@@ -46,6 +48,9 @@ public class LoginActivity extends AppCompatActivity {
         btnLogin         = findViewById(R.id.btnLogin);
         tvGotoSignup     = findViewById(R.id.tvGotoSignup);
         tvForgotPassword = findViewById(R.id.tvForgotPassword);
+        tvLangToggle     = findViewById(R.id.tvLangToggle);
+
+        applyStrings();
 
         btnLogin.setOnClickListener(v -> login());
 
@@ -56,14 +61,35 @@ public class LoginActivity extends AppCompatActivity {
             tvForgotPassword.setOnClickListener(v ->
                     startActivity(new Intent(this, ForgotPasswordActivity.class)));
         }
+
+        // Language toggle button
+        if (tvLangToggle != null) {
+            tvLangToggle.setOnClickListener(v -> {
+                LanguageManager.toggle(this);
+                applyStrings(); // Refresh UI immediately
+            });
+        }
+    }
+
+    /** Apply all UI strings from AppStrings based on current language */
+    private void applyStrings() {
+        AppStrings s = AppStrings.get(this);
+
+        if (etEmail      != null) etEmail.setHint(s.loginHintEmailPhone());
+        if (etPassword   != null) etPassword.setHint(s.loginHintPassword());
+        if (btnLogin     != null) btnLogin.setText(s.loginBtn());
+        if (tvGotoSignup != null) tvGotoSignup.setText(s.loginGoSignup());
+        if (tvForgotPassword != null) tvForgotPassword.setText(s.loginForgot());
+        if (tvLangToggle != null) tvLangToggle.setText(LanguageManager.getToggleLabel(this));
     }
 
     private void login() {
+        AppStrings s = AppStrings.get(this);
         String input = etEmail.getText().toString().trim();
         String pass  = etPassword.getText().toString().trim();
 
         if (input.isEmpty() || pass.isEmpty()) {
-            toast("Email/Phone and Password required");
+            toast(s.loginRequiredFields());
             return;
         }
 
@@ -81,26 +107,18 @@ public class LoginActivity extends AppCompatActivity {
                 .addOnSuccessListener(res -> routeUser())
                 .addOnFailureListener(e -> {
                     btnLogin.setEnabled(true);
-                    toast("Wrong email or password");
+                    toast(AppStrings.get(this).loginWrongCredential());
                 });
     }
 
-    // ✅ FIX: Phone login — normalize করে multiple key formats try করো
     private void loginWithPhone(String phone, String pass) {
-        // Normalize: remove spaces and dashes
         String normalized = phone.trim().replaceAll("[\\s\\-]", "");
-
-        // Build all possible DB key variations
-        // Signup এ phone key store হয় format: phone.replace("+","").replace(".","_")
         String key1 = normalized.replace("+", "").replace(".", "_");
 
-        // Also try: if user typed 01712..., try 8801712...
         String key2 = null;
         if (normalized.startsWith("0") && normalized.length() >= 11) {
             key2 = ("880" + normalized.substring(1)).replace(".", "_");
         }
-
-        // Also try: if user typed +8801712..., try 01712...
         String key3 = null;
         if (normalized.startsWith("+880")) {
             key3 = ("0" + normalized.substring(4)).replace(".", "_");
@@ -111,7 +129,6 @@ public class LoginActivity extends AppCompatActivity {
         final String finalKey2 = key2;
         final String finalKey3 = key3;
 
-        // Try key1 first
         FirebaseDatabase.getInstance()
                 .getReference(Constants.DB_PHONE_MAP)
                 .child(key1)
@@ -123,7 +140,6 @@ public class LoginActivity extends AppCompatActivity {
                             signInWithEmail(email, pass);
                             return;
                         }
-                        // Try key2
                         if (finalKey2 != null) {
                             tryPhoneKey(finalKey2, finalKey3, normalized, pass);
                         } else if (finalKey3 != null) {
@@ -135,7 +151,7 @@ public class LoginActivity extends AppCompatActivity {
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
                         btnLogin.setEnabled(true);
-                        toast("Login failed");
+                        toast(AppStrings.get(LoginActivity.this).loginFailed());
                     }
                 });
     }
@@ -161,17 +177,14 @@ public class LoginActivity extends AppCompatActivity {
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
                         btnLogin.setEnabled(true);
-                        toast("Login failed");
+                        toast(AppStrings.get(LoginActivity.this).loginFailed());
                     }
                 });
     }
 
-    // Final fallback: scan users by phone field directly
     private void loginWithPhoneFallback(String phone, String pass) {
         DatabaseReference usersRef = FirebaseDatabase.getInstance()
                 .getReference(Constants.DB_USERS);
-
-        // Try exact match first
         usersRef.orderByChild("phone").equalTo(phone)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
@@ -185,19 +198,17 @@ public class LoginActivity extends AppCompatActivity {
                                 }
                             }
                         }
-                        // Try alternate formats in users collection
                         tryUserPhoneVariants(phone, pass);
                     }
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
                         btnLogin.setEnabled(true);
-                        toast("Login failed");
+                        toast(AppStrings.get(LoginActivity.this).loginFailed());
                     }
                 });
     }
 
     private void tryUserPhoneVariants(String phone, String pass) {
-        // Build alternate phone format to search
         String altPhone = null;
         if (phone.startsWith("0")) {
             altPhone = "+880" + phone.substring(1);
@@ -209,7 +220,7 @@ public class LoginActivity extends AppCompatActivity {
 
         if (altPhone == null) {
             btnLogin.setEnabled(true);
-            toast("Phone number not found");
+            toast(AppStrings.get(this).loginPhoneNotFound());
             return;
         }
 
@@ -222,7 +233,7 @@ public class LoginActivity extends AppCompatActivity {
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         if (!snapshot.exists()) {
                             btnLogin.setEnabled(true);
-                            toast("Phone number not found");
+                            toast(AppStrings.get(LoginActivity.this).loginPhoneNotFound());
                             return;
                         }
                         for (DataSnapshot s : snapshot.getChildren()) {
@@ -233,23 +244,22 @@ public class LoginActivity extends AppCompatActivity {
                             }
                         }
                         btnLogin.setEnabled(true);
-                        toast("Phone number not found");
+                        toast(AppStrings.get(LoginActivity.this).loginPhoneNotFound());
                     }
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
                         btnLogin.setEnabled(true);
-                        toast("Login failed");
+                        toast(AppStrings.get(LoginActivity.this).loginFailed());
                     }
                 });
     }
 
-    // ✅ Helper: sign in with email (shared by all phone login paths)
     private void signInWithEmail(String email, String pass) {
         auth.signInWithEmailAndPassword(email, pass)
                 .addOnSuccessListener(res -> routeUser())
                 .addOnFailureListener(e -> {
                     btnLogin.setEnabled(true);
-                    toast("Wrong password");
+                    toast(AppStrings.get(this).loginWrongCredential());
                 });
     }
 
@@ -283,7 +293,7 @@ public class LoginActivity extends AppCompatActivity {
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
                         if (btnLogin != null) btnLogin.setEnabled(true);
-                        toast("Login failed");
+                        toast(AppStrings.get(LoginActivity.this).loginFailed());
                     }
                 });
     }

@@ -24,8 +24,10 @@ import com.example.towncrierbd.R;
 import com.example.towncrierbd.activities.AnnouncementDetailActivity;
 import com.example.towncrierbd.activities.ChatActivity;
 import com.example.towncrierbd.models.Announcement;
+import com.example.towncrierbd.utils.AppStrings;
 import com.example.towncrierbd.utils.Constants;
 import com.example.towncrierbd.utils.DistanceUtil;
+import com.example.towncrierbd.utils.LanguageManager;
 import com.example.towncrierbd.utils.TranslationHelper;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.FirebaseDatabase;
@@ -49,12 +51,8 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
     private TextToSpeech tts;
     private MediaPlayer  mediaPlayer;
 
-    // ✅ Translation state: track which cards are showing translated text
-    // Key = announcement ID, Value = true if translated view is shown
-    private final Map<String, Boolean> translatedState = new HashMap<>();
-
-    // ✅ Translation cache per item (title, desc, category)
-    private final Map<String, String[]> translationCache = new HashMap<>();
+    private final Map<String, Boolean>   translatedState   = new HashMap<>();
+    private final Map<String, String[]>  translationCache  = new HashMap<>();
 
     public FeedAdapter(Context context) {
         this.context = context;
@@ -76,18 +74,12 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
     }
 
     public void release() {
-        try {
-            if (tts != null) { tts.stop(); tts.shutdown(); tts = null; }
-        } catch (Exception ignored) {}
-        try {
-            if (mediaPlayer != null) { mediaPlayer.stop(); mediaPlayer.release(); mediaPlayer = null; }
-        } catch (Exception ignored) {}
+        try { if (tts != null) { tts.stop(); tts.shutdown(); tts = null; } } catch (Exception ignored) {}
+        try { if (mediaPlayer != null) { mediaPlayer.stop(); mediaPlayer.release(); mediaPlayer = null; } } catch (Exception ignored) {}
     }
 
     public void setMyLocation(double lat, double lng) {
-        myLat = lat;
-        myLng = lng;
-        hasMyLoc = true;
+        myLat = lat; myLng = lng; hasMyLoc = true;
         notifyDataSetChanged();
     }
 
@@ -108,12 +100,16 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
     @Override
     public void onBindViewHolder(@NonNull VH h, int pos) {
         Announcement a = items.get(pos);
+        AppStrings s = AppStrings.get(context);
         String annId = safe(a.getId());
 
-        // Badge
-        String b = safe(a.getDisplayCategoryLabel());
-        if (h.tvBadge != null)
-            h.tvBadge.setText(b.isEmpty() ? safe(a.getCategory()) : b);
+        // Badge — show in app's current language if we have a translation cached
+        String badgeEn = safe(a.getDisplayCategoryLabel());
+        if (badgeEn.isEmpty()) badgeEn = safe(a.getCategory());
+        String badgeDisplay = LanguageManager.isEnglish(context)
+                ? badgeEn
+                : getCategoryBn(badgeEn);
+        if (h.tvBadge != null) h.tvBadge.setText(badgeDisplay);
 
         if (h.tvTitle != null) h.tvTitle.setText(safe(a.getTitle()));
         if (h.tvDesc  != null) h.tvDesc.setText(safe(a.getDescription()));
@@ -121,14 +117,13 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         String nm = safe(a.getUserName());
         if (h.tvName   != null) h.tvName.setText(nm);
         if (h.tvAvatar != null)
-            h.tvAvatar.setText(nm.isEmpty() ? "U" :
-                    String.valueOf(Character.toUpperCase(nm.charAt(0))));
+            h.tvAvatar.setText(nm.isEmpty() ? "U" : String.valueOf(Character.toUpperCase(nm.charAt(0))));
 
-        if (h.tvTime != null) h.tvTime.setText(getRelativeTime(a.getTime()));
+        if (h.tvTime != null) h.tvTime.setText(getRelativeTime(a.getTime(), s));
 
-        // Expiry countdown
+        // Expiry
         if (h.tvExpiry != null) {
-            String expiry = getExpiryText(a.getExpireAt());
+            String expiry = getExpiryText(a.getExpireAt(), s);
             if (expiry.isEmpty()) {
                 h.tvExpiry.setVisibility(View.GONE);
             } else {
@@ -146,6 +141,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         if (h.tvAudioBadge != null) {
             boolean hasAudio = a.getAudioUrl() != null && !a.getAudioUrl().isEmpty();
             h.tvAudioBadge.setVisibility(hasAudio ? View.VISIBLE : View.GONE);
+            if (hasAudio) h.tvAudioBadge.setText(s.cardAudioBadge());
         }
 
         // Image
@@ -165,27 +161,27 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         if (h.tvDistance != null) {
             if (hasMyLoc) {
                 double d = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
-                h.tvDistance.setText(String.format(Locale.getDefault(), "%.1f km away", d));
+                String fmt = String.format(Locale.getDefault(), "%.1f", d);
+                h.tvDistance.setText(s.cardKmAway(fmt));
             } else {
-                h.tvDistance.setText("Nearby");
+                h.tvDistance.setText(s.nearby());
             }
         }
 
         // ── Translate button ──────────────────────────────────────────────
         if (h.btnTranslate != null) {
             boolean isTranslated = Boolean.TRUE.equals(translatedState.get(annId));
+            boolean isBanglaPost = TranslationHelper.isBangla(safe(a.getTitle()) + safe(a.getDescription()));
 
-            if (TranslationHelper.isBangla(safe(a.getTitle()) + safe(a.getDescription()))) {
-                // Bangla post → show "EN" button
-                h.btnTranslate.setVisibility(View.VISIBLE);
-                h.btnTranslate.setText(isTranslated ? "🌐 বাংলা" : "🌐 English");
+            // Button label: show what it WILL translate TO
+            if (isBanglaPost) {
+                h.btnTranslate.setText(isTranslated ? s.cardTranslateToBn() : s.cardTranslateToEn());
             } else {
-                // English or mixed post → show "BN" button
-                h.btnTranslate.setVisibility(View.VISIBLE);
-                h.btnTranslate.setText(isTranslated ? "🌐 English" : "🌐 বাংলা");
+                h.btnTranslate.setText(isTranslated ? s.cardTranslateToEn() : s.cardTranslateToBn());
             }
+            h.btnTranslate.setVisibility(View.VISIBLE);
 
-            // If already translated, show translated text
+            // Show cached translation if active
             if (isTranslated && translationCache.containsKey(annId)) {
                 String[] cached = translationCache.get(annId);
                 if (cached != null && cached.length >= 3) {
@@ -195,25 +191,22 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                 }
             }
 
+            final String finalBadgeEn = badgeEn;
             h.btnTranslate.setOnClickListener(v -> {
                 boolean currentlyTranslated = Boolean.TRUE.equals(translatedState.get(annId));
 
                 if (currentlyTranslated) {
-                    // ── Toggle back to original ──────────────────────────
+                    // Toggle back to original
                     translatedState.put(annId, false);
-                    if (h.tvBadge != null) h.tvBadge.setText(b.isEmpty() ? safe(a.getCategory()) : b);
+                    String badgeOrig = LanguageManager.isEnglish(context)
+                            ? finalBadgeEn : getCategoryBn(finalBadgeEn);
+                    if (h.tvBadge != null) h.tvBadge.setText(badgeOrig);
                     if (h.tvTitle != null) h.tvTitle.setText(safe(a.getTitle()));
                     if (h.tvDesc  != null) h.tvDesc.setText(safe(a.getDescription()));
-                    if (TranslationHelper.isBangla(safe(a.getTitle()) + safe(a.getDescription()))) {
-                        h.btnTranslate.setText("🌐 English");
-                    } else {
-                        h.btnTranslate.setText("🌐 বাংলা");
-                    }
+                    h.btnTranslate.setText(isBanglaPost ? s.cardTranslateToEn() : s.cardTranslateToBn());
 
                 } else {
-                    // ── Translate ────────────────────────────────────────
                     if (translationCache.containsKey(annId)) {
-                        // Already cached — show immediately
                         String[] cached = translationCache.get(annId);
                         translatedState.put(annId, true);
                         if (cached != null && cached.length >= 3) {
@@ -221,27 +214,18 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                             if (h.tvTitle != null && !cached[1].isEmpty()) h.tvTitle.setText(cached[1]);
                             if (h.tvDesc  != null && !cached[2].isEmpty()) h.tvDesc.setText(cached[2]);
                         }
-                        if (TranslationHelper.isBangla(safe(a.getTitle()) + safe(a.getDescription()))) {
-                            h.btnTranslate.setText("🌐 বাংলা");
-                        } else {
-                            h.btnTranslate.setText("🌐 English");
-                        }
+                        h.btnTranslate.setText(isBanglaPost ? s.cardTranslateToBn() : s.cardTranslateToEn());
                         return;
                     }
 
-                    // Show loading state
                     h.btnTranslate.setEnabled(false);
-                    h.btnTranslate.setText("⏳ Translating...");
+                    h.btnTranslate.setText(s.cardTranslating());
 
-                    // Determine direction
-                    boolean isBanglaPost = TranslationHelper.isBangla(
-                            safe(a.getTitle()) + safe(a.getDescription()));
                     String langPair = isBanglaPost ? "bn|en" : "en|bn";
-
                     String[] fields = {
-                            b.isEmpty() ? safe(a.getCategory()) : b,  // category label
-                            safe(a.getTitle()),                         // title
-                            safe(a.getDescription())                    // description
+                            finalBadgeEn,
+                            safe(a.getTitle()),
+                            safe(a.getDescription())
                     };
 
                     TranslationHelper.translateFields(fields, langPair, results -> {
@@ -256,52 +240,49 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                                 h.tvDesc.setText(results[2]);
                         }
                         h.btnTranslate.setEnabled(true);
-                        h.btnTranslate.setText(isBanglaPost ? "🌐 বাংলা" : "🌐 English");
+                        h.btnTranslate.setText(isBanglaPost ? s.cardTranslateToBn() : s.cardTranslateToEn());
                     });
                 }
             });
         }
 
         if (showEditDelete) {
-            // ── Profile mode ──────────────────────────────────────────────
+            // Profile mode
             if (h.btnListen        != null) h.btnListen.setVisibility(View.GONE);
             if (h.btnChat          != null) h.btnChat.setVisibility(View.GONE);
             if (h.btnCall          != null) h.btnCall.setVisibility(View.GONE);
             if (h.btnDirection     != null) h.btnDirection.setVisibility(View.GONE);
             if (h.layoutEditDelete != null) h.layoutEditDelete.setVisibility(View.VISIBLE);
 
-            if (h.btnEdit != null)
-                h.btnEdit.setOnClickListener(v -> showEditDialog(a, h.getAdapterPosition()));
+            if (h.btnEdit   != null) h.btnEdit.setText(s.cardEdit());
+            if (h.btnDelete != null) h.btnDelete.setText(s.cardDelete());
+            if (h.btnDetails!= null) h.btnDetails.setText(s.cardDetails());
 
+            if (h.btnEdit   != null) h.btnEdit.setOnClickListener(v -> showEditDialog(a, h.getAdapterPosition()));
             if (h.btnDelete != null) {
                 h.btnDelete.setOnClickListener(v ->
                         new AlertDialog.Builder(context)
-                                .setTitle("Delete Post")
-                                .setMessage("Are you sure you want to delete this post?")
-                                .setPositiveButton("Delete", (d, w) -> deletePost(a, h.getAdapterPosition()))
-                                .setNegativeButton("Cancel", null)
+                                .setTitle(s.cardDeleteConfirmTitle())
+                                .setMessage(s.cardDeleteConfirmMsg())
+                                .setPositiveButton(s.delete(), (d, w) -> deletePost(a, h.getAdapterPosition()))
+                                .setNegativeButton(s.cancel(), null)
                                 .show());
             }
-
             if (h.btnDetails != null) h.btnDetails.setOnClickListener(v -> openDetail(a));
 
         } else {
-            // ── Feed mode ─────────────────────────────────────────────────
-            if (h.btnListen        != null) h.btnListen.setVisibility(View.VISIBLE);
-            if (h.btnChat          != null) h.btnChat.setVisibility(View.VISIBLE);
-            if (h.btnCall          != null) h.btnCall.setVisibility(View.VISIBLE);
-            if (h.btnDirection     != null) h.btnDirection.setVisibility(View.VISIBLE);
+            // Feed mode
+            if (h.btnListen        != null) { h.btnListen.setVisibility(View.VISIBLE); h.btnListen.setText(s.cardListen()); }
+            if (h.btnChat          != null) { h.btnChat.setVisibility(View.VISIBLE);   h.btnChat.setText(s.cardChat()); }
+            if (h.btnCall          != null) { h.btnCall.setVisibility(View.VISIBLE);   h.btnCall.setText(s.cardCall()); }
+            if (h.btnDirection     != null) { h.btnDirection.setVisibility(View.VISIBLE); h.btnDirection.setText(s.cardDirection()); }
             if (h.layoutEditDelete != null) h.layoutEditDelete.setVisibility(View.GONE);
 
             if (h.btnCall != null) {
                 h.btnCall.setOnClickListener(v -> {
                     String phone = safe(a.getPhone());
-                    if (phone.isEmpty()) {
-                        Toast.makeText(context, "No phone number", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    context.startActivity(new Intent(Intent.ACTION_DIAL,
-                            Uri.parse("tel:" + phone)));
+                    if (phone.isEmpty()) { Toast.makeText(context, s.cardNoPhone(), Toast.LENGTH_SHORT).show(); return; }
+                    context.startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + phone)));
                 });
             }
 
@@ -309,14 +290,8 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                 h.btnChat.setOnClickListener(v -> {
                     String postOwnerUid = safe(a.getUserId());
                     String myUid = safe(FirebaseAuth.getInstance().getUid());
-                    if (postOwnerUid.isEmpty()) {
-                        Toast.makeText(context, "Cannot start chat", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    if (myUid.equals(postOwnerUid)) {
-                        Toast.makeText(context, "Cannot chat with yourself", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
+                    if (postOwnerUid.isEmpty()) { Toast.makeText(context, s.cardNoChatEmpty(), Toast.LENGTH_SHORT).show(); return; }
+                    if (myUid.equals(postOwnerUid)) { Toast.makeText(context, s.cardNoChatSelf(), Toast.LENGTH_SHORT).show(); return; }
                     Intent i = new Intent(context, ChatActivity.class);
                     i.putExtra(ChatActivity.EXTRA_OTHER_UID,  postOwnerUid);
                     i.putExtra(ChatActivity.EXTRA_OTHER_NAME, safe(a.getUserName()));
@@ -324,16 +299,10 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                 });
             }
 
-            if (h.btnDirection != null) {
-                h.btnDirection.setOnClickListener(v -> openDirections(a.getLat(), a.getLng()));
-            }
-
-            if (h.btnListen != null) {
-                h.btnListen.setOnClickListener(v -> playAudioOrTts(a));
-            }
+            if (h.btnDirection != null) h.btnDirection.setOnClickListener(v -> openDirections(a.getLat(), a.getLng()));
+            if (h.btnListen    != null) h.btnListen.setOnClickListener(v -> playAudioOrTts(a));
         }
 
-        // Card click → Detail
         if (!disableCardClick) {
             h.itemView.setOnClickListener(v -> openDetail(a));
         } else {
@@ -341,17 +310,20 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         }
     }
 
+    /** Try to get Bangla category name; fall back to English if not mapped */
+    private String getCategoryBn(String englishKey) {
+        String bn = com.example.towncrierbd.utils.CategoryConfig.MAIN_BN.get(englishKey);
+        return (bn != null) ? bn : englishKey;
+    }
+
     private void openDirections(double destLat, double destLng) {
-        Uri gmmIntentUri = Uri.parse(
-                "google.navigation:q=" + destLat + "," + destLng + "&mode=d");
+        Uri gmmIntentUri = Uri.parse("google.navigation:q=" + destLat + "," + destLng + "&mode=d");
         Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
         mapIntent.setPackage("com.google.android.apps.maps");
-
         if (mapIntent.resolveActivity(context.getPackageManager()) != null) {
             context.startActivity(mapIntent);
         } else {
-            Uri web = Uri.parse("https://www.google.com/maps/dir/?api=1&destination="
-                    + destLat + "," + destLng + "&travelmode=driving");
+            Uri web = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=" + destLat + "," + destLng + "&travelmode=driving");
             context.startActivity(new Intent(Intent.ACTION_VIEW, web));
         }
     }
@@ -367,54 +339,50 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
     }
 
     private void playRemoteAudio(String url) {
+        AppStrings s = AppStrings.get(context);
         if (mediaPlayer != null) {
             try { mediaPlayer.stop(); mediaPlayer.release(); } catch (Exception ignored) {}
             mediaPlayer = null;
         }
-
-        Toast.makeText(context, "Loading audio...", Toast.LENGTH_SHORT).show();
-
+        Toast.makeText(context, s.detailLoadingAudio(), Toast.LENGTH_SHORT).show();
         mediaPlayer = new MediaPlayer();
         try {
             mediaPlayer.setDataSource(url);
             mediaPlayer.setOnPreparedListener(mp -> {
                 mp.start();
-                Toast.makeText(context, "▶ Playing audio", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, s.detailPlayingAudio(), Toast.LENGTH_SHORT).show();
             });
-            mediaPlayer.setOnCompletionListener(mp -> {
-                mp.release();
-                mediaPlayer = null;
-            });
+            mediaPlayer.setOnCompletionListener(mp -> { mp.release(); mediaPlayer = null; });
             mediaPlayer.setOnErrorListener((mp, what, extra) -> {
-                Toast.makeText(context, "Playback error", Toast.LENGTH_SHORT).show();
-                mp.release();
-                mediaPlayer = null;
-                return true;
+                Toast.makeText(context, s.detailPlaybackError(), Toast.LENGTH_SHORT).show();
+                mp.release(); mediaPlayer = null; return true;
             });
             mediaPlayer.prepareAsync();
         } catch (Exception e) {
-            Toast.makeText(context, "Cannot play audio", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, s.detailCannotPlay(), Toast.LENGTH_SHORT).show();
             mediaPlayer = null;
         }
     }
 
-    private String getExpiryText(long expireAt) {
+    private String getExpiryText(long expireAt, AppStrings s) {
         if (expireAt <= 0) return "";
         long remaining = expireAt - System.currentTimeMillis();
-        if (remaining <= 0) return "Expired";
+        if (remaining <= 0) return s.expired();
         long hours   = remaining / 3600000L;
         long minutes = (remaining % 3600000L) / 60000L;
-        if (hours >= 24) { long days = hours / 24; return "⏳ Expires in " + days + " day" + (days > 1 ? "s" : ""); }
-        if (hours >= 1)  return "⏳ Expires in " + hours + " hr" + (hours > 1 ? "s" : "");
-        if (minutes >= 1) return "⏳ Expires in " + minutes + " min";
-        return "⏳ Expiring soon";
+        if (hours >= 24) { long days = hours / 24; return s.expiryDays(days); }
+        if (hours >= 1)  return s.expiryHours(hours);
+        if (minutes >= 1) return s.expiryMinutes(minutes);
+        return s.expirySoon();
     }
 
     private void openDetail(Announcement a) {
+        AppStrings s = AppStrings.get(context);
         String dist = "";
         if (hasMyLoc) {
             double d = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
-            dist = String.format(Locale.getDefault(), "%.1f km away", d);
+            String fmt = String.format(Locale.getDefault(), "%.1f", d);
+            dist = s.cardKmAway(fmt);
         }
         Intent intent = new Intent(context, AnnouncementDetailActivity.class);
         intent.putExtra(AnnouncementDetailActivity.EXTRA_TITLE,     safe(a.getTitle()));
@@ -425,7 +393,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         intent.putExtra(AnnouncementDetailActivity.EXTRA_AUDIO_URL, safe(a.getAudioUrl()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_USER_NAME, safe(a.getUserName()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_DISTANCE,  dist);
-        intent.putExtra(AnnouncementDetailActivity.EXTRA_TIME,      getRelativeTime(a.getTime()));
+        intent.putExtra(AnnouncementDetailActivity.EXTRA_TIME,      getRelativeTime(a.getTime(), s));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_OTHER_UID, safe(a.getUserId()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_LAT,       a.getLat());
         intent.putExtra(AnnouncementDetailActivity.EXTRA_LNG,       a.getLng());
@@ -433,18 +401,20 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
     }
 
     private void showEditDialog(Announcement a, int pos) {
+        AppStrings s = AppStrings.get(context);
+
         LinearLayout layout = new LinearLayout(context);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(48, 16, 48, 0);
 
         TextView labelTitle = new TextView(context);
-        labelTitle.setText("Title");
+        labelTitle.setText(s.cardEditLabelTitle());
         labelTitle.setTextSize(14);
         EditText etNewTitle = new EditText(context);
         etNewTitle.setText(a.getTitle());
 
         TextView labelDesc = new TextView(context);
-        labelDesc.setText("Description");
+        labelDesc.setText(s.cardEditLabelDesc());
         labelDesc.setTextSize(14);
         labelDesc.setPadding(0, 16, 0, 0);
         EditText etNewDesc = new EditText(context);
@@ -457,13 +427,13 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         layout.addView(etNewDesc);
 
         new AlertDialog.Builder(context)
-                .setTitle("Edit Post")
+                .setTitle(s.cardEditTitle())
                 .setView(layout)
-                .setPositiveButton("Save", (d, w) -> {
+                .setPositiveButton(s.save(), (d, w) -> {
                     String newTitle = etNewTitle.getText().toString().trim();
                     String newDesc  = etNewDesc.getText().toString().trim();
                     if (newTitle.isEmpty()) {
-                        Toast.makeText(context, "Title cannot be empty", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(context, s.cardTitleEmpty(), Toast.LENGTH_SHORT).show();
                         return;
                     }
                     FirebaseDatabase.getInstance()
@@ -474,18 +444,18 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                             .child(a.getId()).child("description").setValue(newDesc);
                     a.setTitle(newTitle);
                     a.setDescription(newDesc);
-                    // Clear translation cache for this post since content changed
                     translationCache.remove(a.getId());
                     translatedState.remove(a.getId());
                     int currentPos = items.indexOf(a);
                     if (currentPos >= 0) notifyItemChanged(currentPos);
-                    Toast.makeText(context, "Updated ✅", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, s.cardUpdated(), Toast.LENGTH_SHORT).show();
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(s.cancel(), null)
                 .show();
     }
 
     private void deletePost(Announcement a, int pos) {
+        AppStrings s = AppStrings.get(context);
         if (a.getId() == null) return;
         if (pos < 0 || pos >= items.size()) return;
 
@@ -502,34 +472,31 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                         notifyItemRemoved(currentPos);
                         notifyItemRangeChanged(currentPos, items.size());
                     }
-                    Toast.makeText(context, "Deleted ✅", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, s.cardDeleted(), Toast.LENGTH_SHORT).show();
                 })
                 .addOnFailureListener(e ->
-                        Toast.makeText(context, "Delete failed", Toast.LENGTH_SHORT).show());
+                        Toast.makeText(context, s.cardDeleteFailed(), Toast.LENGTH_SHORT).show());
     }
 
-    @Override
-    public int getItemCount() { return items.size(); }
+    @Override public int getItemCount() { return items.size(); }
 
-    private String getRelativeTime(long timeMillis) {
+    private String getRelativeTime(long timeMillis, AppStrings s) {
         if (timeMillis == 0) return "";
         long diff    = System.currentTimeMillis() - timeMillis;
         long minutes = diff / 60000;
         long hours   = minutes / 60;
         long days    = hours / 24;
-        if (minutes < 1)  return "Just now";
-        if (minutes < 60) return minutes + " min ago";
-        if (hours < 24)   return hours + " hr ago";
-        return days + " day" + (days > 1 ? "s" : "") + " ago";
+        if (minutes < 1)  return s.justNow();
+        if (minutes < 60) return s.timeMinAgo(minutes);
+        if (hours < 24)   return s.timeHrAgo(hours);
+        return s.timeDayAgo(days);
     }
 
-    // ─── ViewHolder ──────────────────────────────────────────────────────────
     public static class VH extends RecyclerView.ViewHolder {
         ImageView ivPhoto;
         TextView  tvBadge, tvTitle, tvDesc, tvAvatar, tvName, tvDistance, tvTime;
         TextView  tvExpiry, tvAudioBadge;
         Button    btnListen, btnChat, btnCall, btnDirection;
-        // ✅ NEW: Translate toggle button
         Button    btnTranslate;
         View      layoutEditDelete;
         Button    btnEdit, btnDelete, btnDetails;
@@ -550,7 +517,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             btnChat          = itemView.findViewById(R.id.btnChat);
             btnCall          = itemView.findViewById(R.id.btnCall);
             btnDirection     = itemView.findViewById(R.id.btnDirection);
-            btnTranslate     = itemView.findViewById(R.id.btnTranslate); // ✅ NEW
+            btnTranslate     = itemView.findViewById(R.id.btnTranslate);
             layoutEditDelete = itemView.findViewById(R.id.layoutEditDelete);
             btnEdit          = itemView.findViewById(R.id.btnEdit);
             btnDelete        = itemView.findViewById(R.id.btnDelete);
