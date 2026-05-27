@@ -14,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.bumptech.glide.Glide;
 import com.example.towncrierbd.R;
+import com.example.towncrierbd.utils.TranslationHelper;
 import com.google.android.material.button.MaterialButton;
 
 public class AnnouncementDetailActivity extends AppCompatActivity {
@@ -34,25 +35,31 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
     private MediaPlayer mediaPlayer;
     private boolean isPlaying = false;
 
+    // ✅ Translation state
+    private boolean isTranslated = false;
+    private String originalTitle, originalDesc, originalCategory;
+    private String translatedTitle, translatedDesc, translatedCategory;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_announcement_detail);
 
         // Bind views
-        ImageView    ivPhoto       = findViewById(R.id.ivPhoto);
-        TextView     tvCategory    = findViewById(R.id.tvCategory);
-        TextView     tvTitle       = findViewById(R.id.tvTitle);
-        TextView     tvDesc        = findViewById(R.id.tvDesc);
-        TextView     tvAvatar      = findViewById(R.id.tvAvatar);
-        TextView     tvUserName    = findViewById(R.id.tvUserName);
-        TextView     tvDistance    = findViewById(R.id.tvDistance);
-        TextView     tvTime        = findViewById(R.id.tvTime);
-        Button       btnCall       = findViewById(R.id.btnCall);
-        Button       btnChat       = findViewById(R.id.btnChat);
-        Button       btnDirection  = findViewById(R.id.btnDirection);
-        ImageView    btnBack       = findViewById(R.id.btnBack);
-        MaterialButton btnPlayAudio = findViewById(R.id.btnPlayAudio);
+        ImageView      ivPhoto        = findViewById(R.id.ivPhoto);
+        TextView       tvCategory     = findViewById(R.id.tvCategory);
+        TextView       tvTitle        = findViewById(R.id.tvTitle);
+        TextView       tvDesc         = findViewById(R.id.tvDesc);
+        TextView       tvAvatar       = findViewById(R.id.tvAvatar);
+        TextView       tvUserName     = findViewById(R.id.tvUserName);
+        TextView       tvDistance     = findViewById(R.id.tvDistance);
+        TextView       tvTime         = findViewById(R.id.tvTime);
+        Button         btnCall        = findViewById(R.id.btnCall);
+        Button         btnChat        = findViewById(R.id.btnChat);
+        Button         btnDirection   = findViewById(R.id.btnDirection);
+        ImageView      btnBack        = findViewById(R.id.btnBack);
+        MaterialButton btnPlayAudio   = findViewById(R.id.btnPlayAudio);
+        Button         btnTranslate   = findViewById(R.id.btnTranslate); // ✅ NEW
 
         // Read intent extras
         String title    = getIntent().getStringExtra(EXTRA_TITLE);
@@ -68,10 +75,15 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
         double destLat  = getIntent().getDoubleExtra(EXTRA_LAT, 0.0);
         double destLng  = getIntent().getDoubleExtra(EXTRA_LNG, 0.0);
 
-        // Populate views safely
-        if (tvCategory != null) tvCategory.setText(safe(category));
-        if (tvTitle    != null) tvTitle.setText(safe(title));
-        if (tvDesc     != null) tvDesc.setText(safe(desc));
+        // Store originals for toggle
+        originalTitle    = safe(title);
+        originalDesc     = safe(desc);
+        originalCategory = safe(category);
+
+        // Populate views
+        if (tvCategory != null) tvCategory.setText(originalCategory);
+        if (tvTitle    != null) tvTitle.setText(originalTitle);
+        if (tvDesc     != null) tvDesc.setText(originalDesc);
         if (tvUserName != null) tvUserName.setText(safe(userName));
         if (tvDistance != null) tvDistance.setText(safe(distance));
         if (tvTime     != null) tvTime.setText(safe(time));
@@ -96,6 +108,65 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
             }
         }
 
+        // ── ✅ Translate Button ─────────────────────────────────────────────
+        if (btnTranslate != null) {
+            // Detect post language and set button label
+            boolean isBanglaPost = TranslationHelper.isBangla(originalTitle + originalDesc);
+            btnTranslate.setText(isBanglaPost ? "🌐 English" : "🌐 বাংলা");
+            btnTranslate.setVisibility(View.VISIBLE);
+
+            String langPair = isBanglaPost ? "bn|en" : "en|bn";
+
+            btnTranslate.setOnClickListener(v -> {
+                if (isTranslated) {
+                    // ── Show original ──
+                    isTranslated = false;
+                    if (tvCategory != null) tvCategory.setText(originalCategory);
+                    if (tvTitle    != null) tvTitle.setText(originalTitle);
+                    if (tvDesc     != null) tvDesc.setText(originalDesc);
+                    btnTranslate.setText(isBanglaPost ? "🌐 English" : "🌐 বাংলা");
+
+                } else {
+                    // ── Translate ──
+                    if (translatedTitle != null) {
+                        // Already translated — show cached
+                        isTranslated = true;
+                        if (tvCategory != null && translatedCategory != null)
+                            tvCategory.setText(translatedCategory);
+                        if (tvTitle    != null) tvTitle.setText(translatedTitle);
+                        if (tvDesc     != null) tvDesc.setText(translatedDesc);
+                        btnTranslate.setText(isBanglaPost ? "🌐 বাংলা" : "🌐 English");
+                        return;
+                    }
+
+                    btnTranslate.setEnabled(false);
+                    btnTranslate.setText("⏳ Translating...");
+
+                    String[] fields = {originalCategory, originalTitle, originalDesc};
+
+                    TranslationHelper.translateFields(fields, langPair, results -> {
+                        if (results != null && results.length >= 3) {
+                            translatedCategory = results[0];
+                            translatedTitle    = results[1];
+                            translatedDesc     = results[2];
+
+                            isTranslated = true;
+                            if (tvCategory != null && !translatedCategory.isEmpty())
+                                tvCategory.setText(translatedCategory);
+                            if (tvTitle    != null && !translatedTitle.isEmpty())
+                                tvTitle.setText(translatedTitle);
+                            if (tvDesc     != null && !translatedDesc.isEmpty())
+                                tvDesc.setText(translatedDesc);
+                        } else {
+                            Toast.makeText(this, "Translation failed", Toast.LENGTH_SHORT).show();
+                        }
+                        btnTranslate.setEnabled(true);
+                        btnTranslate.setText(isBanglaPost ? "🌐 বাংলা" : "🌐 English");
+                    });
+                }
+            });
+        }
+
         // Audio button
         if (btnPlayAudio != null) {
             if (audioUrl != null && !audioUrl.isEmpty()) {
@@ -108,9 +179,7 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
         }
 
         // Back button
-        if (btnBack != null) {
-            btnBack.setOnClickListener(v -> finish());
-        }
+        if (btnBack != null) btnBack.setOnClickListener(v -> finish());
 
         // Call button
         if (btnCall != null) {
@@ -137,7 +206,7 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
             });
         }
 
-        // Direction button — show only if valid coordinates
+        // Direction button
         if (btnDirection != null) {
             if (destLat != 0.0 || destLng != 0.0) {
                 btnDirection.setVisibility(View.VISIBLE);

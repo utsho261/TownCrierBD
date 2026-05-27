@@ -26,12 +26,15 @@ import com.example.towncrierbd.activities.ChatActivity;
 import com.example.towncrierbd.models.Announcement;
 import com.example.towncrierbd.utils.Constants;
 import com.example.towncrierbd.utils.DistanceUtil;
+import com.example.towncrierbd.utils.TranslationHelper;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
 
@@ -45,6 +48,13 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
 
     private TextToSpeech tts;
     private MediaPlayer  mediaPlayer;
+
+    // ✅ Translation state: track which cards are showing translated text
+    // Key = announcement ID, Value = true if translated view is shown
+    private final Map<String, Boolean> translatedState = new HashMap<>();
+
+    // ✅ Translation cache per item (title, desc, category)
+    private final Map<String, String[]> translationCache = new HashMap<>();
 
     public FeedAdapter(Context context) {
         this.context = context;
@@ -98,6 +108,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
     @Override
     public void onBindViewHolder(@NonNull VH h, int pos) {
         Announcement a = items.get(pos);
+        String annId = safe(a.getId());
 
         // Badge
         String b = safe(a.getDisplayCategoryLabel());
@@ -158,6 +169,97 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             } else {
                 h.tvDistance.setText("Nearby");
             }
+        }
+
+        // ── Translate button ──────────────────────────────────────────────
+        if (h.btnTranslate != null) {
+            boolean isTranslated = Boolean.TRUE.equals(translatedState.get(annId));
+
+            if (TranslationHelper.isBangla(safe(a.getTitle()) + safe(a.getDescription()))) {
+                // Bangla post → show "EN" button
+                h.btnTranslate.setVisibility(View.VISIBLE);
+                h.btnTranslate.setText(isTranslated ? "🌐 বাংলা" : "🌐 English");
+            } else {
+                // English or mixed post → show "BN" button
+                h.btnTranslate.setVisibility(View.VISIBLE);
+                h.btnTranslate.setText(isTranslated ? "🌐 English" : "🌐 বাংলা");
+            }
+
+            // If already translated, show translated text
+            if (isTranslated && translationCache.containsKey(annId)) {
+                String[] cached = translationCache.get(annId);
+                if (cached != null && cached.length >= 3) {
+                    if (h.tvBadge != null && !cached[0].isEmpty()) h.tvBadge.setText(cached[0]);
+                    if (h.tvTitle != null && !cached[1].isEmpty()) h.tvTitle.setText(cached[1]);
+                    if (h.tvDesc  != null && !cached[2].isEmpty()) h.tvDesc.setText(cached[2]);
+                }
+            }
+
+            h.btnTranslate.setOnClickListener(v -> {
+                boolean currentlyTranslated = Boolean.TRUE.equals(translatedState.get(annId));
+
+                if (currentlyTranslated) {
+                    // ── Toggle back to original ──────────────────────────
+                    translatedState.put(annId, false);
+                    if (h.tvBadge != null) h.tvBadge.setText(b.isEmpty() ? safe(a.getCategory()) : b);
+                    if (h.tvTitle != null) h.tvTitle.setText(safe(a.getTitle()));
+                    if (h.tvDesc  != null) h.tvDesc.setText(safe(a.getDescription()));
+                    if (TranslationHelper.isBangla(safe(a.getTitle()) + safe(a.getDescription()))) {
+                        h.btnTranslate.setText("🌐 English");
+                    } else {
+                        h.btnTranslate.setText("🌐 বাংলা");
+                    }
+
+                } else {
+                    // ── Translate ────────────────────────────────────────
+                    if (translationCache.containsKey(annId)) {
+                        // Already cached — show immediately
+                        String[] cached = translationCache.get(annId);
+                        translatedState.put(annId, true);
+                        if (cached != null && cached.length >= 3) {
+                            if (h.tvBadge != null && !cached[0].isEmpty()) h.tvBadge.setText(cached[0]);
+                            if (h.tvTitle != null && !cached[1].isEmpty()) h.tvTitle.setText(cached[1]);
+                            if (h.tvDesc  != null && !cached[2].isEmpty()) h.tvDesc.setText(cached[2]);
+                        }
+                        if (TranslationHelper.isBangla(safe(a.getTitle()) + safe(a.getDescription()))) {
+                            h.btnTranslate.setText("🌐 বাংলা");
+                        } else {
+                            h.btnTranslate.setText("🌐 English");
+                        }
+                        return;
+                    }
+
+                    // Show loading state
+                    h.btnTranslate.setEnabled(false);
+                    h.btnTranslate.setText("⏳ Translating...");
+
+                    // Determine direction
+                    boolean isBanglaPost = TranslationHelper.isBangla(
+                            safe(a.getTitle()) + safe(a.getDescription()));
+                    String langPair = isBanglaPost ? "bn|en" : "en|bn";
+
+                    String[] fields = {
+                            b.isEmpty() ? safe(a.getCategory()) : b,  // category label
+                            safe(a.getTitle()),                         // title
+                            safe(a.getDescription())                    // description
+                    };
+
+                    TranslationHelper.translateFields(fields, langPair, results -> {
+                        if (results != null) {
+                            translationCache.put(annId, results);
+                            translatedState.put(annId, true);
+                            if (h.tvBadge != null && results.length > 0 && !results[0].isEmpty())
+                                h.tvBadge.setText(results[0]);
+                            if (h.tvTitle != null && results.length > 1 && !results[1].isEmpty())
+                                h.tvTitle.setText(results[1]);
+                            if (h.tvDesc  != null && results.length > 2 && !results[2].isEmpty())
+                                h.tvDesc.setText(results[2]);
+                        }
+                        h.btnTranslate.setEnabled(true);
+                        h.btnTranslate.setText(isBanglaPost ? "🌐 বাংলা" : "🌐 English");
+                    });
+                }
+            });
         }
 
         if (showEditDelete) {
@@ -372,6 +474,9 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                             .child(a.getId()).child("description").setValue(newDesc);
                     a.setTitle(newTitle);
                     a.setDescription(newDesc);
+                    // Clear translation cache for this post since content changed
+                    translationCache.remove(a.getId());
+                    translatedState.remove(a.getId());
                     int currentPos = items.indexOf(a);
                     if (currentPos >= 0) notifyItemChanged(currentPos);
                     Toast.makeText(context, "Updated ✅", Toast.LENGTH_SHORT).show();
@@ -392,6 +497,8 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                     int currentPos = items.indexOf(a);
                     if (currentPos >= 0) {
                         items.remove(currentPos);
+                        translationCache.remove(a.getId());
+                        translatedState.remove(a.getId());
                         notifyItemRemoved(currentPos);
                         notifyItemRangeChanged(currentPos, items.size());
                     }
@@ -421,8 +528,9 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         ImageView ivPhoto;
         TextView  tvBadge, tvTitle, tvDesc, tvAvatar, tvName, tvDistance, tvTime;
         TextView  tvExpiry, tvAudioBadge;
-        // Use Button instead of MaterialButton for safe casting from XML
         Button    btnListen, btnChat, btnCall, btnDirection;
+        // ✅ NEW: Translate toggle button
+        Button    btnTranslate;
         View      layoutEditDelete;
         Button    btnEdit, btnDelete, btnDetails;
 
@@ -442,6 +550,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             btnChat          = itemView.findViewById(R.id.btnChat);
             btnCall          = itemView.findViewById(R.id.btnCall);
             btnDirection     = itemView.findViewById(R.id.btnDirection);
+            btnTranslate     = itemView.findViewById(R.id.btnTranslate); // ✅ NEW
             layoutEditDelete = itemView.findViewById(R.id.layoutEditDelete);
             btnEdit          = itemView.findViewById(R.id.btnEdit);
             btnDelete        = itemView.findViewById(R.id.btnDelete);

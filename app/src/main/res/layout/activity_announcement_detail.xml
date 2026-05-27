@@ -55,20 +55,45 @@
                 android:orientation="vertical"
                 android:padding="18dp">
 
-                <!-- Category badge -->
-                <TextView
-                    android:id="@+id/tvCategory"
-                    android:layout_width="wrap_content"
+                <!-- Category badge + Translate button row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="#5E8B1A"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    android:paddingTop="5dp"
-                    android:paddingBottom="5dp"
-                    android:text="Category"
-                    android:textColor="@android:color/white"
-                    android:textStyle="bold"
-                    android:textSize="13sp"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tvCategory"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:background="#5E8B1A"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:paddingTop="5dp"
+                        android:paddingBottom="5dp"
+                        android:text="Category"
+                        android:textColor="@android:color/white"
+                        android:textStyle="bold"
+                        android:textSize="13sp"/>
+
+                    <!-- ✅ NEW: Translate toggle button -->
+                    <Button
+                        android:id="@+id/btnTranslate"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:layout_marginStart="10dp"
+                        android:text="🌐 English"
+                        android:textAllCaps="false"
+                        android:textSize="12sp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:visibility="gone"/>
+
+                </LinearLayout>
 
                 <!-- Title -->
                 <TextView
