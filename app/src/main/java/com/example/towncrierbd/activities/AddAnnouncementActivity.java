@@ -22,7 +22,6 @@ import android.widget.*;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
 import com.example.towncrierbd.R;
@@ -141,18 +140,21 @@ public class AddAnnouncementActivity extends BaseActivity {
     private void setupExpiryUI() {
         if (spExpiryUnit == null) return;
 
-        String[] units = new String[]{"Minutes", "Hours", "Days"};
+        // ✅ UPDATED: Use getString() for localized spinner labels
+        String[] units = new String[]{
+                getString(R.string.minutes),
+                getString(R.string.hours),
+                getString(R.string.days)
+        };
 
-        // ✅ FIX: Custom adapter — always dark text regardless of spinner background color
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
                 android.R.layout.simple_spinner_item, units) {
 
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
-                // This is the "selected item" view shown inside the spinner box
                 View v = super.getView(position, convertView, parent);
                 TextView tv = v.findViewById(android.R.id.text1);
-                tv.setTextColor(0xFF111111);   // ✅ Always dark — visible on white bg
+                tv.setTextColor(0xFF111111);
                 tv.setTextSize(16f);
                 tv.setTypeface(null, Typeface.BOLD);
                 tv.setPadding(dp(14), 0, dp(14), 0);
@@ -162,13 +164,11 @@ public class AddAnnouncementActivity extends BaseActivity {
 
             @Override
             public View getDropDownView(int position, View convertView, ViewGroup parent) {
-                // This is the dropdown list item view
                 View v = super.getDropDownView(position, convertView, parent);
                 TextView tv = v.findViewById(android.R.id.text1);
-                tv.setTextColor(0xFF111111);   // ✅ Dark text in dropdown
+                tv.setTextColor(0xFF111111);
                 tv.setTextSize(15f);
                 tv.setPadding(dp(16), dp(14), dp(16), dp(14));
-                // Highlight selected item in dropdown
                 if (position == spExpiryUnit.getSelectedItemPosition()) {
                     v.setBackgroundColor(0xFFE3F2FD);
                 } else {
@@ -180,9 +180,8 @@ public class AddAnnouncementActivity extends BaseActivity {
 
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spExpiryUnit.setAdapter(adapter);
-        spExpiryUnit.setSelection(UNIT_HOURS); // Default: Hours
+        spExpiryUnit.setSelection(UNIT_HOURS);
 
-        // ✅ FIX: Hide preview on initial load — nothing entered yet
         if (tvExpiryPreview != null) {
             tvExpiryPreview.setVisibility(View.GONE);
             tvExpiryPreview.setText("");
@@ -218,10 +217,10 @@ public class AddAnnouncementActivity extends BaseActivity {
         switch (unit) {
             case UNIT_MINUTES: minutes = (long) value;            break;
             case UNIT_DAYS:    minutes = (long)(value * 24 * 60); break;
-            default:           minutes = (long)(value * 60);      break; // UNIT_HOURS
+            default:           minutes = (long)(value * 60);      break;
         }
         if (minutes < MIN_MINUTES) return -1;
-        if (minutes > MAX_MINUTES) return -2; // Over limit
+        if (minutes > MAX_MINUTES) return -2;
         return minutes * 60_000L;
     }
 
@@ -230,7 +229,6 @@ public class AddAnnouncementActivity extends BaseActivity {
         long millis = getExpiryMillis();
 
         if (millis == -1) {
-            // Empty or invalid input — hide preview
             tvExpiryPreview.setVisibility(View.GONE);
             tvExpiryPreview.setText("");
             return;
@@ -239,17 +237,17 @@ public class AddAnnouncementActivity extends BaseActivity {
         tvExpiryPreview.setVisibility(View.VISIBLE);
 
         if (millis == -2) {
-            // Over 7 days
-            tvExpiryPreview.setText("⚠️ Maximum 7 days allowed");
+            // ✅ UPDATED: Use getString()
+            tvExpiryPreview.setText(getString(R.string.max_expiry_warning));
             tvExpiryPreview.setTextColor(0xFFEF4444);
             tvExpiryPreview.setBackgroundColor(0xFFFEE2E2);
             return;
         }
 
-        // Valid — show human-readable duration
         tvExpiryPreview.setTextColor(0xFF1565C0);
         tvExpiryPreview.setBackgroundColor(0xFFE3F2FD);
-        tvExpiryPreview.setText("⏳ Post will expire in " + humanReadable(millis));
+        // ✅ UPDATED: Use getString()
+        tvExpiryPreview.setText(getString(R.string.expiry_preview, humanReadable(millis)));
     }
 
     private String humanReadable(long millis) {
@@ -292,9 +290,10 @@ public class AddAnnouncementActivity extends BaseActivity {
     private void updatePostTypeHeader() {
         if (tvPostTypeHeader == null) return;
         if ("request".equals(postType)) {
-            tvPostTypeHeader.setText("📋 Create a Request");
+            // ✅ UPDATED: Use getString()
+            tvPostTypeHeader.setText(getString(R.string.create_request));
         } else {
-            tvPostTypeHeader.setText("📢 Create Announcement");
+            tvPostTypeHeader.setText(getString(R.string.create_announcement));
         }
     }
 
@@ -306,12 +305,14 @@ public class AddAnnouncementActivity extends BaseActivity {
         if (stepCategory != null) stepCategory.setVisibility(step == 1 ? View.VISIBLE : View.GONE);
         if (stepProducts  != null) stepProducts.setVisibility(step == 2 ? View.VISIBLE : View.GONE);
         if (stepDetails   != null) stepDetails.setVisibility(step == 3 ? View.VISIBLE : View.GONE);
-        if (tvStepIndicator != null) tvStepIndicator.setText("Step " + step + " of 3");
+        // ✅ UPDATED: Use getString()
+        if (tvStepIndicator != null) tvStepIndicator.setText(getString(R.string.step_indicator, step));
     }
 
     private void goToStep2() {
         if (selectedCategories.isEmpty()) {
-            toast("Please select at least one category");
+            // ✅ UPDATED: Use getString()
+            toast(getString(R.string.please_select_category));
             return;
         }
         buildProductStep();
@@ -408,7 +409,8 @@ public class AddAnnouncementActivity extends BaseActivity {
 
         if ("announcement".equals(postType) && !userHawkerCategories.isEmpty()) {
             TextView tvHint = new TextView(this);
-            tvHint.setText("💡 To add more categories, go to Profile → Edit Categories");
+            // ✅ UPDATED: Use getString()
+            tvHint.setText(getString(R.string.edit_categories_hint));
             tvHint.setTextSize(12);
             tvHint.setTextColor(0xFF6B7280);
             tvHint.setPadding(dp(4), dp(12), dp(4), 0);
@@ -456,7 +458,8 @@ public class AddAnnouncementActivity extends BaseActivity {
             boolean hasPreSelected = isAnnouncer && !userHawkerSubcategories.isEmpty();
             if (!hasPreSelected) {
                 TextView tvSelectAll = new TextView(this);
-                tvSelectAll.setText("✓ Select all from " + cat.name);
+                // ✅ UPDATED: Use getString()
+                tvSelectAll.setText(getString(R.string.select_all_from, cat.name));
                 tvSelectAll.setTextSize(12);
                 tvSelectAll.setTextColor(0xFF1976F3);
                 tvSelectAll.setPadding(0, 0, 0, dp(4));
@@ -565,22 +568,26 @@ public class AddAnnouncementActivity extends BaseActivity {
     // ════════════════════════════════════════════════════════════════════════
 
     private void publish() {
-        if (isRecording) { toast("Please stop recording first"); return; }
+        // ✅ UPDATED: Use getString()
+        if (isRecording) { toast(getString(R.string.stop_recording_first)); return; }
 
         String title = etTitle.getText().toString().trim();
         String desc  = etDesc.getText().toString().trim();
 
-        if (title.isEmpty()) { toast("Title is required"); etTitle.requestFocus(); return; }
-        if (desc.isEmpty())  { toast("Description is required"); etDesc.requestFocus(); return; }
+        // ✅ UPDATED: Use getString()
+        if (title.isEmpty()) { toast(getString(R.string.title_required_msg)); etTitle.requestFocus(); return; }
+        if (desc.isEmpty())  { toast(getString(R.string.description_required_msg)); etDesc.requestFocus(); return; }
 
         long expiryMillis = getExpiryMillis();
         if (expiryMillis == -1) {
-            toast("Please enter expiry time (e.g. 2 Hours)");
+            // ✅ UPDATED: Use getString()
+            toast(getString(R.string.enter_expiry));
             if (etExpiryValue != null) etExpiryValue.requestFocus();
             return;
         }
         if (expiryMillis == -2) {
-            toast("Maximum expiry is 7 days");
+            // ✅ UPDATED: Use getString()
+            toast(getString(R.string.max_expiry_7_days));
             if (etExpiryValue != null) etExpiryValue.requestFocus();
             return;
         }
@@ -589,14 +596,16 @@ public class AddAnnouncementActivity extends BaseActivity {
         if (uid == null) return;
 
         btnPublish.setEnabled(false);
-        if (tvImageStatus != null) tvImageStatus.setText("Please wait...");
+        // ✅ UPDATED: Use getString()
+        if (tvImageStatus != null) tvImageStatus.setText(getString(R.string.please_wait));
 
         userRef.child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
                 UserModel u = snapshot.getValue(UserModel.class);
                 if (u == null) { reset(); toast("User not found"); return; }
                 if (u.getLat() == 0.0 && u.getLng() == 0.0) {
-                    reset(); toast("Location not detected. Open Feed once first."); return;
+                    // ✅ UPDATED: Use getString()
+                    reset(); toast(getString(R.string.location_not_detected)); return;
                 }
 
                 String id = annRef.push().getKey();
@@ -635,7 +644,8 @@ public class AddAnnouncementActivity extends BaseActivity {
                 a.setExpireAt(now + expiryMillis);
 
                 if (selectedBitmap != null) {
-                    if (tvImageStatus != null) tvImageStatus.setText("Uploading image...");
+                    // ✅ UPDATED: Use getString()
+                    if (tvImageStatus != null) tvImageStatus.setText(getString(R.string.uploading_image));
                     CloudinaryUploader.uploadBitmap(
                             AddAnnouncementActivity.this, selectedBitmap,
                             new CloudinaryUploader.UploadListener() {
@@ -662,13 +672,14 @@ public class AddAnnouncementActivity extends BaseActivity {
 
     private void uploadAudioThenSave(Announcement a, String annId) {
         if (recordedAudioPath != null && !recordedAudioPath.isEmpty()) {
-            if (tvImageStatus != null) tvImageStatus.setText("Uploading audio...");
+            // ✅ UPDATED: Use getString()
+            if (tvImageStatus != null) tvImageStatus.setText(getString(R.string.uploading_audio));
             AudioRecorderHelper.uploadAudio(recordedAudioPath, annId,
                     new AudioRecorderHelper.UploadListener() {
                         @Override public void onProgress(int pct) {
                             runOnUiThread(() -> {
                                 if (tvImageStatus != null)
-                                    tvImageStatus.setText("Uploading audio... " + pct + "%");
+                                    tvImageStatus.setText(getString(R.string.uploading_audio) + " " + pct + "%");
                             });
                         }
                         @Override public void onSuccess(String url) {
@@ -690,13 +701,17 @@ public class AddAnnouncementActivity extends BaseActivity {
     }
 
     private void saveAnnouncement(Announcement a) {
-        if (tvImageStatus != null) tvImageStatus.setText("Publishing...");
+        // ✅ UPDATED: Use getString()
+        if (tvImageStatus != null) tvImageStatus.setText(getString(R.string.publishing));
         annRef.child(a.getId()).setValue(a)
                 .addOnSuccessListener(v -> {
                     NotificationSender.sendAnnouncementNotification(
                             a.getId(), a.getTitle(), a.getDescription(),
                             a.getLat(), a.getLng(), a.getUserId());
-                    toast("request".equals(postType) ? "Request posted ✅" : "Published ✅");
+                    // ✅ UPDATED: Use getString()
+                    toast("request".equals(postType)
+                            ? getString(R.string.request_posted)
+                            : getString(R.string.published_success));
                     finish();
                 })
                 .addOnFailureListener(e -> {
@@ -715,13 +730,17 @@ public class AddAnnouncementActivity extends BaseActivity {
 
     private void showAudioOptions() {
         if (isRecording) { stopAudioRecording(); return; }
+        // ✅ UPDATED: Use getString()
         new AlertDialog.Builder(this)
-                .setTitle("Add Audio")
-                .setItems(new String[]{"🎙️ Record Audio", "📁 Select Audio File"}, (d, which) -> {
+                .setTitle(getString(R.string.add_audio_title))
+                .setItems(new String[]{
+                        getString(R.string.record_audio),
+                        getString(R.string.select_audio_file)
+                }, (d, which) -> {
                     if (which == 0) startAudioRecording();
                     else            openAudioFilePicker();
                 })
-                .setNegativeButton("Cancel", null).show();
+                .setNegativeButton(getString(R.string.cancel), null).show();
     }
 
     private void openAudioFilePicker() {
@@ -741,7 +760,8 @@ public class AddAnnouncementActivity extends BaseActivity {
             while ((r = in.read(buf)) != -1) os.write(buf, 0, r);
             in.close(); os.close();
             recordedAudioPath = out.getAbsolutePath();
-            if (tvAudioStatus != null) tvAudioStatus.setText("✅ Audio file selected");
+            // ✅ UPDATED: Use getString()
+            if (tvAudioStatus != null) tvAudioStatus.setText(getString(R.string.audio_selected));
         } catch (IOException e) { toast("Audio load failed"); }
     }
 
@@ -756,7 +776,8 @@ public class AddAnnouncementActivity extends BaseActivity {
             @Override public void onRecordStarted() {
                 isRecording = true;
                 runOnUiThread(() -> {
-                    if (tvAudioStatus != null) tvAudioStatus.setText("🔴 Recording... tap again to stop");
+                    // ✅ UPDATED: Use getString()
+                    if (tvAudioStatus != null) tvAudioStatus.setText(getString(R.string.recording_start));
                     updateAudioButton(true);
                 });
             }
@@ -778,7 +799,8 @@ public class AddAnnouncementActivity extends BaseActivity {
                 isRecording = false;
                 recordedAudioPath = path;
                 runOnUiThread(() -> {
-                    if (tvAudioStatus != null) tvAudioStatus.setText("✅ Audio recorded");
+                    // ✅ UPDATED: Use getString()
+                    if (tvAudioStatus != null) tvAudioStatus.setText(getString(R.string.audio_recorded));
                     updateAudioButton(false);
                 });
             }
@@ -798,7 +820,10 @@ public class AddAnnouncementActivity extends BaseActivity {
             for (int i = 0; i < ll.getChildCount(); i++) {
                 View child = ll.getChildAt(i);
                 if (child instanceof TextView)
-                    ((TextView) child).setText(recording ? "⏹ Stop" : "Add Audio");
+                    // ✅ UPDATED: Use getString()
+                    ((TextView) child).setText(recording
+                            ? getString(R.string.stop)
+                            : getString(R.string.add_audio));
             }
         }
     }
@@ -823,7 +848,8 @@ public class AddAnnouncementActivity extends BaseActivity {
                                 ivPreview.setVisibility(View.VISIBLE);
                                 ivPreview.setImageBitmap(selectedBitmap);
                             }
-                            if (tvImageStatus != null) tvImageStatus.setText("✅ Image selected");
+                            // ✅ UPDATED: Use getString()
+                            if (tvImageStatus != null) tvImageStatus.setText(getString(R.string.image_selected));
                         } catch (IOException e) { toast("Image read failed"); }
                     }
                 });
@@ -836,7 +862,7 @@ public class AddAnnouncementActivity extends BaseActivity {
 
     private void showImageChooser() {
         new AlertDialog.Builder(this)
-                .setTitle("Add Image")
+                .setTitle(getString(R.string.add_image))
                 .setItems(new String[]{"📷 Gallery"}, (d, w) -> {
                     Intent i = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
                     i.setType("image/*");

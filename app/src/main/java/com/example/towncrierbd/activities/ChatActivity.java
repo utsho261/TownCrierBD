@@ -34,8 +34,6 @@ public class ChatActivity extends BaseActivity {
     public static final String EXTRA_OTHER_UID  = "otherUid";
     public static final String EXTRA_OTHER_NAME = "otherName";
 
-    // ✅ FIX: Use "|" as separator — Firebase push keys never contain "|"
-    // Previously "_" was used which exists in Firebase UIDs, breaking inbox room parsing
     private static final String ROOM_SEP = "|";
 
     private RecyclerView rvMessages;
@@ -64,7 +62,7 @@ public class ChatActivity extends BaseActivity {
         otherName = getIntent().getStringExtra(EXTRA_OTHER_NAME);
 
         if (otherUid == null || otherUid.isEmpty()) {
-            Toast.makeText(this, "Invalid chat", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.invalid_chat), Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
@@ -73,7 +71,7 @@ public class ChatActivity extends BaseActivity {
         if (myUid == null) { finish(); return; }
 
         if (myUid.equals(otherUid)) {
-            Toast.makeText(this, "Cannot chat with yourself", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.cannot_chat_yourself), Toast.LENGTH_SHORT).show();
             finish();
             return;
         }

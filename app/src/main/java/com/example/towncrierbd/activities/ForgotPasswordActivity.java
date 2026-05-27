@@ -39,26 +39,26 @@ public class ForgotPasswordActivity extends BaseActivity {
         String email = etEmail.getText().toString().trim();
 
         if (email.isEmpty()) {
-            toast("Please enter your email");
+            toast(getString(R.string.enter_email));
             return;
         }
 
         if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            toast("Enter a valid email");
+            toast(getString(R.string.valid_email_required));
             return;
         }
 
         btnSendOTP.setEnabled(false);
-        btnSendOTP.setText("Sending...");
+        btnSendOTP.setText(getString(R.string.sending));
 
         auth.sendPasswordResetEmail(email)
                 .addOnSuccessListener(v -> {
-                    toast("Reset link sent! Check your email ✅");
+                    toast(getString(R.string.reset_link_sent));
                     finish();
                 })
                 .addOnFailureListener(e -> {
                     btnSendOTP.setEnabled(true);
-                    btnSendOTP.setText("Send Reset Link");
+                    btnSendOTP.setText(getString(R.string.btn_send_reset));
                     toast("Failed: " + e.getMessage());
                 });
     }

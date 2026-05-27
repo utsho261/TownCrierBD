@@ -102,6 +102,18 @@
             android:textColor="@color/hint_gray"
             android:layout_marginTop="12dp" />
 
+        <TextView
+            android:id="@+id/tvLanguageToggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="বাংলা"
+            android:textColor="@color/blue_start"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:layout_marginTop="8dp"
+            android:clickable="true"
+            android:focusable="true"/>
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

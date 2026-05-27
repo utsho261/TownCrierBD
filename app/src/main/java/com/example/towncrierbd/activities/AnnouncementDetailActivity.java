@@ -10,8 +10,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import com.bumptech.glide.Glide;
 import com.example.towncrierbd.R;
 import com.google.android.material.button.MaterialButton;
@@ -39,7 +37,6 @@ public class AnnouncementDetailActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_announcement_detail);
 
-        // Bind views
         ImageView    ivPhoto       = findViewById(R.id.ivPhoto);
         TextView     tvCategory    = findViewById(R.id.tvCategory);
         TextView     tvTitle       = findViewById(R.id.tvTitle);
@@ -54,7 +51,6 @@ public class AnnouncementDetailActivity extends BaseActivity {
         ImageView    btnBack       = findViewById(R.id.btnBack);
         MaterialButton btnPlayAudio = findViewById(R.id.btnPlayAudio);
 
-        // Read intent extras
         String title    = getIntent().getStringExtra(EXTRA_TITLE);
         String desc     = getIntent().getStringExtra(EXTRA_DESC);
         String category = getIntent().getStringExtra(EXTRA_CATEGORY);
@@ -68,7 +64,6 @@ public class AnnouncementDetailActivity extends BaseActivity {
         double destLat  = getIntent().getDoubleExtra(EXTRA_LAT, 0.0);
         double destLng  = getIntent().getDoubleExtra(EXTRA_LNG, 0.0);
 
-        // Populate views safely
         if (tvCategory != null) tvCategory.setText(safe(category));
         if (tvTitle    != null) tvTitle.setText(safe(title));
         if (tvDesc     != null) tvDesc.setText(safe(desc));
@@ -82,7 +77,6 @@ public class AnnouncementDetailActivity extends BaseActivity {
                     String.valueOf(Character.toUpperCase(nm.charAt(0))));
         }
 
-        // Image
         if (ivPhoto != null) {
             if (imageUrl != null && !imageUrl.isEmpty()) {
                 ivPhoto.setVisibility(View.VISIBLE);
@@ -96,10 +90,11 @@ public class AnnouncementDetailActivity extends BaseActivity {
             }
         }
 
-        // Audio button
+        // ✅ UPDATED: Use getString() for audio button text
         if (btnPlayAudio != null) {
             if (audioUrl != null && !audioUrl.isEmpty()) {
                 btnPlayAudio.setVisibility(View.VISIBLE);
+                btnPlayAudio.setText(getString(R.string.play_audio));
                 final String finalAudioUrl = audioUrl;
                 btnPlayAudio.setOnClickListener(v -> toggleAudio(finalAudioUrl, btnPlayAudio));
             } else {
@@ -107,27 +102,28 @@ public class AnnouncementDetailActivity extends BaseActivity {
             }
         }
 
-        // Back button
         if (btnBack != null) {
             btnBack.setOnClickListener(v -> finish());
         }
 
-        // Call button
+        // ✅ UPDATED: Use getString() for call button
         if (btnCall != null) {
             btnCall.setOnClickListener(v -> {
                 if (phone == null || phone.isEmpty()) {
-                    Toast.makeText(this, "No phone number", Toast.LENGTH_SHORT).show();
+                    // ✅ UPDATED
+                    Toast.makeText(this, getString(R.string.no_phone_number), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + phone)));
             });
         }
 
-        // Chat button
+        // ✅ UPDATED: Use getString() for chat button
         if (btnChat != null) {
             btnChat.setOnClickListener(v -> {
                 if (otherUid == null || otherUid.isEmpty()) {
-                    Toast.makeText(this, "Cannot start chat", Toast.LENGTH_SHORT).show();
+                    // ✅ UPDATED
+                    Toast.makeText(this, getString(R.string.cannot_start_chat), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 Intent i = new Intent(this, ChatActivity.class);
@@ -137,7 +133,6 @@ public class AnnouncementDetailActivity extends BaseActivity {
             });
         }
 
-        // Direction button — show only if valid coordinates
         if (btnDirection != null) {
             if (destLat != 0.0 || destLng != 0.0) {
                 btnDirection.setVisibility(View.VISIBLE);
@@ -166,12 +161,15 @@ public class AnnouncementDetailActivity extends BaseActivity {
     private void toggleAudio(String url, MaterialButton btn) {
         if (isPlaying) {
             stopAudio();
-            btn.setText("🔊 Play Audio");
+            // ✅ UPDATED: Use getString()
+            btn.setText(getString(R.string.play_audio));
             isPlaying = false;
         } else {
-            btn.setText("⏹ Stop Audio");
+            // ✅ UPDATED: Use getString()
+            btn.setText(getString(R.string.stop_audio));
             btn.setEnabled(false);
-            Toast.makeText(this, "Loading audio...", Toast.LENGTH_SHORT).show();
+            // ✅ UPDATED: Use getString()
+            Toast.makeText(this, getString(R.string.loading_audio), Toast.LENGTH_SHORT).show();
 
             releasePlayer();
             mediaPlayer = new MediaPlayer();
@@ -182,29 +180,33 @@ public class AnnouncementDetailActivity extends BaseActivity {
                     isPlaying = true;
                     runOnUiThread(() -> {
                         btn.setEnabled(true);
-                        Toast.makeText(this, "▶ Playing", Toast.LENGTH_SHORT).show();
+                        // ✅ UPDATED: Use getString()
+                        Toast.makeText(this, getString(R.string.playing), Toast.LENGTH_SHORT).show();
                     });
                 });
                 mediaPlayer.setOnCompletionListener(mp -> {
                     isPlaying = false;
-                    runOnUiThread(() -> btn.setText("🔊 Play Audio"));
+                    // ✅ UPDATED: Use getString()
+                    runOnUiThread(() -> btn.setText(getString(R.string.play_audio)));
                     releasePlayer();
                 });
                 mediaPlayer.setOnErrorListener((mp, what, extra) -> {
                     isPlaying = false;
                     runOnUiThread(() -> {
-                        btn.setText("🔊 Play Audio");
+                        // ✅ UPDATED: Use getString()
+                        btn.setText(getString(R.string.play_audio));
                         btn.setEnabled(true);
-                        Toast.makeText(this, "Playback error", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, getString(R.string.playback_error), Toast.LENGTH_SHORT).show();
                     });
                     releasePlayer();
                     return true;
                 });
                 mediaPlayer.prepareAsync();
             } catch (Exception e) {
-                btn.setText("🔊 Play Audio");
+                // ✅ UPDATED: Use getString()
+                btn.setText(getString(R.string.play_audio));
                 btn.setEnabled(true);
-                Toast.makeText(this, "Cannot play audio", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, getString(R.string.cannot_play_audio), Toast.LENGTH_SHORT).show();
                 releasePlayer();
             }
         }

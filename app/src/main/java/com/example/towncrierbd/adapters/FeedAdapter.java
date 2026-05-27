@@ -195,7 +195,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                 h.btnCall.setOnClickListener(v -> {
                     String phone = safe(a.getPhone());
                     if (phone.isEmpty()) {
-                        Toast.makeText(context, "No phone number", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(context, context.getString(R.string.no_phone_number), Toast.LENGTH_SHORT).show();
                         return;
                     }
                     context.startActivity(new Intent(Intent.ACTION_DIAL,
@@ -208,11 +208,11 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                     String postOwnerUid = safe(a.getUserId());
                     String myUid = safe(FirebaseAuth.getInstance().getUid());
                     if (postOwnerUid.isEmpty()) {
-                        Toast.makeText(context, "Cannot start chat", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(context, context.getString(R.string.cannot_start_chat), Toast.LENGTH_SHORT).show();
                         return;
                     }
                     if (myUid.equals(postOwnerUid)) {
-                        Toast.makeText(context, "Cannot chat with yourself", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(context, context.getString(R.string.cannot_chat_yourself), Toast.LENGTH_SHORT).show();
                         return;
                     }
                     Intent i = new Intent(context, ChatActivity.class);
@@ -270,28 +270,28 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             mediaPlayer = null;
         }
 
-        Toast.makeText(context, "Loading audio...", Toast.LENGTH_SHORT).show();
+        Toast.makeText(context, context.getString(R.string.loading_audio), Toast.LENGTH_SHORT).show();
 
         mediaPlayer = new MediaPlayer();
         try {
             mediaPlayer.setDataSource(url);
             mediaPlayer.setOnPreparedListener(mp -> {
                 mp.start();
-                Toast.makeText(context, "▶ Playing audio", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, context.getString(R.string.playing), Toast.LENGTH_SHORT).show();
             });
             mediaPlayer.setOnCompletionListener(mp -> {
                 mp.release();
                 mediaPlayer = null;
             });
             mediaPlayer.setOnErrorListener((mp, what, extra) -> {
-                Toast.makeText(context, "Playback error", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, context.getString(R.string.playback_error), Toast.LENGTH_SHORT).show();
                 mp.release();
                 mediaPlayer = null;
                 return true;
             });
             mediaPlayer.prepareAsync();
         } catch (Exception e) {
-            Toast.makeText(context, "Cannot play audio", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, context.getString(R.string.cannot_play_audio), Toast.LENGTH_SHORT).show();
             mediaPlayer = null;
         }
     }
