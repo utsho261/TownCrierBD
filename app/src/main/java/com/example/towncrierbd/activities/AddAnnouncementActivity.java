@@ -116,22 +116,69 @@ public class AddAnnouncementActivity extends AppCompatActivity {
 
         Button btnNext1 = findViewById(R.id.btnNextStep1);
         if (btnNext1 != null) btnNext1.setOnClickListener(v -> goToStep2());
-
         Button btnBack2 = findViewById(R.id.btnBackStep2);
         if (btnBack2 != null) btnBack2.setOnClickListener(v -> showStep(1));
-
         Button btnNext2 = findViewById(R.id.btnNextStep2);
         if (btnNext2 != null) btnNext2.setOnClickListener(v -> showStep(3));
-
         Button btnBack3 = findViewById(R.id.btnBackStep3);
         if (btnBack3 != null) btnBack3.setOnClickListener(v -> showStep(2));
 
         setupPermissions();
         setupLaunchers();
+        applyWizardStrings();
         setupExpiryUI();
 
         loadUserProfileThenInit();
         showStep(1);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // Apply bilingual strings to wizard layout
+    // ════════════════════════════════════════════════════════════════════════
+
+    private void applyWizardStrings() {
+        AppStrings s = AppStrings.get(this);
+
+        // Step 1 labels
+        TextView tvStep1Title = stepCategory != null ? stepCategory.findViewById(R.id.tvStep1Title) : null;
+        TextView tvStep1Sub   = stepCategory != null ? stepCategory.findViewById(R.id.tvStep1Subtitle) : null;
+        Button   btnNext1     = stepCategory != null ? stepCategory.findViewById(R.id.btnNextStep1) : null;
+        if (tvStep1Title != null) tvStep1Title.setText(s.addStep1Title());
+        if (tvStep1Sub   != null) tvStep1Sub.setText(s.addStep1Subtitle());
+        if (btnNext1     != null) btnNext1.setText(s.addStep1Next());
+
+        // Step 2 labels
+        Button btnBack2 = stepProducts != null ? stepProducts.findViewById(R.id.btnBackStep2) : null;
+        Button btnNext2 = stepProducts != null ? stepProducts.findViewById(R.id.btnNextStep2) : null;
+        if (btnBack2 != null) btnBack2.setText(s.addStep2Back());
+        if (btnNext2 != null) btnNext2.setText(s.addStep2Next());
+
+        // Step 3 labels
+        if (etTitle != null) etTitle.setHint(s.addStep3HintTitle());
+        if (etDesc  != null) etDesc.setHint(s.addStep3HintDesc());
+        if (etExpiryValue != null) etExpiryValue.setHint(s.addStep3ExpiryHint());
+        if (btnPublish != null) btnPublish.setText(s.addStep3Publish());
+
+        Button btnBack3 = stepDetails != null ? stepDetails.findViewById(R.id.btnBackStep3) : null;
+        if (btnBack3 != null) btnBack3.setText(s.addStep3Back());
+
+        // Image / Audio buttons
+        if (btnAddImage instanceof LinearLayout) {
+            LinearLayout ll = (LinearLayout) btnAddImage;
+            for (int i = 0; i < ll.getChildCount(); i++) {
+                View c = ll.getChildAt(i);
+                if (c instanceof TextView && !(c instanceof Button))
+                    ((TextView) c).setText(s.addStep3AddImage());
+            }
+        }
+        if (btnRecordAudio instanceof LinearLayout) {
+            LinearLayout ll = (LinearLayout) btnRecordAudio;
+            for (int i = 0; i < ll.getChildCount(); i++) {
+                View c = ll.getChildAt(i);
+                if (c instanceof TextView && !(c instanceof Button))
+                    ((TextView) c).setText(s.addStep3AddAudio());
+            }
+        }
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -140,35 +187,29 @@ public class AddAnnouncementActivity extends AppCompatActivity {
 
     private void setupExpiryUI() {
         if (spExpiryUnit == null) return;
+        AppStrings s = AppStrings.get(this);
+        String[] units = s.addStep3ExpiryUnits();
 
-        String[] units = new String[]{"Minutes", "Hours", "Days"};
-
-        // ✅ FIX: Custom adapter — always dark text regardless of spinner background color
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
                 android.R.layout.simple_spinner_item, units) {
-
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
-                // This is the "selected item" view shown inside the spinner box
                 View v = super.getView(position, convertView, parent);
                 TextView tv = v.findViewById(android.R.id.text1);
-                tv.setTextColor(0xFF111111);   // ✅ Always dark — visible on white bg
+                tv.setTextColor(0xFF111111);
                 tv.setTextSize(16f);
                 tv.setTypeface(null, Typeface.BOLD);
                 tv.setPadding(dp(14), 0, dp(14), 0);
                 tv.setGravity(Gravity.CENTER_VERTICAL);
                 return v;
             }
-
             @Override
             public View getDropDownView(int position, View convertView, ViewGroup parent) {
-                // This is the dropdown list item view
                 View v = super.getDropDownView(position, convertView, parent);
                 TextView tv = v.findViewById(android.R.id.text1);
-                tv.setTextColor(0xFF111111);   // ✅ Dark text in dropdown
+                tv.setTextColor(0xFF111111);
                 tv.setTextSize(15f);
                 tv.setPadding(dp(16), dp(14), dp(16), dp(14));
-                // Highlight selected item in dropdown
                 if (position == spExpiryUnit.getSelectedItemPosition()) {
                     v.setBackgroundColor(0xFFE3F2FD);
                 } else {
@@ -180,9 +221,8 @@ public class AddAnnouncementActivity extends AppCompatActivity {
 
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spExpiryUnit.setAdapter(adapter);
-        spExpiryUnit.setSelection(UNIT_HOURS); // Default: Hours
+        spExpiryUnit.setSelection(UNIT_HOURS);
 
-        // ✅ FIX: Hide preview on initial load — nothing entered yet
         if (tvExpiryPreview != null) {
             tvExpiryPreview.setVisibility(View.GONE);
             tvExpiryPreview.setText("");
@@ -190,18 +230,16 @@ public class AddAnnouncementActivity extends AppCompatActivity {
 
         if (etExpiryValue != null) {
             etExpiryValue.addTextChangedListener(new TextWatcher() {
-                @Override public void beforeTextChanged(CharSequence s, int st, int c, int af) {}
-                @Override public void afterTextChanged(Editable s) {}
-                @Override public void onTextChanged(CharSequence s, int st, int b, int c) {
+                @Override public void beforeTextChanged(CharSequence s2, int st, int c, int af) {}
+                @Override public void afterTextChanged(Editable s2) {}
+                @Override public void onTextChanged(CharSequence s2, int st, int b, int c) {
                     updateExpiryPreview();
                 }
             });
         }
 
         spExpiryUnit.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
-                updateExpiryPreview();
-            }
+            @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) { updateExpiryPreview(); }
             @Override public void onNothingSelected(AdapterView<?> p) {}
         });
     }
@@ -218,19 +256,19 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         switch (unit) {
             case UNIT_MINUTES: minutes = (long) value;            break;
             case UNIT_DAYS:    minutes = (long)(value * 24 * 60); break;
-            default:           minutes = (long)(value * 60);      break; // UNIT_HOURS
+            default:           minutes = (long)(value * 60);      break;
         }
         if (minutes < MIN_MINUTES) return -1;
-        if (minutes > MAX_MINUTES) return -2; // Over limit
+        if (minutes > MAX_MINUTES) return -2;
         return minutes * 60_000L;
     }
 
     private void updateExpiryPreview() {
         if (tvExpiryPreview == null) return;
+        AppStrings s = AppStrings.get(this);
         long millis = getExpiryMillis();
 
         if (millis == -1) {
-            // Empty or invalid input — hide preview
             tvExpiryPreview.setVisibility(View.GONE);
             tvExpiryPreview.setText("");
             return;
@@ -239,27 +277,26 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         tvExpiryPreview.setVisibility(View.VISIBLE);
 
         if (millis == -2) {
-            // Over 7 days
-            tvExpiryPreview.setText("⚠️ Maximum 7 days allowed");
+            tvExpiryPreview.setText(s.addStep3ExpiryOver());
             tvExpiryPreview.setTextColor(0xFFEF4444);
             tvExpiryPreview.setBackgroundColor(0xFFFEE2E2);
             return;
         }
 
-        // Valid — show human-readable duration
         tvExpiryPreview.setTextColor(0xFF1565C0);
         tvExpiryPreview.setBackgroundColor(0xFFE3F2FD);
-        tvExpiryPreview.setText("⏳ Post will expire in " + humanReadable(millis));
+        tvExpiryPreview.setText(s.addStep3ExpiryPreview(humanReadable(millis)));
     }
 
     private String humanReadable(long millis) {
+        AppStrings s = AppStrings.get(this);
         long tot = millis / 60_000L;
         long d = tot / (24 * 60), h = (tot % (24 * 60)) / 60, m = tot % 60;
         StringBuilder sb = new StringBuilder();
-        if (d > 0) sb.append(d).append(d == 1 ? " day" : " days");
-        if (h > 0) { if (sb.length() > 0) sb.append(" "); sb.append(h).append(h == 1 ? " hour" : " hours"); }
-        if (m > 0) { if (sb.length() > 0) sb.append(" "); sb.append(m).append(m == 1 ? " minute" : " minutes"); }
-        return sb.length() > 0 ? sb.toString() : "less than a minute";
+        if (d > 0) sb.append(s.expiryHumanDay(d));
+        if (h > 0) { if (sb.length() > 0) sb.append(" "); sb.append(s.expiryHumanHour(h)); }
+        if (m > 0) { if (sb.length() > 0) sb.append(" "); sb.append(s.expiryHumanMin(m)); }
+        return sb.length() > 0 ? sb.toString() : s.expirySoon();
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -291,10 +328,11 @@ public class AddAnnouncementActivity extends AppCompatActivity {
 
     private void updatePostTypeHeader() {
         if (tvPostTypeHeader == null) return;
+        AppStrings s = AppStrings.get(this);
         if ("request".equals(postType)) {
-            tvPostTypeHeader.setText("📋 Create a Request");
+            tvPostTypeHeader.setText(s.addHeaderRequest());
         } else {
-            tvPostTypeHeader.setText("📢 Create Announcement");
+            tvPostTypeHeader.setText(s.addHeaderAnnouncement());
         }
     }
 
@@ -306,12 +344,12 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         if (stepCategory != null) stepCategory.setVisibility(step == 1 ? View.VISIBLE : View.GONE);
         if (stepProducts  != null) stepProducts.setVisibility(step == 2 ? View.VISIBLE : View.GONE);
         if (stepDetails   != null) stepDetails.setVisibility(step == 3 ? View.VISIBLE : View.GONE);
-        if (tvStepIndicator != null) tvStepIndicator.setText("Step " + step + " of 3");
+        if (tvStepIndicator != null) tvStepIndicator.setText(AppStrings.get(this).addStepOf(step, 3));
     }
 
     private void goToStep2() {
         if (selectedCategories.isEmpty()) {
-            toast("Please select at least one category");
+            toast(AppStrings.get(this).addStep1SelectAtLeast());
             return;
         }
         buildProductStep();
@@ -325,23 +363,20 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     private void buildCategoryStep() {
         if (llCategoryList == null) return;
         llCategoryList.removeAllViews();
+        AppStrings s = AppStrings.get(this);
+        boolean isBn = !LanguageManager.isEnglish(this);
 
         List<CategoryConfig.HawkerCategory> categoriesToShow = new ArrayList<>();
 
-        if (Constants.ROLE_ANNOUNCER.equals(postType.equals("announcement") ? Constants.ROLE_ANNOUNCER : "")
+        if (Constants.ROLE_ANNOUNCER.equals("announcement".equals(postType) ? Constants.ROLE_ANNOUNCER : "")
                 && !userHawkerCategories.isEmpty()) {
             for (CategoryConfig.HawkerCategory cat : CategoryConfig.HAWKER_CATEGORIES) {
-                if (userHawkerCategories.contains(cat.name)) {
-                    categoriesToShow.add(cat);
-                }
+                if (userHawkerCategories.contains(cat.name)) categoriesToShow.add(cat);
             }
         } else {
             categoriesToShow = CategoryConfig.HAWKER_CATEGORIES;
         }
-
-        if (categoriesToShow.isEmpty()) {
-            categoriesToShow = CategoryConfig.HAWKER_CATEGORIES;
-        }
+        if (categoriesToShow.isEmpty()) categoriesToShow = CategoryConfig.HAWKER_CATEGORIES;
 
         for (CategoryConfig.HawkerCategory cat : categoriesToShow) {
             LinearLayout row = new LinearLayout(this);
@@ -358,7 +393,8 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             cb.setButtonTintList(ColorStateList.valueOf(0xFF1976F3));
 
             TextView tvLabel = new TextView(this);
-            tvLabel.setText(cat.emoji + "  " + cat.name);
+            // ✅ Bilingual category name
+            tvLabel.setText(cat.emoji + "  " + (isBn ? cat.nameBn : cat.name));
             tvLabel.setTextSize(15);
             tvLabel.setTypeface(null, Typeface.BOLD);
             tvLabel.setTextColor(0xFF1F2937);
@@ -376,13 +412,13 @@ public class AddAnnouncementActivity extends AppCompatActivity {
 
             TextView tvHint = new TextView(this);
             if (selectedCount > 0) {
-                tvHint.setText(selectedCount + " items");
+                tvHint.setText(s.addStep1Items(selectedCount));
                 tvHint.setTextSize(11);
                 tvHint.setTextColor(0xFF9CA3AF);
             } else if (!cat.subGroups.isEmpty()) {
                 int total = 0;
                 for (CategoryConfig.SubGroup g : cat.subGroups) total += g.items.size();
-                tvHint.setText(total + " items");
+                tvHint.setText(s.addStep1Items(total));
                 tvHint.setTextSize(11);
                 tvHint.setTextColor(0xFF9CA3AF);
             }
@@ -395,7 +431,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             row.setOnClickListener(v -> cb.toggle());
             cb.setOnCheckedChangeListener((btn, checked) -> {
                 if (checked) {
-                    selectedCategories.add(cat.name);
+                    selectedCategories.add(cat.name); // Always English key
                     row.setBackground(roundedBg(0xFFEFF6FF, dp(12)));
                 } else {
                     selectedCategories.remove(cat.name);
@@ -407,12 +443,12 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         }
 
         if ("announcement".equals(postType) && !userHawkerCategories.isEmpty()) {
-            TextView tvHint = new TextView(this);
-            tvHint.setText("💡 To add more categories, go to Profile → Edit Categories");
-            tvHint.setTextSize(12);
-            tvHint.setTextColor(0xFF6B7280);
-            tvHint.setPadding(dp(4), dp(12), dp(4), 0);
-            llCategoryList.addView(tvHint);
+            TextView tvHint2 = new TextView(this);
+            tvHint2.setText(s.addStep1EditCatHint());
+            tvHint2.setTextSize(12);
+            tvHint2.setTextColor(0xFF6B7280);
+            tvHint2.setPadding(dp(4), dp(12), dp(4), 0);
+            llCategoryList.addView(tvHint2);
         }
     }
 
@@ -424,14 +460,18 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         if (llProductList == null) return;
         llProductList.removeAllViews();
         productCheckBoxes.clear();
-
+        AppStrings s = AppStrings.get(this);
+        boolean isBn = !LanguageManager.isEnglish(this);
         boolean isAnnouncer = "announcement".equals(postType);
         boolean hasOthers = selectedCategories.contains("Others");
 
         if (etCustomCategoryText != null) {
             etCustomCategoryText.setVisibility(hasOthers ? View.VISIBLE : View.GONE);
-            if (hasOthers && !userHawkerOthersName.isEmpty()) {
-                etCustomCategoryText.setHint("e.g. " + userHawkerOthersName);
+            if (hasOthers) {
+                String hint = userHawkerOthersName.isEmpty()
+                        ? s.addStep2CustomHint()
+                        : (LanguageManager.isEnglish(this) ? "e.g. " : "যেমন: ") + userHawkerOthersName;
+                etCustomCategoryText.setHint(hint);
             }
         }
 
@@ -442,7 +482,8 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             if ("Others".equals(cat.name)) continue;
 
             TextView tvCatHeader = new TextView(this);
-            tvCatHeader.setText(cat.emoji + "  " + cat.name);
+            // ✅ Bilingual category header
+            tvCatHeader.setText(cat.emoji + "  " + (isBn ? cat.nameBn : cat.name));
             tvCatHeader.setTextSize(15);
             tvCatHeader.setTypeface(null, Typeface.BOLD);
             tvCatHeader.setTextColor(0xFF1976F3);
@@ -456,7 +497,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             boolean hasPreSelected = isAnnouncer && !userHawkerSubcategories.isEmpty();
             if (!hasPreSelected) {
                 TextView tvSelectAll = new TextView(this);
-                tvSelectAll.setText("✓ Select all from " + cat.name);
+                tvSelectAll.setText(s.addStep2SelectAll(isBn ? cat.nameBn : cat.name));
                 tvSelectAll.setTextSize(12);
                 tvSelectAll.setTextColor(0xFF1976F3);
                 tvSelectAll.setPadding(0, 0, 0, dp(4));
@@ -466,28 +507,34 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             }
 
             for (CategoryConfig.SubGroup group : cat.subGroups) {
-                List<String> itemsToShow;
+                List<String> engItemsToShow;
+                List<String> dispItemsToShow;
+
                 if (isAnnouncer && !userHawkerSubcategories.isEmpty()) {
-                    itemsToShow = new ArrayList<>();
-                    for (String item : group.items) {
-                        if (userHawkerSubcategories.contains(item)) {
-                            itemsToShow.add(item);
+                    engItemsToShow  = new ArrayList<>();
+                    dispItemsToShow = new ArrayList<>();
+                    for (int idx = 0; idx < group.items.size(); idx++) {
+                        if (userHawkerSubcategories.contains(group.items.get(idx))) {
+                            engItemsToShow.add(group.items.get(idx));
+                            dispItemsToShow.add(isBn ? group.itemsBn.get(idx) : group.items.get(idx));
                         }
                     }
-                    if (itemsToShow.isEmpty()) continue;
+                    if (engItemsToShow.isEmpty()) continue;
                 } else {
-                    itemsToShow = group.items;
+                    engItemsToShow  = group.items;
+                    dispItemsToShow = isBn ? group.itemsBn : group.items;
                 }
 
                 TextView tvSub = new TextView(this);
-                tvSub.setText("▸ " + group.groupName);
+                // ✅ Bilingual subgroup name
+                tvSub.setText("▸ " + (isBn ? group.groupNameBn : group.groupName));
                 tvSub.setTextSize(12);
                 tvSub.setTypeface(null, Typeface.BOLD);
                 tvSub.setTextColor(0xFF6B7280);
                 tvSub.setPadding(dp(4), dp(8), 0, dp(4));
                 llProductList.addView(tvSub);
 
-                for (int i = 0; i < itemsToShow.size(); i += 2) {
+                for (int i = 0; i < dispItemsToShow.size(); i += 2) {
                     LinearLayout rowLayout = new LinearLayout(this);
                     rowLayout.setOrientation(LinearLayout.HORIZONTAL);
                     LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
@@ -495,9 +542,9 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                     rlp.setMargins(0, dp(2), 0, dp(2));
                     rowLayout.setLayoutParams(rlp);
 
-                    addProductCheckBox(rowLayout, itemsToShow.get(i), group.groupName);
-                    if (i + 1 < itemsToShow.size())
-                        addProductCheckBox(rowLayout, itemsToShow.get(i + 1), group.groupName);
+                    addProductCheckBox(rowLayout, engItemsToShow.get(i), dispItemsToShow.get(i), group.groupName);
+                    if (i + 1 < dispItemsToShow.size())
+                        addProductCheckBox(rowLayout, engItemsToShow.get(i + 1), dispItemsToShow.get(i + 1), group.groupName);
                     llProductList.addView(rowLayout);
                 }
             }
@@ -505,7 +552,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
 
         if (hasOthers && !anyAdded) {
             TextView tvInfo = new TextView(this);
-            tvInfo.setText("Describe what you " + ("request".equals(postType) ? "need" : "sell") + " in the field above.");
+            tvInfo.setText(AppStrings.get(this).addStep2NeedDescribe(postType));
             tvInfo.setTextSize(13);
             tvInfo.setTextColor(0xFF6B7280);
             tvInfo.setPadding(0, dp(8), 0, 0);
@@ -514,7 +561,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
 
         if (llProductList.getChildCount() == 0) {
             TextView tvInfo = new TextView(this);
-            tvInfo.setText("No specific products for selected categories. Proceed to next step.");
+            tvInfo.setText(s.addStep2NoProducts());
             tvInfo.setTextSize(13);
             tvInfo.setTextColor(0xFF6B7280);
             tvInfo.setPadding(dp(4), dp(8), dp(4), 0);
@@ -522,24 +569,30 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         }
     }
 
-    private void addProductCheckBox(LinearLayout parent, String product, String subcategory) {
+    /**
+     * @param engKey     English key stored in Firebase
+     * @param displayText Bangla or English text shown to user
+     * @param subcategory English subcategory group name
+     */
+    private void addProductCheckBox(LinearLayout parent, String engKey, String displayText, String subcategory) {
         CheckBox cb = new CheckBox(this);
-        cb.setText(product);
+        cb.setText(displayText);
         cb.setTextSize(13);
         cb.setTextColor(0xFF374151);
         cb.setButtonTintList(ColorStateList.valueOf(0xFF1976F3));
-        cb.setChecked(selectedProducts.contains(product));
+        cb.setChecked(selectedProducts.contains(engKey));
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         clp.setMargins(dp(2), dp(1), dp(2), dp(1));
         cb.setLayoutParams(clp);
+        cb.setTag(engKey); // Store English key
 
         cb.setOnCheckedChangeListener((btn, checked) -> {
             if (checked) {
-                selectedProducts.add(product);
+                selectedProducts.add(engKey);
                 selectedSubcategories.add(subcategory);
             } else {
-                selectedProducts.remove(product);
+                selectedProducts.remove(engKey);
             }
         });
 
@@ -549,14 +602,12 @@ public class AddAnnouncementActivity extends AppCompatActivity {
 
     private void selectAllForCategory(CategoryConfig.HawkerCategory cat) {
         for (CategoryConfig.SubGroup g : cat.subGroups) {
-            for (String item : g.items) {
-                selectedProducts.add(item);
-                selectedSubcategories.add(g.groupName);
-            }
+            selectedProducts.addAll(g.items);
+            selectedSubcategories.add(g.groupName);
         }
         for (CheckBox cb : productCheckBoxes) {
-            String label = cb.getText().toString();
-            if (selectedProducts.contains(label)) cb.setChecked(true);
+            String tag = (String) cb.getTag();
+            if (tag != null && selectedProducts.contains(tag)) cb.setChecked(true);
         }
     }
 
@@ -565,22 +616,23 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     // ════════════════════════════════════════════════════════════════════════
 
     private void publish() {
-        if (isRecording) { toast("Please stop recording first"); return; }
+        AppStrings s = AppStrings.get(this);
+        if (isRecording) { toast(s.addStopRecordFirst()); return; }
 
         String title = etTitle.getText().toString().trim();
         String desc  = etDesc.getText().toString().trim();
 
-        if (title.isEmpty()) { toast("Title is required"); etTitle.requestFocus(); return; }
-        if (desc.isEmpty())  { toast("Description is required"); etDesc.requestFocus(); return; }
+        if (title.isEmpty()) { toast(s.addPublishNoTitle()); etTitle.requestFocus(); return; }
+        if (desc.isEmpty())  { toast(s.addPublishNoDesc());  etDesc.requestFocus();  return; }
 
         long expiryMillis = getExpiryMillis();
         if (expiryMillis == -1) {
-            toast("Please enter expiry time (e.g. 2 Hours)");
+            toast(s.addPublishNoExpiry());
             if (etExpiryValue != null) etExpiryValue.requestFocus();
             return;
         }
         if (expiryMillis == -2) {
-            toast("Maximum expiry is 7 days");
+            toast(s.addPublishExpiryOver());
             if (etExpiryValue != null) etExpiryValue.requestFocus();
             return;
         }
@@ -589,14 +641,14 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         if (uid == null) return;
 
         btnPublish.setEnabled(false);
-        if (tvImageStatus != null) tvImageStatus.setText("Please wait...");
+        if (tvImageStatus != null) tvImageStatus.setText(s.pleaseWait());
 
         userRef.child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
                 UserModel u = snapshot.getValue(UserModel.class);
-                if (u == null) { reset(); toast("User not found"); return; }
+                if (u == null) { reset(); toast(s.addPublishUserNotFound()); return; }
                 if (u.getLat() == 0.0 && u.getLng() == 0.0) {
-                    reset(); toast("Location not detected. Open Feed once first."); return;
+                    reset(); toast(s.addPublishNoLoc()); return;
                 }
 
                 String id = annRef.push().getKey();
@@ -635,7 +687,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 a.setExpireAt(now + expiryMillis);
 
                 if (selectedBitmap != null) {
-                    if (tvImageStatus != null) tvImageStatus.setText("Uploading image...");
+                    if (tvImageStatus != null) tvImageStatus.setText(s.addPublishImgUploading());
                     CloudinaryUploader.uploadBitmap(
                             AddAnnouncementActivity.this, selectedBitmap,
                             new CloudinaryUploader.UploadListener() {
@@ -645,7 +697,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                                 }
                                 @Override public void onError(String msg) {
                                     a.setImageUrl("");
-                                    toast("Image upload failed, posting without image");
+                                    toast(s.addPublishImgFailed());
                                     uploadAudioThenSave(a, id);
                                 }
                             });
@@ -655,20 +707,21 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 }
             }
             @Override public void onCancelled(@NonNull DatabaseError e) {
-                reset(); toast("Failed: " + e.getMessage());
+                reset(); toast(s.addPublishFailed(e.getMessage()));
             }
         });
     }
 
     private void uploadAudioThenSave(Announcement a, String annId) {
+        AppStrings s = AppStrings.get(this);
         if (recordedAudioPath != null && !recordedAudioPath.isEmpty()) {
-            if (tvImageStatus != null) tvImageStatus.setText("Uploading audio...");
+            if (tvImageStatus != null) tvImageStatus.setText(s.addPublishAudioUploading());
             AudioRecorderHelper.uploadAudio(recordedAudioPath, annId,
                     new AudioRecorderHelper.UploadListener() {
                         @Override public void onProgress(int pct) {
                             runOnUiThread(() -> {
                                 if (tvImageStatus != null)
-                                    tvImageStatus.setText("Uploading audio... " + pct + "%");
+                                    tvImageStatus.setText(s.addPublishAudioPct(pct));
                             });
                         }
                         @Override public void onSuccess(String url) {
@@ -678,7 +731,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                         @Override public void onError(String msg) {
                             a.setAudioUrl("");
                             runOnUiThread(() -> {
-                                toast("Audio upload failed, posting without audio");
+                                toast(s.addPublishAudioFailed());
                                 saveAnnouncement(a);
                             });
                         }
@@ -690,17 +743,18 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     }
 
     private void saveAnnouncement(Announcement a) {
-        if (tvImageStatus != null) tvImageStatus.setText("Publishing...");
+        AppStrings s = AppStrings.get(this);
+        if (tvImageStatus != null) tvImageStatus.setText(s.addPublishing());
         annRef.child(a.getId()).setValue(a)
                 .addOnSuccessListener(v -> {
                     NotificationSender.sendAnnouncementNotification(
                             a.getId(), a.getTitle(), a.getDescription(),
                             a.getLat(), a.getLng(), a.getUserId());
-                    toast("request".equals(postType) ? "Request posted ✅" : "Published ✅");
+                    toast(s.addPublishSuccess(postType));
                     finish();
                 })
                 .addOnFailureListener(e -> {
-                    reset(); toast("Save failed: " + e.getMessage());
+                    reset(); toast(s.addPublishFailed(e.getMessage()));
                 });
     }
 
@@ -714,14 +768,15 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     // ════════════════════════════════════════════════════════════════════════
 
     private void showAudioOptions() {
+        AppStrings s = AppStrings.get(this);
         if (isRecording) { stopAudioRecording(); return; }
         new AlertDialog.Builder(this)
-                .setTitle("Add Audio")
-                .setItems(new String[]{"🎙️ Record Audio", "📁 Select Audio File"}, (d, which) -> {
+                .setTitle(s.audioAddTitle())
+                .setItems(new String[]{s.audioOptionRecord(), s.audioOptionFile()}, (d, which) -> {
                     if (which == 0) startAudioRecording();
                     else            openAudioFilePicker();
                 })
-                .setNegativeButton("Cancel", null).show();
+                .setNegativeButton(s.cancel(), null).show();
     }
 
     private void openAudioFilePicker() {
@@ -731,18 +786,19 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     }
 
     private void handleSelectedAudioFile(Uri uri) {
+        AppStrings s = AppStrings.get(this);
         if (uri == null) return;
         try {
             File out = new File(getCacheDir(), "tc_audio_sel_" + System.currentTimeMillis() + ".m4a");
             InputStream in = getContentResolver().openInputStream(uri);
-            if (in == null) { toast("Could not read audio"); return; }
+            if (in == null) { toast(s.audioCouldNotRead()); return; }
             OutputStream os = new FileOutputStream(out);
             byte[] buf = new byte[8192]; int r;
             while ((r = in.read(buf)) != -1) os.write(buf, 0, r);
             in.close(); os.close();
             recordedAudioPath = out.getAbsolutePath();
-            if (tvAudioStatus != null) tvAudioStatus.setText("✅ Audio file selected");
-        } catch (IOException e) { toast("Audio load failed"); }
+            if (tvAudioStatus != null) tvAudioStatus.setText(s.audioFileSelected());
+        } catch (IOException e) { toast(s.audioLoadFailed()); }
     }
 
     private void startAudioRecording() {
@@ -756,7 +812,8 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             @Override public void onRecordStarted() {
                 isRecording = true;
                 runOnUiThread(() -> {
-                    if (tvAudioStatus != null) tvAudioStatus.setText("🔴 Recording... tap again to stop");
+                    AppStrings s = AppStrings.get(AddAnnouncementActivity.this);
+                    if (tvAudioStatus != null) tvAudioStatus.setText(s.audioRecording());
                     updateAudioButton(true);
                 });
             }
@@ -764,7 +821,8 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             @Override public void onError(String msg) {
                 isRecording = false;
                 runOnUiThread(() -> {
-                    if (tvAudioStatus != null) tvAudioStatus.setText("❌ Error: " + msg);
+                    AppStrings s = AppStrings.get(AddAnnouncementActivity.this);
+                    if (tvAudioStatus != null) tvAudioStatus.setText(s.audioRecordError(msg));
                     updateAudioButton(false);
                 });
             }
@@ -778,14 +836,16 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 isRecording = false;
                 recordedAudioPath = path;
                 runOnUiThread(() -> {
-                    if (tvAudioStatus != null) tvAudioStatus.setText("✅ Audio recorded");
+                    AppStrings s = AppStrings.get(AddAnnouncementActivity.this);
+                    if (tvAudioStatus != null) tvAudioStatus.setText(s.audioRecorded());
                     updateAudioButton(false);
                 });
             }
             @Override public void onError(String msg) {
                 isRecording = false;
                 runOnUiThread(() -> {
-                    if (tvAudioStatus != null) tvAudioStatus.setText("❌ Stop failed");
+                    AppStrings s = AppStrings.get(AddAnnouncementActivity.this);
+                    if (tvAudioStatus != null) tvAudioStatus.setText(s.audioStopFailed());
                     updateAudioButton(false);
                 });
             }
@@ -793,12 +853,13 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     }
 
     private void updateAudioButton(boolean recording) {
+        AppStrings s = AppStrings.get(this);
         if (btnRecordAudio instanceof LinearLayout) {
             LinearLayout ll = (LinearLayout) btnRecordAudio;
             for (int i = 0; i < ll.getChildCount(); i++) {
                 View child = ll.getChildAt(i);
                 if (child instanceof TextView)
-                    ((TextView) child).setText(recording ? "⏹ Stop" : "Add Audio");
+                    ((TextView) child).setText(recording ? s.audioStopBtn() : s.audioAddBtn());
             }
         }
     }
@@ -818,13 +879,13 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                         Uri uri = res.getData().getData();
                         if (uri == null) return;
                         try {
-                            selectedBitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), uri);
+                            selectedBitmap = android.provider.MediaStore.Images.Media.getBitmap(getContentResolver(), uri);
                             if (ivPreview != null) {
                                 ivPreview.setVisibility(View.VISIBLE);
                                 ivPreview.setImageBitmap(selectedBitmap);
                             }
-                            if (tvImageStatus != null) tvImageStatus.setText("✅ Image selected");
-                        } catch (IOException e) { toast("Image read failed"); }
+                            if (tvImageStatus != null) tvImageStatus.setText(AppStrings.get(this).imageSelected());
+                        } catch (IOException e) { toast(AppStrings.get(this).imageReadFailed()); }
                     }
                 });
         audioFileLauncher = registerForActivityResult(
@@ -835,9 +896,10 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     }
 
     private void showImageChooser() {
+        AppStrings s = AppStrings.get(this);
         new AlertDialog.Builder(this)
-                .setTitle("Add Image")
-                .setItems(new String[]{"📷 Gallery"}, (d, w) -> {
+                .setTitle(s.imageAddTitle())
+                .setItems(new String[]{s.imageGallery()}, (d, w) -> {
                     Intent i = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
                     i.setType("image/*");
                     galleryLauncher.launch(i);

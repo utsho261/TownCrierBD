@@ -1,11 +1,30 @@
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_gradient"
-    tools:context=".activities.SignupActivity">
+    android:background="@drawable/bg_gradient">
+
+    <!-- Language toggle top-right -->
+    <TextView
+        android:id="@+id/tvLangToggle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Switch to বাংলা"
+        android:textColor="#FFFFFF"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:background="#33FFFFFF"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:clickable="true"
+        android:focusable="true"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"/>
 
     <ScrollView
         android:id="@+id/mainScroll"
@@ -33,6 +52,7 @@
                 android:contentDescription="@string/app_name" />
 
             <TextView
+                android:id="@+id/tvAppName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Town Crier BD"
@@ -42,13 +62,13 @@
                 android:layout_marginTop="8dp" />
 
             <TextView
+                android:id="@+id/tvSubtitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Connect with your neighborhood"
                 android:textColor="@color/hint_gray"
                 android:layout_marginBottom="16dp" />
 
-            <!-- Name -->
             <EditText
                 android:id="@+id/etName"
                 android:layout_width="match_parent"
@@ -58,7 +78,6 @@
                 android:inputType="textPersonName"
                 android:padding="12dp"/>
 
-            <!-- Phone -->
             <EditText
                 android:id="@+id/etPhone"
                 android:layout_width="match_parent"
@@ -69,7 +88,6 @@
                 android:padding="12dp"
                 android:layout_marginTop="8dp"/>
 
-            <!-- Email -->
             <EditText
                 android:id="@+id/etEmail"
                 android:layout_width="match_parent"
@@ -80,7 +98,6 @@
                 android:padding="12dp"
                 android:layout_marginTop="8dp"/>
 
-            <!-- Date of Birth -->
             <EditText
                 android:id="@+id/etDob"
                 android:layout_width="match_parent"
@@ -92,7 +109,6 @@
                 android:padding="12dp"
                 android:layout_marginTop="8dp" />
 
-            <!-- Password with show/hide -->
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -111,6 +127,7 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <TextView
+                android:id="@+id/tvIAm"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="I am a"

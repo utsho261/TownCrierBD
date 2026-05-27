@@ -1,6 +1,7 @@
 package com.example.towncrierbd.activities;
 
 import android.content.Intent;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -10,21 +11,20 @@ import android.view.ViewGroup;
 import android.widget.*;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.towncrierbd.utils.AppStrings;
 import com.example.towncrierbd.utils.CategoryConfig;
 import com.example.towncrierbd.utils.CategoryConfig.HawkerCategory;
 import com.example.towncrierbd.utils.CategoryConfig.SubGroup;
+import com.example.towncrierbd.utils.LanguageManager;
 
 import java.util.*;
 
 /**
- * Category selection screen used in TWO flows:
- * 1. Announcer signup — called from SignupActivity (no pre-selections)
- * 2. Profile edit — called from ProfileActivity (pre-selections passed via Intent)
+ * Category selection screen — fully bilingual.
+ * All UI text, category names, subcategory group names and item names
+ * are displayed in the current app language (EN / BN).
  *
- * Result Intent extras:
- *   EXTRA_CATEGORIES      -> ArrayList<String>  (selected category names)
- *   EXTRA_SUBCATEGORIES   -> ArrayList<String>  (selected sub-item names)
- *   EXTRA_OTHERS_NAME     -> String             (custom name if Others selected)
+ * Internal storage always uses English keys — Bangla is display-only.
  */
 public class HawkerCategoryActivity extends AppCompatActivity {
 
@@ -40,15 +40,14 @@ public class HawkerCategoryActivity extends AppCompatActivity {
     private LinearLayout llCategoryList;
     private TextView     tvDoneBtn;
 
-    private final Map<String, View>           subPanels   = new LinkedHashMap<>();
-    private final Map<String, TextView>       catCheckMap = new LinkedHashMap<>();
-    private final Map<String, View>           catRowMap   = new LinkedHashMap<>();
+    private final Map<String, View>     subPanels   = new LinkedHashMap<>();
+    private final Map<String, TextView> catCheckMap = new LinkedHashMap<>();
+    private final Map<String, View>     catRowMap   = new LinkedHashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Load pre-existing selections if passed (profile edit flow)
         Intent incoming = getIntent();
         if (incoming != null) {
             ArrayList<String> preCats = incoming.getStringArrayListExtra(EXTRA_CATEGORIES);
@@ -63,11 +62,9 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         buildUI();
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    // Build UI
-    // ══════════════════════════════════════════════════════════════════════
-
     private void buildUI() {
+        AppStrings s = AppStrings.get(this);
+
         ScrollView root = new ScrollView(this);
         root.setBackgroundColor(0xFFF4F7FF);
 
@@ -82,25 +79,43 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         header.setPadding(dp(18), dp(20), dp(18), dp(20));
 
         TextView tvTitle = new TextView(this);
-        tvTitle.setText("What do you sell?");
+        tvTitle.setText(s.catScreenTitle());
         tvTitle.setTextColor(0xFFFFFFFF);
         tvTitle.setTextSize(20);
-        tvTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+        tvTitle.setTypeface(null, Typeface.BOLD);
         header.addView(tvTitle);
 
         TextView tvSub = new TextView(this);
-        tvSub.setText("Select your categories — buyers nearby will find you");
+        tvSub.setText(s.catScreenSubtitle());
         tvSub.setTextColor(0xFFD6E7FF);
         tvSub.setTextSize(13);
         tvSub.setPadding(0, dp(4), 0, 0);
         header.addView(tvSub);
         container.addView(header);
 
+        // Language toggle inside the screen
+        TextView tvLang = new TextView(this);
+        tvLang.setText(LanguageManager.getToggleLabel(this));
+        tvLang.setTextSize(12);
+        tvLang.setTextColor(0xFF1976F3);
+        tvLang.setTextSize(Typeface.BOLD);
+        tvLang.setPadding(dp(4), dp(10), dp(4), dp(2));
+        tvLang.setClickable(true);
+        tvLang.setFocusable(true);
+        tvLang.setOnClickListener(v -> {
+            LanguageManager.toggle(this);
+            // Rebuild UI with new language
+            finish();
+            startActivity(getIntent());
+            overridePendingTransition(0, 0);
+        });
+        container.addView(tvLang);
+
         TextView tvHint = new TextView(this);
-        tvHint.setText("Tap a category to select. Tap again to see and choose specific items.");
+        tvHint.setText(s.catScreenHint());
         tvHint.setTextColor(0xFF6B7280);
         tvHint.setTextSize(12);
-        tvHint.setPadding(dp(2), dp(12), dp(2), dp(8));
+        tvHint.setPadding(dp(2), dp(4), dp(2), dp(8));
         container.addView(tvHint);
 
         llCategoryList = new LinearLayout(this);
@@ -111,9 +126,7 @@ public class HawkerCategoryActivity extends AppCompatActivity {
             addCategoryRow(cat);
         }
 
-        // Restore pre-selected state visually after all rows are built
         restorePreSelectedUI();
-
         root.addView(container);
 
         FrameLayout frame = new FrameLayout(this);
@@ -128,7 +141,7 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         tvDoneBtn = new TextView(this);
         tvDoneBtn.setTextColor(0xFFFFFFFF);
         tvDoneBtn.setTextSize(16);
-        tvDoneBtn.setTypeface(null, android.graphics.Typeface.BOLD);
+        tvDoneBtn.setTypeface(null, Typeface.BOLD);
         tvDoneBtn.setGravity(Gravity.CENTER);
         tvDoneBtn.setPadding(dp(24), dp(14), dp(24), dp(14));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
@@ -143,13 +156,14 @@ public class HawkerCategoryActivity extends AppCompatActivity {
 
         setContentView(frame);
 
-        refreshDoneButton(); // Update button text based on pre-selections
+        refreshDoneButton();
         tvDoneBtn.setOnClickListener(v -> onDone());
     }
 
-    /**
-     * After all rows are added, restore visual state for pre-selected categories.
-     */
+    private void setTextStyle(TextView tv, int style) {
+        tv.setTypeface(null, style);
+    }
+
     private void restorePreSelectedUI() {
         for (HawkerCategory cat : CategoryConfig.HAWKER_CATEGORIES) {
             if (!selectedCategories.contains(cat.name)) continue;
@@ -165,13 +179,10 @@ public class HawkerCategoryActivity extends AppCompatActivity {
                 subPanel.setVisibility(hasSubs ? View.VISIBLE : View.GONE);
             }
 
-            // Restore Others custom name
             if ("Others".equals(cat.name) && !othersCustomName.isEmpty() && etOthersName != null) {
                 etOthersName.setText(othersCustomName);
             }
         }
-
-        // Re-check sub-items
         recheckSelectedInAll();
     }
 
@@ -185,11 +196,10 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         }
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    // Category row
-    // ══════════════════════════════════════════════════════════════════════
-
     private void addCategoryRow(HawkerCategory cat) {
+        AppStrings s = AppStrings.get(this);
+        boolean isBn = !LanguageManager.isEnglish(this);
+
         LinearLayout wrapper = new LinearLayout(this);
         wrapper.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams wLp = new LinearLayout.LayoutParams(
@@ -209,7 +219,8 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         tvEmoji.setTextSize(20);
 
         TextView tvName = new TextView(this);
-        tvName.setText(cat.name);
+        // ✅ Show category name in current language
+        tvName.setText(isBn ? cat.nameBn : cat.name);
         tvName.setTextSize(15);
         tvName.setTypeface(null, android.graphics.Typeface.BOLD);
         tvName.setTextColor(0xFF1F2937);
@@ -221,7 +232,7 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         for (SubGroup g : cat.subGroups) totalItems += g.items.size();
         TextView tvCount = new TextView(this);
         if (totalItems > 0) {
-            tvCount.setText(totalItems + " items");
+            tvCount.setText(s.addStep1Items(totalItems));
             tvCount.setTextSize(11);
             tvCount.setTextColor(0xFF9CA3AF);
             tvCount.setPadding(0, 0, dp(8), 0);
@@ -247,7 +258,6 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         row.addView(tvCheck);
         row.addView(tvChevron);
 
-        // Sub-panel
         LinearLayout subPanel = new LinearLayout(this);
         subPanel.setOrientation(LinearLayout.VERTICAL);
         subPanel.setVisibility(View.GONE);
@@ -261,7 +271,7 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         }
 
         subPanels.put(cat.name, subPanel);
-        catCheckMap.put(cat.name, tvCheck);  // store tvCheck (used as visual indicator)
+        catCheckMap.put(cat.name, tvCheck);
         catRowMap.put(cat.name, row);
 
         wrapper.addView(row);
@@ -299,22 +309,24 @@ public class HawkerCategoryActivity extends AppCompatActivity {
                 tvChevron.setText("  ▾");
                 subPanel.setVisibility(View.GONE);
                 refreshDoneButton();
-                Toast.makeText(this, cat.name + " deselected", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, AppStrings.get(this).catDeselected(isBn ? cat.nameBn : cat.name), Toast.LENGTH_SHORT).show();
             }
             return true;
         });
     }
 
-    // ── Sub-panel for normal categories ───────────────────────────────────
-
     private void buildSubPanel(LinearLayout panel, HawkerCategory cat) {
+        AppStrings s = AppStrings.get(this);
+        boolean isBn = !LanguageManager.isEnglish(this);
+
         TextView tvSelectAll = new TextView(this);
-        tvSelectAll.setText("✓ Select all items from " + cat.name);
+        tvSelectAll.setText(s.catSelectAll(isBn ? cat.nameBn : cat.name));
         tvSelectAll.setTextSize(12);
         tvSelectAll.setTextColor(0xFF1976F3);
         tvSelectAll.setPadding(0, dp(6), 0, dp(8));
         tvSelectAll.setTypeface(null, android.graphics.Typeface.BOLD);
         tvSelectAll.setOnClickListener(v -> {
+            // Always store English keys internally
             for (SubGroup g : cat.subGroups) {
                 selectedSubcategories.addAll(g.items);
             }
@@ -325,15 +337,17 @@ public class HawkerCategoryActivity extends AppCompatActivity {
 
         for (SubGroup group : cat.subGroups) {
             TextView tvGroup = new TextView(this);
-            tvGroup.setText("▸ " + group.groupName);
+            // ✅ Show group name in current language
+            tvGroup.setText("▸ " + (isBn ? group.groupNameBn : group.groupName));
             tvGroup.setTextSize(12);
             tvGroup.setTypeface(null, android.graphics.Typeface.BOLD);
             tvGroup.setTextColor(0xFF6B7280);
             tvGroup.setPadding(0, dp(10), 0, dp(4));
             panel.addView(tvGroup);
 
-            List<String> items = group.items;
-            for (int i = 0; i < items.size(); i += 2) {
+            // ✅ Display items in current language but store English keys
+            List<String> displayItems = isBn ? group.itemsBn : group.items;
+            for (int i = 0; i < displayItems.size(); i += 2) {
                 LinearLayout itemRow = new LinearLayout(this);
                 itemRow.setOrientation(LinearLayout.HORIZONTAL);
                 LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
@@ -341,22 +355,30 @@ public class HawkerCategoryActivity extends AppCompatActivity {
                 rlp.setMargins(0, dp(1), 0, dp(1));
                 itemRow.setLayoutParams(rlp);
 
-                addCheckItem(itemRow, items.get(i));
-                if (i + 1 < items.size()) addCheckItem(itemRow, items.get(i + 1));
+                // English key for storage, display text for UI
+                String engKey0 = group.items.get(i);
+                String dispTxt0 = displayItems.get(i);
+                addCheckItem(itemRow, engKey0, dispTxt0);
+
+                if (i + 1 < displayItems.size()) {
+                    String engKey1 = group.items.get(i + 1);
+                    String dispTxt1 = displayItems.get(i + 1);
+                    addCheckItem(itemRow, engKey1, dispTxt1);
+                }
                 panel.addView(itemRow);
             }
         }
     }
 
-    // ── Sub-panel for "Others" ─────────────────────────────────────────────
-
-    private EditText     etOthersName;
+    private EditText etOthersName;
     private LinearLayout llOthersSubs;
-    private EditText     etOthersSubInput;
+    private EditText etOthersSubInput;
 
     private void buildOthersPanel(LinearLayout panel) {
+        AppStrings s = AppStrings.get(this);
+
         TextView tvLabel = new TextView(this);
-        tvLabel.setText("Category name *");
+        tvLabel.setText(s.catOthersLabel());
         tvLabel.setTextSize(12);
         tvLabel.setTypeface(null, android.graphics.Typeface.BOLD);
         tvLabel.setTextColor(0xFF6B7280);
@@ -364,7 +386,7 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         panel.addView(tvLabel);
 
         etOthersName = new EditText(this);
-        etOthersName.setHint("e.g. Flower pot seller");
+        etOthersName.setHint(s.catOthersHint());
         etOthersName.setBackground(editBg());
         etOthersName.setPadding(dp(12), dp(10), dp(12), dp(10));
         etOthersName.setTextSize(14);
@@ -372,15 +394,15 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         panel.addView(etOthersName);
 
         etOthersName.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
-            @Override public void afterTextChanged(Editable s) {}
-            @Override public void onTextChanged(CharSequence s, int st, int b, int c) {
-                othersCustomName = s.toString().trim();
+            @Override public void beforeTextChanged(CharSequence s2, int st, int c, int a) {}
+            @Override public void afterTextChanged(Editable s2) {}
+            @Override public void onTextChanged(CharSequence s2, int st, int b, int c) {
+                othersCustomName = s2.toString().trim();
             }
         });
 
         TextView tvSubLabel = new TextView(this);
-        tvSubLabel.setText("Add items you sell (optional)");
+        tvSubLabel.setText(s.catOthersSubLabel());
         tvSubLabel.setTextSize(12);
         tvSubLabel.setTypeface(null, android.graphics.Typeface.BOLD);
         tvSubLabel.setTextColor(0xFF6B7280);
@@ -392,7 +414,7 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         inputRow.setGravity(Gravity.CENTER_VERTICAL);
 
         etOthersSubInput = new EditText(this);
-        etOthersSubInput.setHint("Type an item name");
+        etOthersSubInput.setHint(s.catOthersItemHint());
         etOthersSubInput.setBackground(editBg());
         etOthersSubInput.setPadding(dp(12), dp(10), dp(12), dp(10));
         etOthersSubInput.setTextSize(14);
@@ -401,7 +423,7 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         etOthersSubInput.setLayoutParams(etLp);
 
         TextView btnAdd = new TextView(this);
-        btnAdd.setText("+ Add");
+        btnAdd.setText(s.catOthersAddBtn());
         btnAdd.setTextColor(0xFFFFFFFF);
         btnAdd.setTextSize(13);
         btnAdd.setTypeface(null, android.graphics.Typeface.BOLD);
@@ -420,7 +442,6 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         llOthersSubs.setOrientation(LinearLayout.VERTICAL);
         panel.addView(llOthersSubs);
 
-        // Restore previously saved custom subs
         for (String existingSub : othersCustomSubs) {
             addOthersSubChip(llOthersSubs, existingSub);
         }
@@ -473,21 +494,25 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         });
     }
 
-    private void addCheckItem(LinearLayout parent, String item) {
+    /**
+     * @param engKey     English key stored in Firebase
+     * @param displayText Text shown to user (may be Bangla)
+     */
+    private void addCheckItem(LinearLayout parent, String engKey, String displayText) {
         CheckBox cb = new CheckBox(this);
-        cb.setText(item);
+        cb.setText(displayText);
         cb.setTextSize(13);
         cb.setTextColor(0xFF374151);
-        cb.setChecked(selectedSubcategories.contains(item));
+        cb.setChecked(selectedSubcategories.contains(engKey));
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         clp.setMargins(dp(2), dp(1), dp(2), dp(1));
         cb.setLayoutParams(clp);
-        cb.setTag(item);
+        cb.setTag(engKey); // Always store English key as tag
 
         cb.setOnCheckedChangeListener((btn, checked) -> {
-            if (checked) selectedSubcategories.add(item);
-            else selectedSubcategories.remove(item);
+            if (checked) selectedSubcategories.add(engKey);
+            else selectedSubcategories.remove(engKey);
             refreshDoneButton();
         });
 
@@ -513,7 +538,7 @@ public class HawkerCategoryActivity extends AppCompatActivity {
             View child = parent.getChildAt(i);
             if (child instanceof CheckBox) {
                 CheckBox cb = (CheckBox) child;
-                String tag = (String) cb.getTag();
+                String tag = (String) cb.getTag(); // English key
                 if (tag != null) cb.setChecked(selectedSubcategories.contains(tag));
             } else if (child instanceof LinearLayout) {
                 recheckSelected((LinearLayout) child);
@@ -522,26 +547,26 @@ public class HawkerCategoryActivity extends AppCompatActivity {
     }
 
     private void refreshDoneButton() {
+        AppStrings s = AppStrings.get(this);
         boolean hasCategory = !selectedCategories.isEmpty();
         tvDoneBtn.setBackground(roundedBg(hasCategory ? 0xFF1976F3 : 0xFFB0BEC5, dp(14)));
         int count = selectedCategories.size();
         int subCount = selectedSubcategories.size();
         if (count == 0) {
-            tvDoneBtn.setText("Please select at least one category");
+            tvDoneBtn.setText(s.catSelectAtLeast());
         } else {
-            String catText = count + " categor" + (count == 1 ? "y" : "ies");
-            String subText = subCount > 0 ? ", " + subCount + " item" + (subCount == 1 ? "" : "s") : "";
-            tvDoneBtn.setText("Done  (" + catText + subText + " selected) →");
+            tvDoneBtn.setText(s.catDoneBtn(count, subCount));
         }
     }
 
     private void onDone() {
+        AppStrings s = AppStrings.get(this);
         if (selectedCategories.isEmpty()) {
-            Toast.makeText(this, "Please select at least one category", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, s.catSelectAtLeast(), Toast.LENGTH_SHORT).show();
             return;
         }
         if (selectedCategories.contains("Others") && othersCustomName.isEmpty()) {
-            Toast.makeText(this, "Please enter a name for your 'Others' category", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, s.catOthersNameRequired(), Toast.LENGTH_SHORT).show();
             return;
         }
         Intent result = new Intent();
@@ -551,8 +576,6 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         setResult(RESULT_OK, result);
         finish();
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────
 
     private android.graphics.drawable.GradientDrawable roundedBg(int color, int radius) {
         android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable();

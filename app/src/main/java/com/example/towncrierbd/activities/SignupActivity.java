@@ -20,7 +20,9 @@ import androidx.core.content.ContextCompat;
 
 import com.example.towncrierbd.R;
 import com.example.towncrierbd.models.UserModel;
+import com.example.towncrierbd.utils.AppStrings;
 import com.example.towncrierbd.utils.Constants;
+import com.example.towncrierbd.utils.LanguageManager;
 import com.google.android.gms.location.*;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -39,7 +41,7 @@ public class SignupActivity extends AppCompatActivity {
     private EditText etName, etPhone, etEmail, etPassword, etDob;
     private RadioButton rbGeneral, rbAnnouncer;
     private Button btnSignup;
-    private TextView tvGotoLogin;
+    private TextView tvGotoLogin, tvLangToggle, tvIAm, tvAppName, tvSubtitle;
 
     private FirebaseAuth auth;
 
@@ -51,7 +53,6 @@ public class SignupActivity extends AppCompatActivity {
     private double userLng = 0.0;
     private String locationName = "Unknown";
 
-    // ✅ FIX: Category launcher for Announcer signup
     private ActivityResultLauncher<Intent> categoryLauncher;
     private String    pendingUid;
     private UserModel pendingUser;
@@ -79,20 +80,31 @@ public class SignupActivity extends AppCompatActivity {
         rbAnnouncer = findViewById(R.id.rbAnnouncer);
         btnSignup   = findViewById(R.id.btnSignup);
         tvGotoLogin = findViewById(R.id.tvGotoLogin);
+        tvLangToggle = findViewById(R.id.tvLangToggle);
+        tvIAm       = findViewById(R.id.tvIAm);
+        tvAppName   = findViewById(R.id.tvAppName);
+        tvSubtitle  = findViewById(R.id.tvSubtitle);
 
         locationClient = LocationServices.getFusedLocationProviderClient(this);
         requestLocation();
+
+        applyStrings();
 
         etDob.setOnClickListener(v -> openDatePicker());
         btnSignup.setOnClickListener(v -> doSignup());
         tvGotoLogin.setOnClickListener(v -> finish());
 
-        // ✅ FIX: Category picker result — launched after account creation for Announcers
+        if (tvLangToggle != null) {
+            tvLangToggle.setOnClickListener(v -> {
+                LanguageManager.toggle(this);
+                applyStrings();
+            });
+        }
+
         categoryLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
                     if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                        // ✅ User completed category selection — save their choices
                         ArrayList<String> cats = result.getData()
                                 .getStringArrayListExtra(HawkerCategoryActivity.EXTRA_CATEGORIES);
                         ArrayList<String> subs = result.getData()
@@ -105,30 +117,39 @@ public class SignupActivity extends AppCompatActivity {
                         if (othersName != null && !othersName.isEmpty())
                             pendingUser.setHawkerOthersName(othersName);
 
-                        // Now save user to Firebase
                         saveUserToFirebase(pendingUid, pendingUser);
 
                     } else {
-                        // ✅ FIX: User pressed back from category screen
-                        // Delete the Firebase Auth account since signup is incomplete
                         FirebaseUser u = auth.getCurrentUser();
                         if (u != null) {
-                            u.delete().addOnCompleteListener(task -> {
-                                // Account deleted — reset UI
-                            });
+                            u.delete().addOnCompleteListener(task -> {});
                         }
                         pendingUid  = null;
                         pendingUser = null;
                         btnSignup.setEnabled(true);
-                        Toast.makeText(this,
-                                "Please select your selling categories to complete signup",
-                                Toast.LENGTH_LONG).show();
+                        AppStrings s = AppStrings.get(this);
+                        Toast.makeText(this, s.signupSelectCategories(), Toast.LENGTH_LONG).show();
                     }
                 }
         );
     }
 
-    // ── Route already-logged-in user ───────────────────────────────────────
+    private void applyStrings() {
+        AppStrings s = AppStrings.get(this);
+        if (tvLangToggle  != null) tvLangToggle.setText(LanguageManager.getToggleLabel(this));
+        if (tvAppName     != null) tvAppName.setText(s.appName());
+        if (tvSubtitle    != null) tvSubtitle.setText(s.signupSubtitle());
+        if (etName        != null) etName.setHint(s.signupHintName());
+        if (etPhone       != null) etPhone.setHint(s.signupHintPhone());
+        if (etEmail       != null) etEmail.setHint(s.signupHintEmail());
+        if (etDob         != null) etDob.setHint(s.signupHintDob());
+        if (etPassword    != null) etPassword.setHint(s.signupHintPassword());
+        if (tvIAm         != null) tvIAm.setText(s.signupIAm());
+        if (rbGeneral     != null) rbGeneral.setText(s.signupRoleGeneral());
+        if (rbAnnouncer   != null) rbAnnouncer.setText(s.signupRoleAnnouncer());
+        if (btnSignup     != null) btnSignup.setText(s.signupBtn());
+        if (tvGotoLogin   != null) tvGotoLogin.setText(s.signupGoLogin());
+    }
 
     private void routeLoggedInUser(String uid) {
         FirebaseDatabase.getInstance()
@@ -148,8 +169,6 @@ public class SignupActivity extends AppCompatActivity {
                     }
                 });
     }
-
-    // ── Location ───────────────────────────────────────────────────────────
 
     private void requestLocation() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
@@ -209,24 +228,23 @@ public class SignupActivity extends AppCompatActivity {
         }
     }
 
-    // ── Signup ─────────────────────────────────────────────────────────────
-
     private void doSignup() {
+        AppStrings s = AppStrings.get(this);
         String name  = etName.getText().toString().trim();
         String phone = etPhone.getText().toString().trim();
         String email = etEmail.getText().toString().trim();
         String pass  = etPassword.getText().toString().trim();
 
         if (name.isEmpty() || email.isEmpty() || pass.isEmpty()) {
-            toast("Name, Email, Password required");
+            toast(s.signupRequiredFields());
             return;
         }
         if (pass.length() < 6) {
-            toast("Password must be at least 6 characters");
+            toast(s.signupPasswordShort());
             return;
         }
         if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            toast("Please enter a valid email address");
+            toast(s.signupInvalidEmail());
             return;
         }
 
@@ -234,11 +252,11 @@ public class SignupActivity extends AppCompatActivity {
                 ? Constants.ROLE_ANNOUNCER : Constants.ROLE_USER;
 
         btnSignup.setEnabled(false);
-        btnSignup.setText("Creating account...");
+        btnSignup.setText(s.signupCreating());
 
         auth.createUserWithEmailAndPassword(email, pass)
                 .addOnSuccessListener(res -> {
-                    btnSignup.setText("Sign Up");
+                    btnSignup.setText(s.signupBtn());
                     String uid = auth.getUid();
                     if (uid == null) {
                         btnSignup.setEnabled(true);
@@ -249,32 +267,28 @@ public class SignupActivity extends AppCompatActivity {
                             uid, name, email, phone, role, locationName, userLat, userLng);
 
                     if (Constants.ROLE_ANNOUNCER.equals(role)) {
-                        // ✅ FIX: Announcer must select categories before account is saved
                         pendingUid  = uid;
                         pendingUser = user;
-                        // Launch category selection screen
                         Intent catIntent = new Intent(this, HawkerCategoryActivity.class);
                         categoryLauncher.launch(catIntent);
                     } else {
-                        // General User — save directly
                         saveUserToFirebase(uid, user);
                     }
                 })
                 .addOnFailureListener(e -> {
                     btnSignup.setEnabled(true);
-                    btnSignup.setText("Sign Up");
+                    btnSignup.setText(s.signupBtn());
                     String msg = e.getMessage();
                     if (msg != null && msg.contains("email address is already in use")) {
-                        toast("This email is already registered. Please login.");
+                        toast(s.signupEmailInUse());
                     } else {
-                        toast(msg != null ? msg : "Signup failed");
+                        toast(msg != null ? msg : s.signupBtn());
                     }
                 });
     }
 
-    // ── Save to Firebase ───────────────────────────────────────────────────
-
     private void saveUserToFirebase(String uid, UserModel user) {
+        AppStrings s = AppStrings.get(this);
         FirebaseDatabase db = FirebaseDatabase.getInstance();
 
         db.getReference(Constants.DB_USERS)
@@ -283,20 +297,14 @@ public class SignupActivity extends AppCompatActivity {
                 .addOnSuccessListener(v -> {
                     String phone = user.getPhone();
                     if (phone != null && !phone.isEmpty()) {
-                        // Store ALL phone formats for flexible login
                         String normalized = phone.trim().replaceAll("[\\s\\-]", "");
-
-                        // Format 1: as-is (remove + and replace . with _)
                         String key1 = normalized.replace("+", "").replace(".", "_");
                         db.getReference(Constants.DB_PHONE_MAP).child(key1).setValue(user.getEmail());
 
-                        // Format 2: if starts with 0, also store 880... version
                         if (normalized.startsWith("0") && normalized.length() >= 11) {
                             String key2 = ("880" + normalized.substring(1)).replace(".", "_");
                             db.getReference(Constants.DB_PHONE_MAP).child(key2).setValue(user.getEmail());
                         }
-
-                        // Format 3: +880 or 880 → store 0... version too
                         if (normalized.startsWith("+880")) {
                             String key3 = ("0" + normalized.substring(4)).replace(".", "_");
                             db.getReference(Constants.DB_PHONE_MAP).child(key3).setValue(user.getEmail());
@@ -307,20 +315,17 @@ public class SignupActivity extends AppCompatActivity {
                     }
 
                     btnSignup.setEnabled(true);
-
                     Class<?> dest = Constants.ROLE_ANNOUNCER.equals(user.getRole())
                             ? AnnouncerFeedActivity.class
                             : GeneralFeedActivity.class;
-                    toast("Welcome, " + user.getName() + "! 🎉");
+                    toast(s.signupWelcome(user.getName()));
                     go(dest);
                 })
                 .addOnFailureListener(e -> {
                     btnSignup.setEnabled(true);
-                    toast("Failed to save profile: " + e.getMessage());
+                    toast(s.signupSaveProfileFailed(e.getMessage() != null ? e.getMessage() : ""));
                 });
     }
-
-    // ── Helpers ────────────────────────────────────────────────────────────
 
     private void openDatePicker() {
         Calendar c = Calendar.getInstance();
