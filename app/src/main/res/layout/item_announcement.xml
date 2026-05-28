@@ -27,7 +27,6 @@
             android:contentDescription="Post image" />
 
         <!-- Badge row: Category badge + Audio badge + Expiry -->
-        <!-- NOTE: translate button REMOVED — language follows app language automatically -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

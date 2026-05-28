@@ -1,9 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    ✅ FIX: In CoordinatorLayout, z-order = declaration order.
-    FAB must be declared AFTER BottomNavigationView so it renders on top.
-    Previously FAB was before BottomNav — CoordinatorLayout was drawing BottomNav over FAB.
--->
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -72,7 +67,9 @@
                             android:textStyle="bold"
                             android:textSize="22sp"/>
 
+                        <!-- ✅ ID added for bilingual -->
                         <TextView
+                            android:id="@+id/tvNearbyPosts"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Nearby Posts"
@@ -132,7 +129,9 @@
                         android:layout_marginStart="8dp"
                         android:orientation="vertical">
 
+                        <!-- ✅ ID added -->
                         <TextView
+                            android:id="@+id/tvYourLocation"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Your Location"
@@ -192,9 +191,6 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
-    <!-- Feed list -->
-
-    <!-- Empty State -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipeRefresh"
         android:layout_width="match_parent"
@@ -224,7 +220,9 @@
             android:text="📭"
             android:textSize="64sp"/>
 
+        <!-- ✅ IDs added -->
         <TextView
+            android:id="@+id/tvEmptyTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
@@ -234,6 +232,7 @@
             android:textColor="#1A237E"/>
 
         <TextView
+            android:id="@+id/tvEmptySub"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
@@ -242,11 +241,6 @@
             android:textColor="#888888"/>
     </LinearLayout>
 
-    <!--
-        ✅ FIX: BottomNav declared BEFORE FAB.
-        In CoordinatorLayout, views declared later are drawn on top.
-        So FAB (declared after) will always be above BottomNav.
-    -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNav"
         android:layout_width="match_parent"

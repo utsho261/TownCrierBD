@@ -28,15 +28,12 @@ import com.example.towncrierbd.utils.AppStrings;
 import com.example.towncrierbd.utils.Constants;
 import com.example.towncrierbd.utils.DistanceUtil;
 import com.example.towncrierbd.utils.LanguageManager;
-import com.example.towncrierbd.utils.TranslationHelper;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
 
@@ -50,9 +47,6 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
 
     private TextToSpeech tts;
     private MediaPlayer  mediaPlayer;
-
-    private final Map<String, Boolean>   translatedState   = new HashMap<>();
-    private final Map<String, String[]>  translationCache  = new HashMap<>();
 
     public FeedAdapter(Context context) {
         this.context = context;
@@ -101,10 +95,8 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
     public void onBindViewHolder(@NonNull VH h, int pos) {
         Announcement a = items.get(pos);
         AppStrings s = AppStrings.get(context);
-        String annId = safe(a.getId());
 
-
-        // Badge — show in app's current language if we have a translation cached
+        // ✅ Badge — auto-follow app language (no translate button)
         String badgeEn = safe(a.getDisplayCategoryLabel());
         if (badgeEn.isEmpty()) badgeEn = safe(a.getCategory());
         String badgeDisplay = LanguageManager.isEnglish(context)
@@ -167,84 +159,6 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             } else {
                 h.tvDistance.setText(s.nearby());
             }
-        }
-
-        // ── Translate button ──────────────────────────────────────────────
-        if (h.btnTranslate != null) {
-            boolean isTranslated = Boolean.TRUE.equals(translatedState.get(annId));
-            boolean isBanglaPost = TranslationHelper.isBangla(safe(a.getTitle()) + safe(a.getDescription()));
-
-            // Button label: show what it WILL translate TO
-            if (isBanglaPost) {
-                h.btnTranslate.setText(isTranslated ? s.cardTranslateToBn() : s.cardTranslateToEn());
-            } else {
-                h.btnTranslate.setText(isTranslated ? s.cardTranslateToEn() : s.cardTranslateToBn());
-            }
-            h.btnTranslate.setVisibility(View.VISIBLE);
-
-            // Show cached translation if active
-            if (isTranslated && translationCache.containsKey(annId)) {
-                String[] cached = translationCache.get(annId);
-                if (cached != null && cached.length >= 3) {
-                    if (h.tvBadge != null && !cached[0].isEmpty()) h.tvBadge.setText(cached[0]);
-                    if (h.tvTitle != null && !cached[1].isEmpty()) h.tvTitle.setText(cached[1]);
-                    if (h.tvDesc  != null && !cached[2].isEmpty()) h.tvDesc.setText(cached[2]);
-                }
-            }
-
-            final String finalBadgeEn = badgeEn;
-            h.btnTranslate.setOnClickListener(v -> {
-                boolean currentlyTranslated = Boolean.TRUE.equals(translatedState.get(annId));
-
-                if (currentlyTranslated) {
-                    // Toggle back to original
-                    translatedState.put(annId, false);
-                    String badgeOrig = LanguageManager.isEnglish(context)
-                            ? finalBadgeEn : getCategoryBn(finalBadgeEn);
-                    if (h.tvBadge != null) h.tvBadge.setText(badgeOrig);
-                    if (h.tvTitle != null) h.tvTitle.setText(safe(a.getTitle()));
-                    if (h.tvDesc  != null) h.tvDesc.setText(safe(a.getDescription()));
-                    h.btnTranslate.setText(isBanglaPost ? s.cardTranslateToEn() : s.cardTranslateToBn());
-
-                } else {
-                    if (translationCache.containsKey(annId)) {
-                        String[] cached = translationCache.get(annId);
-                        translatedState.put(annId, true);
-                        if (cached != null && cached.length >= 3) {
-                            if (h.tvBadge != null && !cached[0].isEmpty()) h.tvBadge.setText(cached[0]);
-                            if (h.tvTitle != null && !cached[1].isEmpty()) h.tvTitle.setText(cached[1]);
-                            if (h.tvDesc  != null && !cached[2].isEmpty()) h.tvDesc.setText(cached[2]);
-                        }
-                        h.btnTranslate.setText(isBanglaPost ? s.cardTranslateToBn() : s.cardTranslateToEn());
-                        return;
-                    }
-
-                    h.btnTranslate.setEnabled(false);
-                    h.btnTranslate.setText(s.cardTranslating());
-
-                    String langPair = isBanglaPost ? "bn|en" : "en|bn";
-                    String[] fields = {
-                            finalBadgeEn,
-                            safe(a.getTitle()),
-                            safe(a.getDescription())
-                    };
-
-                    TranslationHelper.translateFields(fields, langPair, results -> {
-                        if (results != null) {
-                            translationCache.put(annId, results);
-                            translatedState.put(annId, true);
-                            if (h.tvBadge != null && results.length > 0 && !results[0].isEmpty())
-                                h.tvBadge.setText(results[0]);
-                            if (h.tvTitle != null && results.length > 1 && !results[1].isEmpty())
-                                h.tvTitle.setText(results[1]);
-                            if (h.tvDesc  != null && results.length > 2 && !results[2].isEmpty())
-                                h.tvDesc.setText(results[2]);
-                        }
-                        h.btnTranslate.setEnabled(true);
-                        h.btnTranslate.setText(isBanglaPost ? s.cardTranslateToBn() : s.cardTranslateToEn());
-                    });
-                }
-            });
         }
 
         if (showEditDelete) {
@@ -311,7 +225,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         }
     }
 
-    /** Try to get Bangla category name; fall back to English if not mapped */
+    /** Get Bangla category name; fall back to English if not mapped */
     private String getCategoryBn(String englishKey) {
         String bn = com.example.towncrierbd.utils.CategoryConfig.MAIN_BN.get(englishKey);
         return (bn != null) ? bn : englishKey;
@@ -445,8 +359,6 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                             .child(a.getId()).child("description").setValue(newDesc);
                     a.setTitle(newTitle);
                     a.setDescription(newDesc);
-                    translationCache.remove(a.getId());
-                    translatedState.remove(a.getId());
                     int currentPos = items.indexOf(a);
                     if (currentPos >= 0) notifyItemChanged(currentPos);
                     Toast.makeText(context, s.cardUpdated(), Toast.LENGTH_SHORT).show();
@@ -468,8 +380,6 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                     int currentPos = items.indexOf(a);
                     if (currentPos >= 0) {
                         items.remove(currentPos);
-                        translationCache.remove(a.getId());
-                        translatedState.remove(a.getId());
                         notifyItemRemoved(currentPos);
                         notifyItemRangeChanged(currentPos, items.size());
                     }
@@ -498,7 +408,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         TextView  tvBadge, tvTitle, tvDesc, tvAvatar, tvName, tvDistance, tvTime;
         TextView  tvExpiry, tvAudioBadge;
         Button    btnListen, btnChat, btnCall, btnDirection;
-        Button    btnTranslate;
+        // ✅ btnTranslate REMOVED — no longer in layout or adapter
         View      layoutEditDelete;
         Button    btnEdit, btnDelete, btnDetails;
 
@@ -518,7 +428,6 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             btnChat          = itemView.findViewById(R.id.btnChat);
             btnCall          = itemView.findViewById(R.id.btnCall);
             btnDirection     = itemView.findViewById(R.id.btnDirection);
-            btnTranslate     = itemView.findViewById(R.id.btnTranslate);
             layoutEditDelete = itemView.findViewById(R.id.layoutEditDelete);
             btnEdit          = itemView.findViewById(R.id.btnEdit);
             btnDelete        = itemView.findViewById(R.id.btnDelete);

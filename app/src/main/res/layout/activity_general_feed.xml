@@ -28,7 +28,7 @@
             android:background="#D32F2F"
             android:visibility="gone"/>
 
-        <!-- Header Card - Beautiful gradient style -->
+        <!-- Header Card -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -47,14 +47,15 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <!-- Avatar + Text -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:orientation="vertical">
 
+                    <!-- ✅ ID added so Java can set bilingual text -->
                     <TextView
+                        android:id="@+id/tvGoodDay"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Good day!"
@@ -71,7 +72,9 @@
                         android:textSize="22sp"
                         android:layout_marginTop="2dp"/>
 
+                    <!-- ✅ ID added -->
                     <TextView
+                        android:id="@+id/tvSeeNearby"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="See what's happening nearby"
@@ -140,7 +143,9 @@
                     android:layout_marginStart="10dp"
                     android:orientation="vertical">
 
+                    <!-- ✅ ID added -->
                     <TextView
+                        android:id="@+id/tvYourLocation"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="YOUR LOCATION"
@@ -176,7 +181,6 @@
                     android:paddingTop="6dp"
                     android:paddingBottom="6dp"/>
             </LinearLayout>
-
 
         </LinearLayout>
 
@@ -238,7 +242,9 @@
             android:orientation="horizontal"
             android:background="#F0F4FF">
 
+            <!-- ✅ ID added -->
             <TextView
+                android:id="@+id/tvFilterLabel"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -310,7 +316,9 @@
             android:text="📭"
             android:textSize="60sp"/>
 
+        <!-- ✅ IDs added so applyStrings() can update them -->
         <TextView
+            android:id="@+id/tvEmptyTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
@@ -320,6 +328,7 @@
             android:textColor="#1A237E"/>
 
         <TextView
+            android:id="@+id/tvEmptySub"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"

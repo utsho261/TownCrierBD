@@ -49,6 +49,7 @@ import java.util.*;
 public class AnnouncerFeedActivity extends AppCompatActivity {
 
     private TextView tvWelcome, tvLocationName, tvRadius;
+    private TextView tvNearbyPosts, tvYourLocation;
     private RecyclerView rvFeed;
     private FeedAdapter adapter;
     private FloatingActionButton fabAdd;
@@ -85,8 +86,6 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
 
     private NetworkMonitor networkMonitor;
     private UserModel currentUser;
-
-    // ✅ FIX: Do NOT initialize here — context is null at field init time
     private AppStrings strings;
 
     @Override
@@ -94,7 +93,6 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_announcer_feed);
 
-        // ✅ FIX: Initialize AFTER setContentView so context is ready
         strings = AppStrings.get(this);
 
         tvWelcome        = findViewById(R.id.tvWelcome);
@@ -108,7 +106,11 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         bannerNoInternet = findViewById(R.id.bannerNoInternet);
         bottomNav        = findViewById(R.id.bottomNav);
 
-        // ✅ Set all hardcoded strings from AppStrings
+        // ✅ Bilingual views
+        tvNearbyPosts  = findViewById(R.id.tvNearbyPosts);
+        tvYourLocation = findViewById(R.id.tvYourLocation);
+
+        // ✅ Apply bilingual strings
         applyStrings();
 
         adapter = new FeedAdapter(this);
@@ -166,25 +168,24 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         }
 
         setupBottomNav();
-
         locationClient = LocationServices.getFusedLocationProviderClient(this);
-
         requestNotificationPermission();
         startNetworkMonitoring();
         loadUserThenStart();
         listenForUnreadMessages();
     }
 
-    // ✅ Apply all translatable strings to views
+    // ✅ Apply all bilingual strings
     private void applyStrings() {
         AppStrings s = AppStrings.get(this);
 
-        // No internet banner
-        TextView bannerTv = bannerNoInternet instanceof TextView ? (TextView) bannerNoInternet : null;
-        if (bannerTv != null) bannerTv.setText(s.feedNoInternet());
+        if (tvNearbyPosts  != null) tvNearbyPosts.setText(s.feedNearbyPosts());
+        if (tvYourLocation != null) tvYourLocation.setText(s.feedYourLocation());
+        if (etSearch       != null) etSearch.setHint(s.feedSearchHintAnn());
 
-        // Search hint
-        if (etSearch != null) etSearch.setHint(s.feedSearchHintAnn());
+        // No internet banner
+        if (bannerNoInternet instanceof TextView)
+            ((TextView) bannerNoInternet).setText(s.feedNoInternet());
 
         // Empty state
         if (layoutEmpty != null) {
@@ -345,8 +346,10 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
                     if (u.getName() != null) {
                         String name = u.getName().trim();
                         String firstName = name.contains(" ") ? name.split(" ")[0] : name;
-                        if (tvWelcome != null)
-                            tvWelcome.setText(strings.feedHello() + firstName + "! 👋");
+                        if (tvWelcome != null) {
+                            AppStrings s = AppStrings.get(AnnouncerFeedActivity.this);
+                            tvWelcome.setText(s.feedHello() + firstName + "! 👋");
+                        }
                     }
                     myHawkerCategories    = u.getHawkerCategories();
                     myHawkerSubcategories = u.getHawkerSubcategories();

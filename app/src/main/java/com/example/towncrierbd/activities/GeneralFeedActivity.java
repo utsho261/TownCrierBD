@@ -54,7 +54,7 @@ import java.util.Locale;
 public class GeneralFeedActivity extends AppCompatActivity {
 
     private TextView tvWelcome, tvLocationName, tvRadius, tvToggleFilter;
-    private TextView tvGoodDay, tvSeeNearby, tvNearbyPosts, tvFilterLabel;
+    private TextView tvGoodDay, tvSeeNearby, tvNearbyPosts, tvFilterLabel, tvYourLocation;
     private View scrollChips;
     private ChipGroup chipGroup;
     private RecyclerView rvFeed;
@@ -92,8 +92,6 @@ public class GeneralFeedActivity extends AppCompatActivity {
     private List<String> myPreferredSubcategories = new ArrayList<>();
 
     private NetworkMonitor networkMonitor;
-
-    // ✅ FIX: Do NOT initialize here — context is null at field init time
     private AppStrings strings;
 
     @Override
@@ -101,7 +99,6 @@ public class GeneralFeedActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_general_feed);
 
-        // ✅ FIX: Initialize AFTER setContentView so context is ready
         strings = AppStrings.get(this);
 
         tvWelcome        = findViewById(R.id.tvWelcome);
@@ -118,13 +115,14 @@ public class GeneralFeedActivity extends AppCompatActivity {
         bannerNoInternet = findViewById(R.id.bannerNoInternet);
         bottomNav        = findViewById(R.id.bottomNav);
 
-        // ✅ IDs for previously hardcoded strings
-        tvGoodDay    = findViewById(R.id.tvGoodDay);
-        tvSeeNearby  = findViewById(R.id.tvSeeNearby);
-        tvNearbyPosts = findViewById(R.id.tvNearbyPosts);
-        tvFilterLabel = findViewById(R.id.tvFilterLabel);
+        // ✅ Bilingual label views
+        tvGoodDay      = findViewById(R.id.tvGoodDay);
+        tvSeeNearby    = findViewById(R.id.tvSeeNearby);
+        tvNearbyPosts  = findViewById(R.id.tvNearbyPosts);
+        tvFilterLabel  = findViewById(R.id.tvFilterLabel);
+        tvYourLocation = findViewById(R.id.tvYourLocation);
 
-        // ✅ Apply all translatable strings
+        // ✅ Apply all bilingual strings immediately
         applyStrings();
 
         adapter = new FeedAdapter(this);
@@ -198,22 +196,23 @@ public class GeneralFeedActivity extends AppCompatActivity {
         listenForUnreadMessages();
     }
 
-    // ✅ Apply all translatable strings to views
+    // ✅ Apply ALL bilingual strings — called on create and after language toggle
     private void applyStrings() {
         AppStrings s = AppStrings.get(this);
 
-        if (tvGoodDay    != null) tvGoodDay.setText(s.feedGoodDay());
-        if (tvSeeNearby  != null) tvSeeNearby.setText(s.feedSeeNearby());
-        if (tvNearbyPosts != null) tvNearbyPosts.setText(s.feedNearbyPosts());
-        if (tvFilterLabel != null) tvFilterLabel.setText(s.feedFilterCategory());
+        if (tvGoodDay      != null) tvGoodDay.setText(s.feedGoodDay());
+        if (tvSeeNearby    != null) tvSeeNearby.setText(s.feedSeeNearby());
+        if (tvNearbyPosts  != null) tvNearbyPosts.setText(s.feedNearbyPosts());
+        if (tvFilterLabel  != null) tvFilterLabel.setText(s.feedFilterCategory());
         if (tvToggleFilter != null) tvToggleFilter.setText(s.feedShowFilter());
-        if (etSearch != null) etSearch.setHint(s.feedSearchHint());
+        if (tvYourLocation != null) tvYourLocation.setText(s.feedYourLocation());
+        if (etSearch       != null) etSearch.setHint(s.feedSearchHint());
 
         // No internet banner
         if (bannerNoInternet instanceof TextView)
             ((TextView) bannerNoInternet).setText(s.feedNoInternet());
 
-        // Empty state
+        // Empty state — ids now exist in XML
         if (layoutEmpty != null) {
             TextView tvEmptyTitle = layoutEmpty.findViewById(R.id.tvEmptyTitle);
             TextView tvEmptySub   = layoutEmpty.findViewById(R.id.tvEmptySub);
@@ -364,8 +363,10 @@ public class GeneralFeedActivity extends AppCompatActivity {
                         ? Constants.ROLE_USER : Constants.ROLE_ANNOUNCER;
                 myPreferredCategories    = u.getHawkerCategories();
                 myPreferredSubcategories = u.getHawkerSubcategories();
-                if (u.getName() != null)
-                    tvWelcome.setText(strings.feedWelcomeBack() + u.getName() + "!");
+                if (u.getName() != null) {
+                    AppStrings s = AppStrings.get(GeneralFeedActivity.this);
+                    tvWelcome.setText(s.feedWelcomeBack() + u.getName() + "!");
+                }
                 if (u.getLanguage() != null && !u.getLanguage().isEmpty()) {
                     LanguageManager.setLanguage(GeneralFeedActivity.this, u.getLanguage());
                 }
@@ -454,7 +455,6 @@ public class GeneralFeedActivity extends AppCompatActivity {
     private void buildCategoryChips() {
         chipGroup.removeAllViews();
         boolean isBn = !LanguageManager.isEnglish(this);
-        // "All" chip
         addChip(CategoryConfig.CAT_ALL, isBn ? CategoryConfig.CAT_ALL_BN : CategoryConfig.CAT_ALL, true);
         for (com.example.towncrierbd.utils.CategoryConfig.HawkerCategory cat : CategoryConfig.HAWKER_CATEGORIES) {
             addChip(cat.name, isBn ? cat.nameBn : cat.name, false);
@@ -462,7 +462,6 @@ public class GeneralFeedActivity extends AppCompatActivity {
         chipGroup.setOnCheckedChangeListener((group, checkedId) -> {
             Chip ch = group.findViewById(checkedId);
             if (ch != null) {
-                // Tag stores English key
                 Object tag = ch.getTag();
                 selectedCategory = (tag != null) ? tag.toString() : ch.getText().toString();
                 applyAndShow();
@@ -473,7 +472,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
     private void addChip(String englishKey, String displayText, boolean checked) {
         Chip chip = new Chip(this);
         chip.setText(displayText);
-        chip.setTag(englishKey); // always English for filtering
+        chip.setTag(englishKey);
         chip.setCheckable(true);
         chip.setChecked(checked);
         chipGroup.addView(chip);
