@@ -11,7 +11,6 @@
         android:id="@+id/tvLangToggle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Switch to বাংলা"
         android:textColor="#FFFFFF"
         android:textSize="13sp"
         android:textStyle="bold"
@@ -52,6 +51,7 @@
                 app:tint="@color/blue_start"
                 android:contentDescription="@string/app_name" />
 
+            <!-- ✅ tvAppName — NO hardcoded text, set via Java -->
             <TextView
                 android:id="@+id/tvAppName"
                 android:layout_width="wrap_content"
@@ -61,6 +61,7 @@
                 android:textSize="22sp"
                 android:layout_marginTop="8dp" />
 
+            <!-- ✅ tvSubtitle — NO hardcoded text, set via Java -->
             <TextView
                 android:id="@+id/tvSubtitle"
                 android:layout_width="wrap_content"
@@ -69,10 +70,9 @@
                 android:layout_marginBottom="16dp" />
 
             <!--
-                All EditText fields: NO hardcoded hint text in XML.
+                ✅ ALL EditText fields: NO hint in XML.
                 Hints are set programmatically via setHint() in applyStrings().
-                This ensures hints update correctly on language toggle
-                WITHOUT overwriting any text the user has typed.
+                setHint() NEVER overwrites user-typed text.
             -->
 
             <EditText
@@ -112,9 +112,10 @@
                 android:layout_marginTop="8dp" />
 
             <!--
-                Password: TextInputLayout for show/hide toggle.
-                Hint set on inner TextInputEditText only (NOT on the layout)
-                to prevent MaterialComponents from overwriting typed text.
+                ✅ Password: TextInputLayout for show/hide toggle.
+                NO hint in XML on layout or EditText — set only via etPassword.setHint() in Java.
+                Setting hint on TextInputLayout itself causes MaterialComponents to cache it
+                and re-apply it over typed text on every layout pass — so we never do that.
             -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilPassword"
@@ -132,6 +133,7 @@
                     android:padding="12dp"/>
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- ✅ tvIAm — NO hardcoded text, set via Java -->
             <TextView
                 android:id="@+id/tvIAm"
                 android:layout_width="wrap_content"
@@ -147,12 +149,14 @@
                 android:gravity="center"
                 android:layout_marginTop="4dp">
 
+                <!-- ✅ rbGeneral — NO hardcoded text, set via Java -->
                 <RadioButton
                     android:id="@+id/rbGeneral"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:checked="true"/>
 
+                <!-- ✅ rbAnnouncer — NO hardcoded text, set via Java -->
                 <RadioButton
                     android:id="@+id/rbAnnouncer"
                     android:layout_width="wrap_content"
@@ -160,6 +164,7 @@
                     android:layout_marginStart="32dp"/>
             </RadioGroup>
 
+            <!-- ✅ btnSignup — NO hardcoded text, set via Java -->
             <Button
                 android:id="@+id/btnSignup"
                 android:layout_width="match_parent"
@@ -168,6 +173,7 @@
                 android:backgroundTint="@color/blue_start"
                 android:layout_marginTop="12dp"/>
 
+            <!-- ✅ tvGotoLogin — NO hardcoded text, set via Java -->
             <TextView
                 android:id="@+id/tvGotoLogin"
                 android:layout_width="wrap_content"

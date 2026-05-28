@@ -60,7 +60,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     private TextView tvImageStatus, tvAudioStatus;
     private View     btnAddImage, btnRecordAudio;
 
-    // Step 3 bilingual labels
+    // Step 3 bilingual label views
     private TextView tvLabelTitle, tvLabelDesc, tvLabelExpiry, tvExpiryMax, tvExpiryInfo;
     private TextView tvBtnAddImage, tvBtnAddAudio;
 
@@ -153,9 +153,8 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // Apply bilingual strings to ALL wizard views
+    // ✅ Apply bilingual strings to ALL wizard views
     // ════════════════════════════════════════════════════════════════════════
-
     private void applyWizardStrings() {
         AppStrings s = AppStrings.get(this);
 
@@ -175,14 +174,16 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         if (btnBack2 != null) btnBack2.setText(s.addStep2Back());
         if (btnNext2 != null) btnNext2.setText(s.addStep2Next());
 
-        // ── Step 3 labels ──
+        // ── Step 3 labels ── ✅ These are the ones previously not updating
         if (tvLabelTitle  != null) tvLabelTitle.setText(s.addStep3LabelTitle());
         if (tvLabelDesc   != null) tvLabelDesc.setText(s.addStep3LabelDesc());
         if (tvLabelExpiry != null) tvLabelExpiry.setText(s.addStep3ExpiryLabel());
+        // ✅ tvExpiryMax: show "max 7 days" text bilingual
         if (tvExpiryMax   != null) tvExpiryMax.setText(s.addStep3ExpiryMax());
+        // ✅ tvExpiryInfo: "Post disappears automatically..."
         if (tvExpiryInfo  != null) tvExpiryInfo.setText(s.addStep3ExpiryInfo());
 
-        // ── Step 3 hint texts ──
+        // ── Step 3 hint texts — setHint() only, never setText() ──
         if (etTitle       != null) etTitle.setHint(s.addStep3HintTitle());
         if (etDesc        != null) etDesc.setHint(s.addStep3HintDesc());
         if (etExpiryValue != null) etExpiryValue.setHint(s.addStep3ExpiryHint());
@@ -206,10 +207,10 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     // ════════════════════════════════════════════════════════════════════════
     // Expiry UI
     // ════════════════════════════════════════════════════════════════════════
-
     private void setupExpiryUI() {
         if (spExpiryUnit == null) return;
         AppStrings s = AppStrings.get(this);
+        // ✅ Units array from AppStrings — auto-bilingual
         String[] units = s.addStep3ExpiryUnits();
 
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
@@ -324,7 +325,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     // ════════════════════════════════════════════════════════════════════════
     // Load user profile
     // ════════════════════════════════════════════════════════════════════════
-
     private void loadUserProfileThenInit() {
         String uid = auth.getUid();
         if (uid == null) return;
@@ -361,7 +361,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     // ════════════════════════════════════════════════════════════════════════
     // Step navigation
     // ════════════════════════════════════════════════════════════════════════
-
     private void showStep(int step) {
         if (stepCategory != null) stepCategory.setVisibility(step == 1 ? View.VISIBLE : View.GONE);
         if (stepProducts  != null) stepProducts.setVisibility(step == 2 ? View.VISIBLE : View.GONE);
@@ -381,7 +380,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     // ════════════════════════════════════════════════════════════════════════
     // STEP 1 — Category selection
     // ════════════════════════════════════════════════════════════════════════
-
     private void buildCategoryStep() {
         if (llCategoryList == null) return;
         llCategoryList.removeAllViews();
@@ -476,7 +474,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     // ════════════════════════════════════════════════════════════════════════
     // STEP 2 — Product selection
     // ════════════════════════════════════════════════════════════════════════
-
     private void buildProductStep() {
         if (llProductList == null) return;
         llProductList.removeAllViews();
@@ -628,7 +625,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     // ════════════════════════════════════════════════════════════════════════
     // Publish
     // ════════════════════════════════════════════════════════════════════════
-
     private void publish() {
         AppStrings s = AppStrings.get(this);
         if (isRecording) { toast(s.addStopRecordFirst()); return; }
@@ -780,7 +776,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     // ════════════════════════════════════════════════════════════════════════
     // Audio / Image helpers
     // ════════════════════════════════════════════════════════════════════════
-
     private void showAudioOptions() {
         AppStrings s = AppStrings.get(this);
         if (isRecording) { stopAudioRecording(); return; }

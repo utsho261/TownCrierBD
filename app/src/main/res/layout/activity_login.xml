@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:background="@drawable/bg_gradient">
 
-    <!-- Language toggle at top-right corner -->
+    <!-- Language toggle top-right -->
     <TextView
         android:id="@+id/tvLangToggle"
         android:layout_width="wrap_content"
@@ -48,29 +48,27 @@
             app:tint="@color/blue_start"
             android:contentDescription="@string/app_name" />
 
+        <!-- ✅ tvAppName — setText() in Java -->
         <TextView
             android:id="@+id/tvAppName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Town Crier BD"
             android:textColor="@color/text_primary"
             android:textStyle="bold"
             android:textSize="22sp"
             android:layout_marginTop="8dp" />
 
+        <!-- ✅ tvSubtitle — setText() in Java, NO hardcoded text -->
         <TextView
             android:id="@+id/tvSubtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Connect with your neighborhood"
             android:textColor="@color/hint_gray"
             android:layout_marginBottom="16dp" />
 
         <!--
-            Email/Phone field.
-            IMPORTANT: Do NOT use TextInputLayout here — it caches the hint
-            and re-applies it on language toggle, which overwrites user input.
-            Plain EditText with programmatic setHint() is safe.
+            ✅ etEmail — Plain EditText, NO hint in XML.
+            Hint set via setHint() in applyStrings() — never setText().
         -->
         <EditText
             android:id="@+id/etEmail"
@@ -81,9 +79,10 @@
             android:padding="12dp" />
 
         <!--
-            Password field wrapped in TextInputLayout for the show/hide toggle.
-            Hint is set only once in applyStrings() via etPassword.setHint(),
-            NOT via TextInputLayout.setHint(), so it won't overwrite typed text.
+            ✅ Password — TextInputLayout for show/hide toggle.
+            NO hint in XML on either the layout or the inner EditText.
+            Hint set only once via etPassword.setHint() in applyStrings().
+            This prevents MaterialComponents from re-applying and overwriting typed text.
         -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/tilPassword"
@@ -101,31 +100,31 @@
                 android:padding="12dp" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <!-- ✅ tvForgotPassword — setText() in Java -->
         <TextView
             android:id="@+id/tvForgotPassword"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Forgot Password?"
             android:textColor="@color/blue_start"
             android:layout_gravity="end"
             android:layout_marginTop="6dp"
             android:clickable="true"
             android:focusable="true"/>
 
+        <!-- ✅ btnLogin — setText() in Java -->
         <Button
             android:id="@+id/btnLogin"
             android:layout_width="match_parent"
             android:layout_height="50dp"
-            android:text="Login"
             android:textColor="@color/white"
             android:backgroundTint="@color/blue_start"
             android:layout_marginTop="14dp" />
 
+        <!-- ✅ tvGotoSignup — setText() in Java -->
         <TextView
             android:id="@+id/tvGotoSignup"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Don't have an account? Sign Up"
             android:textColor="@color/hint_gray"
             android:layout_marginTop="12dp" />
 

@@ -22,7 +22,6 @@
                 android:id="@+id/tvPostTypeHeader"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="📢 Create Announcement"
                 android:textColor="@android:color/white"
                 android:textSize="18sp"
                 android:textStyle="bold"
@@ -52,7 +51,6 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Step 1 of 3"
                 android:textColor="#EAF0FF"
                 android:textSize="12sp"/>
 
@@ -77,11 +75,11 @@
             android:orientation="vertical"
             android:padding="16dp">
 
+            <!-- ✅ No hardcoded text — set via applyWizardStrings() -->
             <TextView
                 android:id="@+id/tvStep1Title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Select Categories"
                 android:textStyle="bold"
                 android:textSize="17sp"
                 android:textColor="#111111"/>
@@ -90,7 +88,6 @@
                 android:id="@+id/tvStep1Subtitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Choose all that apply"
                 android:textSize="13sp"
                 android:textColor="#6B7280"
                 android:layout_marginTop="2dp"
@@ -107,7 +104,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
                 android:layout_marginTop="20dp"
-                android:text="Next →"
                 android:textColor="@android:color/white"
                 android:background="@drawable/bg_btn_publish"/>
 
@@ -128,11 +124,11 @@
             android:orientation="vertical"
             android:padding="16dp">
 
+            <!-- ✅ No hardcoded text -->
             <TextView
                 android:id="@+id/tvStep2Title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Select Products"
                 android:textStyle="bold"
                 android:textSize="17sp"
                 android:textColor="#111111"/>
@@ -141,7 +137,6 @@
                 android:id="@+id/tvStep2Subtitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Buyers can filter by specific items (optional)"
                 android:textSize="13sp"
                 android:textColor="#6B7280"
                 android:layout_marginBottom="10dp"/>
@@ -150,7 +145,6 @@
                 android:id="@+id/etCustomCategory"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
-                android:hint="Describe your others category"
                 android:background="@drawable/bg_input"
                 android:padding="14dp"
                 android:visibility="gone"
@@ -174,7 +168,6 @@
                     android:layout_width="0dp"
                     android:layout_height="52dp"
                     android:layout_weight="1"
-                    android:text="← Back"
                     android:background="@drawable/bg_btn_gray"
                     android:layout_marginEnd="8dp"/>
 
@@ -183,7 +176,6 @@
                     android:layout_width="0dp"
                     android:layout_height="52dp"
                     android:layout_weight="2"
-                    android:text="Next →"
                     android:textColor="@android:color/white"
                     android:background="@drawable/bg_btn_publish"/>
             </LinearLayout>
@@ -205,43 +197,41 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- Title label -->
+            <!-- ✅ Title label — set via Java -->
             <TextView
                 android:id="@+id/tvLabelTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Title *"
                 android:textStyle="bold"
                 android:textSize="14sp"
                 android:textColor="#202020"/>
 
+            <!-- ✅ No hint in XML — set via setHint() in Java -->
             <EditText
                 android:id="@+id/etTitle"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
                 android:layout_marginTop="6dp"
-                android:hint="e.g. Fresh vegetables available today"
                 android:background="@drawable/bg_input"
                 android:padding="14dp"
                 android:textSize="14sp"/>
 
-            <!-- Description label -->
+            <!-- ✅ Description label — set via Java -->
             <TextView
                 android:id="@+id/tvLabelDesc"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
-                android:text="Description *"
                 android:textStyle="bold"
                 android:textSize="14sp"
                 android:textColor="#202020"/>
 
+            <!-- ✅ No hint in XML -->
             <EditText
                 android:id="@+id/etDesc"
                 android:layout_width="match_parent"
                 android:layout_height="120dp"
                 android:layout_marginTop="6dp"
-                android:hint="Add details about your post..."
                 android:gravity="top"
                 android:background="@drawable/bg_input"
                 android:padding="14dp"
@@ -268,12 +258,12 @@
                         android:layout_height="18dp"
                         android:src="@android:drawable/ic_menu_camera"
                         app:tint="#2563EB"/>
+                    <!-- ✅ tvBtnAddImage — set via Java -->
                     <TextView
                         android:id="@+id/tvBtnAddImage"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="6dp"
-                        android:text="Add Image"
                         android:textStyle="bold"
                         android:textColor="#2563EB"/>
                 </LinearLayout>
@@ -294,12 +284,12 @@
                         android:layout_height="18dp"
                         android:src="@android:drawable/ic_btn_speak_now"
                         app:tint="#A21CAF"/>
+                    <!-- ✅ tvBtnAddAudio — set via Java -->
                     <TextView
                         android:id="@+id/tvBtnAddAudio"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="6dp"
-                        android:text="Add Audio"
                         android:textStyle="bold"
                         android:textColor="#A21CAF"/>
                 </LinearLayout>
@@ -332,7 +322,7 @@
                 android:textSize="12sp"
                 android:textColor="#4B5563"/>
 
-            <!-- EXPIRY SECTION -->
+            <!-- ══ EXPIRY SECTION ══ -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -347,35 +337,35 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
-                    <!-- Expiry label — set in Java -->
+                    <!-- ✅ tvLabelExpiry — set via Java (bilingual) -->
                     <TextView
                         android:id="@+id/tvLabelExpiry"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Post Expiry *"
                         android:textStyle="bold"
                         android:textSize="15sp"
                         android:textColor="#202020"/>
 
-                    <!-- Max days text — set in Java, hidden by default -->
+                    <!--
+                        ✅ tvExpiryMax — "max 7 days" / "সর্বোচ্চ ৭ দিন"
+                        Set via Java. Visible always so user knows the limit.
+                    -->
                     <TextView
                         android:id="@+id/tvExpiryMax"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text=""
                         android:textSize="11sp"
                         android:textColor="#EF4444"/>
                 </LinearLayout>
 
-                <!-- Expiry info — set in Java -->
+                <!-- ✅ tvExpiryInfo — "Post disappears automatically..." — set via Java -->
                 <TextView
                     android:id="@+id/tvExpiryInfo"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:layout_marginBottom="10dp"
-                    android:text=""
                     android:textSize="12sp"
                     android:textColor="#6B7280"/>
 
@@ -386,12 +376,12 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
+                    <!-- ✅ No hint in XML — set via setHint() in Java -->
                     <EditText
                         android:id="@+id/etExpiryValue"
                         android:layout_width="0dp"
                         android:layout_height="60dp"
                         android:layout_weight="1"
-                        android:hint="2"
                         android:inputType="numberDecimal"
                         android:background="@drawable/bg_input"
                         android:padding="14dp"
@@ -440,21 +430,21 @@
                 android:layout_marginTop="20dp"
                 android:layout_marginBottom="16dp">
 
+                <!-- ✅ No hardcoded text — set via Java -->
                 <Button
                     android:id="@+id/btnBackStep3"
                     android:layout_width="0dp"
                     android:layout_height="52dp"
                     android:layout_weight="1"
-                    android:text="← Back"
                     android:background="@drawable/bg_btn_gray"
                     android:layout_marginEnd="8dp"/>
 
+                <!-- ✅ No hardcoded text — set via Java -->
                 <Button
                     android:id="@+id/btnPublish"
                     android:layout_width="0dp"
                     android:layout_height="52dp"
                     android:layout_weight="2"
-                    android:text="Publish ✅"
                     android:textColor="@android:color/white"
                     android:background="@drawable/bg_btn_publish"/>
             </LinearLayout>
