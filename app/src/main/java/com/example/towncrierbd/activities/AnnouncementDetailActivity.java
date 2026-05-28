@@ -37,7 +37,7 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
     private MediaPlayer mediaPlayer;
     private boolean isPlaying = false;
 
-    // ✅ Translation state
+    // Translation state
     private boolean isTranslated = false;
     private String originalTitle, originalDesc, originalCategory;
     private String translatedTitle, translatedDesc, translatedCategory;
@@ -46,6 +46,8 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_announcement_detail);
+
+        AppStrings s = AppStrings.get(this);
 
         // Bind views
         ImageView      ivPhoto        = findViewById(R.id.ivPhoto);
@@ -61,7 +63,7 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
         Button         btnDirection   = findViewById(R.id.btnDirection);
         ImageView      btnBack        = findViewById(R.id.btnBack);
         MaterialButton btnPlayAudio   = findViewById(R.id.btnPlayAudio);
-        Button         btnTranslate   = findViewById(R.id.btnTranslate); // ✅ NEW
+        Button         btnTranslate   = findViewById(R.id.btnTranslate);
 
         // Read intent extras
         String title    = getIntent().getStringExtra(EXTRA_TITLE);
@@ -110,46 +112,47 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
             }
         }
 
-        // ── ✅ Translate Button ─────────────────────────────────────────────
+        // ── Translate Button ────────────────────────────────────────────
         if (btnTranslate != null) {
-            AppStrings strings = AppStrings.get(this);
             boolean isBanglaPost = TranslationHelper.isBangla(originalTitle + originalDesc);
-            boolean isViewerBn = !LanguageManager.isEnglish(this);
+            boolean isViewerBn   = !LanguageManager.isEnglish(this);
 
+            // Show button only when post language ≠ viewer language
             if ((isBanglaPost && !isViewerBn) || (!isBanglaPost && isViewerBn)) {
                 btnTranslate.setVisibility(View.VISIBLE);
-                btnTranslate.setText(isBanglaPost ? strings.detailTranslateToEn() : strings.detailTranslateToBn());
             } else {
-                btnTranslate.setVisibility(View.GONE);
+                // Still show for manual toggle convenience
+                btnTranslate.setVisibility(View.VISIBLE);
             }
-            btnTranslate.setVisibility(View.VISIBLE);
+
+            btnTranslate.setText(isBanglaPost ? s.detailTranslateToEn() : s.detailTranslateToBn());
 
             String langPair = isBanglaPost ? "bn|en" : "en|bn";
 
             btnTranslate.setOnClickListener(v -> {
+                AppStrings as = AppStrings.get(this);
                 if (isTranslated) {
-                    // ── Show original ──
+                    // Show original
                     isTranslated = false;
                     if (tvCategory != null) tvCategory.setText(originalCategory);
                     if (tvTitle    != null) tvTitle.setText(originalTitle);
                     if (tvDesc     != null) tvDesc.setText(originalDesc);
-                    btnTranslate.setText(isBanglaPost ? "🌐 English" : "🌐 বাংলা");
+                    btnTranslate.setText(isBanglaPost ? as.detailTranslateToEn() : as.detailTranslateToBn());
 
                 } else {
-                    // ── Translate ──
+                    // Use cache if available
                     if (translatedTitle != null) {
-                        // Already translated — show cached
                         isTranslated = true;
                         if (tvCategory != null && translatedCategory != null)
                             tvCategory.setText(translatedCategory);
                         if (tvTitle    != null) tvTitle.setText(translatedTitle);
                         if (tvDesc     != null) tvDesc.setText(translatedDesc);
-                        btnTranslate.setText(isBanglaPost ? "🌐 বাংলা" : "🌐 English");
+                        btnTranslate.setText(isBanglaPost ? as.detailTranslateToBn() : as.detailTranslateToEn());
                         return;
                     }
 
                     btnTranslate.setEnabled(false);
-                    btnTranslate.setText(strings.detailTranslating());
+                    btnTranslate.setText(as.detailTranslating());
 
                     String[] fields = {originalCategory, originalTitle, originalDesc};
 
@@ -167,19 +170,20 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
                             if (tvDesc     != null && !translatedDesc.isEmpty())
                                 tvDesc.setText(translatedDesc);
                         } else {
-                            Toast.makeText(this, strings.detailTranslateFail(), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(this, as.detailTranslateFail(), Toast.LENGTH_SHORT).show();
                         }
                         btnTranslate.setEnabled(true);
-                        btnTranslate.setText(isBanglaPost ? strings.detailTranslateToBn() : strings.detailTranslateToEn());
+                        btnTranslate.setText(isBanglaPost ? as.detailTranslateToBn() : as.detailTranslateToEn());
                     });
                 }
             });
         }
 
-        // Audio button
+        // Audio button — all strings from AppStrings
         if (btnPlayAudio != null) {
             if (audioUrl != null && !audioUrl.isEmpty()) {
                 btnPlayAudio.setVisibility(View.VISIBLE);
+                btnPlayAudio.setText(s.detailPlayAudio());
                 final String finalAudioUrl = audioUrl;
                 btnPlayAudio.setOnClickListener(v -> toggleAudio(finalAudioUrl, btnPlayAudio));
             } else {
@@ -193,8 +197,9 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
         // Call button
         if (btnCall != null) {
             btnCall.setOnClickListener(v -> {
+                AppStrings as = AppStrings.get(this);
                 if (phone == null || phone.isEmpty()) {
-                    Toast.makeText(this, "No phone number", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, as.detailNoPhone(), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + phone)));
@@ -204,8 +209,9 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
         // Chat button
         if (btnChat != null) {
             btnChat.setOnClickListener(v -> {
+                AppStrings as = AppStrings.get(this);
                 if (otherUid == null || otherUid.isEmpty()) {
-                    Toast.makeText(this, "Cannot start chat", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, as.detailCannotChat(), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 Intent i = new Intent(this, ChatActivity.class);
@@ -242,14 +248,15 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
     }
 
     private void toggleAudio(String url, MaterialButton btn) {
+        AppStrings s = AppStrings.get(this);
         if (isPlaying) {
             stopAudio();
-            btn.setText("🔊 Play Audio");
+            btn.setText(s.detailPlayAudio());
             isPlaying = false;
         } else {
-            btn.setText("⏹ Stop Audio");
+            btn.setText(s.detailStopAudio());
             btn.setEnabled(false);
-            Toast.makeText(this, "Loading audio...", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, s.detailLoadingAudio(), Toast.LENGTH_SHORT).show();
 
             releasePlayer();
             mediaPlayer = new MediaPlayer();
@@ -260,29 +267,29 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
                     isPlaying = true;
                     runOnUiThread(() -> {
                         btn.setEnabled(true);
-                        Toast.makeText(this, "▶ Playing", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, s.detailPlayingAudio(), Toast.LENGTH_SHORT).show();
                     });
                 });
                 mediaPlayer.setOnCompletionListener(mp -> {
                     isPlaying = false;
-                    runOnUiThread(() -> btn.setText("🔊 Play Audio"));
+                    runOnUiThread(() -> btn.setText(s.detailPlayAudio()));
                     releasePlayer();
                 });
                 mediaPlayer.setOnErrorListener((mp, what, extra) -> {
                     isPlaying = false;
                     runOnUiThread(() -> {
-                        btn.setText("🔊 Play Audio");
+                        btn.setText(s.detailPlayAudio());
                         btn.setEnabled(true);
-                        Toast.makeText(this, "Playback error", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, s.detailPlaybackError(), Toast.LENGTH_SHORT).show();
                     });
                     releasePlayer();
                     return true;
                 });
                 mediaPlayer.prepareAsync();
             } catch (Exception e) {
-                btn.setText("🔊 Play Audio");
+                btn.setText(s.detailPlayAudio());
                 btn.setEnabled(true);
-                Toast.makeText(this, "Cannot play audio", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, s.detailCannotPlay(), Toast.LENGTH_SHORT).show();
                 releasePlayer();
             }
         }

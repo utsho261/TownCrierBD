@@ -82,7 +82,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private Announcement lastSelected = null;
 
     private ValueEventListener annListener = null;
-    AppStrings strings = AppStrings.get(this);
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -93,7 +93,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         annRef   = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
         userRef  = FirebaseDatabase.getInstance().getReference(Constants.DB_USERS);
 
-        // Bottom sheet setup
         bottomSheet = findViewById(R.id.bottomSheet);
         if (bottomSheet != null) {
             sheetBehavior = BottomSheetBehavior.from(bottomSheet);
@@ -101,7 +100,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             sheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
         }
 
-        // Bind views safely
         ivCover           = findViewById(R.id.ivCover);
         btnCloseSheet     = findViewById(R.id.btnCloseSheet);
         coverPlaceholder  = findViewById(R.id.coverPlaceholder);
@@ -123,19 +121,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             });
         }
 
-        if (fabMyLoc != null) {
-            fabMyLoc.setOnClickListener(v -> requestLocation());
-        }
-
-        if (fabDirections != null) {
-            fabDirections.setOnClickListener(v -> openDirectionsToSelected());
-        }
+        if (fabMyLoc != null)      fabMyLoc.setOnClickListener(v -> requestLocation());
+        if (fabDirections != null) fabDirections.setOnClickListener(v -> openDirectionsToSelected());
 
         SupportMapFragment mapFragment = (SupportMapFragment)
                 getSupportFragmentManager().findFragmentById(R.id.map);
-        if (mapFragment != null) {
-            mapFragment.getMapAsync(this);
-        }
+        if (mapFragment != null) mapFragment.getMapAsync(this);
 
         loadMyRoleThenStart();
     }
@@ -164,14 +155,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 UserModel u = snapshot.getValue(UserModel.class);
                 myRole = safe(u == null ? "" : u.getRole());
                 if (myRole.isEmpty()) myRole = Constants.ROLE_USER;
-
                 wantRole = Constants.ROLE_ANNOUNCER.equals(myRole)
-                        ? Constants.ROLE_USER
-                        : Constants.ROLE_ANNOUNCER;
-
+                        ? Constants.ROLE_USER : Constants.ROLE_ANNOUNCER;
                 requestLocation();
             }
-
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 myRole   = Constants.ROLE_USER;
@@ -184,7 +171,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
         mMap = googleMap;
-
         mMap.getUiSettings().setCompassEnabled(false);
         mMap.getUiSettings().setMapToolbarEnabled(false);
         mMap.getUiSettings().setMyLocationButtonEnabled(false);
@@ -196,10 +182,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             Object tag = marker.getTag();
             if (tag instanceof String) {
                 Announcement a = markerMap.get((String) tag);
-                if (a != null) {
-                    showBottomSheet(a);
-                    return true;
-                }
+                if (a != null) { showBottomSheet(a); return true; }
             }
             return false;
         });
@@ -209,31 +192,25 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 sheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
         });
 
-        if (!wantRole.isEmpty()) {
-            attachAnnouncementsListener();
-        }
+        if (!wantRole.isEmpty()) attachAnnouncementsListener();
     }
 
     private void requestLocation() {
+        AppStrings s = AppStrings.get(this);
         if (!isLocationEnabled()) {
-            Toast.makeText(this, strings.mapTurnOnGps(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, s.mapTurnOnGps(), Toast.LENGTH_SHORT).show();
             startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
             return;
         }
-
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this,
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_REQ);
             return;
         }
-
         fusedLoc.getLastLocation().addOnSuccessListener(loc -> {
-            if (loc != null) {
-                setMyLocation(loc);
-            } else {
-                attachAnnouncementsListener();
-            }
+            if (loc != null) setMyLocation(loc);
+            else             attachAnnouncementsListener();
         });
     }
 
@@ -241,7 +218,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         myLat    = loc.getLatitude();
         myLng    = loc.getLongitude();
         hasMyLoc = true;
-
         if (mMap != null) {
             LatLng me = new LatLng(myLat, myLng);
             mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(me, 15f));
@@ -260,25 +236,24 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                            @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        AppStrings s = AppStrings.get(this);
         if (requestCode == LOCATION_REQ && grantResults.length > 0
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             requestLocation();
         } else if (requestCode == LOCATION_REQ) {
-            Toast.makeText(this, strings.mapPermDenied(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, s.mapPermDenied(), Toast.LENGTH_SHORT).show();
         }
     }
 
     private void attachAnnouncementsListener() {
         if (annRef == null) return;
-
-        if (annListener != null) {
-            annRef.removeEventListener(annListener);
-        }
+        if (annListener != null) annRef.removeEventListener(annListener);
 
         annListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (mMap == null) return;
+                AppStrings s = AppStrings.get(MapsActivity.this);
 
                 mMap.clear();
                 markerMap.clear();
@@ -287,7 +262,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     LatLng me = new LatLng(myLat, myLng);
                     mMap.addMarker(new MarkerOptions()
                             .position(me)
-                            .title(strings.mapYou())
+                            .title(s.mapYou())
                             .icon(BitmapDescriptorFactory.defaultMarker(
                                     BitmapDescriptorFactory.HUE_AZURE)));
                 }
@@ -295,65 +270,59 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 String myUid = auth.getUid();
                 long now = System.currentTimeMillis();
 
-                for (DataSnapshot s : snapshot.getChildren()) {
-                    Announcement a = s.getValue(Announcement.class);
+                for (DataSnapshot ds : snapshot.getChildren()) {
+                    Announcement a = ds.getValue(Announcement.class);
                     if (a == null) continue;
-
-                    if (a.getId() == null || a.getId().trim().isEmpty()) a.setId(s.getKey());
+                    if (a.getId() == null || a.getId().trim().isEmpty()) a.setId(ds.getKey());
                     if (a.getId() == null) continue;
-
                     if (myUid != null && myUid.equals(a.getUserId())) continue;
                     if (a.getExpireAt() > 0 && now > a.getExpireAt()) continue;
-
                     String postRole = safe(a.getUserRole());
                     if (!wantRole.equals(postRole)) continue;
-
                     if (hasMyLoc) {
                         double d = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
                         if (d > Constants.FEED_RADIUS_KM) continue;
                     }
-
                     LatLng pos = new LatLng(a.getLat(), a.getLng());
                     Marker m = mMap.addMarker(new MarkerOptions()
                             .position(pos)
                             .title(safe(a.getTitle()).isEmpty() ? "Announcement" : a.getTitle())
                             .icon(BitmapDescriptorFactory.defaultMarker(
                                     BitmapDescriptorFactory.HUE_VIOLET)));
-
                     if (m != null) {
                         m.setTag(a.getId());
                         markerMap.put(a.getId(), a);
                     }
                 }
             }
-
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
         };
-
         annRef.addValueEventListener(annListener);
     }
 
     private void showBottomSheet(Announcement a) {
         if (a == null) return;
         lastSelected = a;
+        AppStrings s = AppStrings.get(this);
 
         if (tvBadge != null) {
             String badge = safe(a.getDisplayCategoryLabel());
             if (badge.isEmpty()) badge = safe(a.getCategory());
-            if (badge.isEmpty()) badge = strings.mapCategory();
+            if (badge.isEmpty()) badge = s.mapCategory();
             tvBadge.setText(badge);
         }
 
         if (tvTitle != null) tvTitle.setText(safe(a.getTitle()));
-        if (tvDesc != null)  tvDesc.setText(safe(a.getDescription()));
+        if (tvDesc  != null) tvDesc.setText(safe(a.getDescription()));
 
+        // ✅ FIX: mapKmAway already returns a formatted string — no double-format
         if (tvDistance != null) {
             if (hasMyLoc) {
                 double d = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
-                tvDistance.setText(String.format(Locale.getDefault(),  strings.mapKmAway(d), d));
+                tvDistance.setText(s.mapKmAway(d));
             } else {
-                tvDistance.setText(strings.nearby());
+                tvDistance.setText(s.nearby());
             }
         }
 
@@ -362,11 +331,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             if (!imgUrl.isEmpty()) {
                 ivCover.setVisibility(View.VISIBLE);
                 if (coverPlaceholder != null) coverPlaceholder.setVisibility(View.GONE);
-                Glide.with(this)
-                        .load(imgUrl)
-                        .centerCrop()
-                        .placeholder(android.R.drawable.ic_menu_gallery)
-                        .into(ivCover);
+                Glide.with(this).load(imgUrl).centerCrop()
+                        .placeholder(android.R.drawable.ic_menu_gallery).into(ivCover);
             } else {
                 ivCover.setVisibility(View.GONE);
                 ivCover.setImageDrawable(null);
@@ -376,9 +342,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         if (btnCall != null) {
             btnCall.setOnClickListener(v -> {
+                AppStrings as = AppStrings.get(this);
                 String phone = safe(a.getPhone());
                 if (phone.isEmpty()) {
-                    Toast.makeText(this,  strings.mapNoPhone(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, as.mapNoPhone(), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + phone)));
@@ -387,14 +354,15 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         if (btnChat != null) {
             btnChat.setOnClickListener(v -> {
+                AppStrings as = AppStrings.get(this);
                 String postOwnerUid = safe(a.getUserId());
                 String myUidNow     = safe(auth.getUid());
                 if (postOwnerUid.isEmpty()) {
-                    Toast.makeText(this, strings.mapCannotChat(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, as.mapCannotChat(), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 if (myUidNow.equals(postOwnerUid)) {
-                    Toast.makeText(this, strings.mapChatSelf(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, as.mapChatSelf(), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 Intent i = new Intent(this, ChatActivity.class);
@@ -411,11 +379,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         if (btnDetails != null) {
             btnDetails.setOnClickListener(v -> {
-                String dist = "";
-                if (hasMyLoc) {
-                    double d = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
-                    dist = String.format(Locale.getDefault(), strings.mapKmAway(d), d);
-                }
+                AppStrings as = AppStrings.get(this);
+                String dist = hasMyLoc
+                        ? as.mapKmAway(DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng()))
+                        : "";
                 Intent intent = new Intent(MapsActivity.this, AnnouncementDetailActivity.class);
                 intent.putExtra(AnnouncementDetailActivity.EXTRA_TITLE,     safe(a.getTitle()));
                 intent.putExtra(AnnouncementDetailActivity.EXTRA_DESC,      safe(a.getDescription()));
@@ -432,18 +399,18 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             });
         }
 
-        if (sheetBehavior != null) {
+        if (sheetBehavior != null)
             sheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
-        }
     }
 
     private void openDirectionsToSelected() {
+        AppStrings s = AppStrings.get(this);
         if (!hasMyLoc) {
-            Toast.makeText(this, strings.mapNoLocation(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, s.mapNoLocation(), Toast.LENGTH_SHORT).show();
             return;
         }
         if (lastSelected == null) {
-            Toast.makeText(this,  strings.mapSelectMarker(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, s.mapSelectMarker(), Toast.LENGTH_SHORT).show();
             return;
         }
         openDirectionsTo(lastSelected.getLat(), lastSelected.getLng());
@@ -454,7 +421,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 "google.navigation:q=" + destLat + "," + destLng + "&mode=d");
         Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
         mapIntent.setPackage("com.google.android.apps.maps");
-
         if (mapIntent.resolveActivity(getPackageManager()) != null) {
             startActivity(mapIntent);
         } else {
@@ -466,14 +432,15 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private String getRelativeTime(long timeMillis) {
         if (timeMillis == 0) return "";
+        AppStrings s = AppStrings.get(this);
         long diff    = System.currentTimeMillis() - timeMillis;
         long minutes = diff / 60000;
         long hours   = minutes / 60;
         long days    = hours / 24;
-        if (minutes < 1)  return strings.justNow();
-        if (minutes < 60) return minutes + strings.timeMinAgo(minutes);
-        if (hours < 24)   return hours + strings.timeHrAgo(hours);
-        return days + " day" + (days > 1 ? "s" : "") + strings.timeDayAgo(days);
+        if (minutes < 1)  return s.justNow();
+        if (minutes < 60) return s.timeMinAgo(minutes);
+        if (hours < 24)   return s.timeHrAgo(hours);
+        return s.timeDayAgo(days);
     }
 
     private String safe(String s) {

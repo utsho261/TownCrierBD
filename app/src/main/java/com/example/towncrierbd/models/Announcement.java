@@ -13,12 +13,12 @@ public class Announcement {
     private String subcategory;
     private String customSubcategory;
 
-    // ✅ NEW: Multi-category & product selection
+    // ✅ Multi-category & product selection
     private List<String> selectedCategories;
     private List<String> selectedSubcategories;
     private List<String> selectedProducts;
 
-    // ✅ NEW: "announcement" (Announcer post) or "request" (General User post)
+    // ✅ "announcement" (Announcer post) or "request" (General User post)
     private String postType;
 
     private String title;
@@ -55,34 +55,34 @@ public class Announcement {
     public long   getExpireAt()          { return expireAt; }
 
     // ✅ NEW getters
-    public String       getPostType()             { return postType; }
-    public List<String> getSelectedCategories()   { return selectedCategories; }
-    public List<String> getSelectedSubcategories(){ return selectedSubcategories; }
-    public List<String> getSelectedProducts()     { return selectedProducts; }
+    public String       getPostType()              { return postType; }
+    public List<String> getSelectedCategories()    { return selectedCategories; }
+    public List<String> getSelectedSubcategories() { return selectedSubcategories; }
+    public List<String> getSelectedProducts()      { return selectedProducts; }
 
     // ── Standard setters ──────────────────────────────────────────────────
-    public void setId(String id)                         { this.id = id; }
-    public void setUserId(String userId)                 { this.userId = userId; }
-    public void setUserName(String userName)             { this.userName = userName; }
-    public void setUserRole(String userRole)             { this.userRole = userRole; }
-    public void setCategory(String category)             { this.category = category; }
-    public void setSubcategory(String subcategory)       { this.subcategory = subcategory; }
-    public void setCustomSubcategory(String s)           { this.customSubcategory = s; }
-    public void setTitle(String title)                   { this.title = title; }
-    public void setDescription(String d)                 { this.description = d; }
-    public void setPhone(String phone)                   { this.phone = phone; }
-    public void setImageUrl(String imageUrl)             { this.imageUrl = imageUrl; }
-    public void setAudioUrl(String audioUrl)             { this.audioUrl = audioUrl; }
-    public void setLat(double lat)                       { this.lat = lat; }
-    public void setLng(double lng)                       { this.lng = lng; }
-    public void setTime(long time)                       { this.time = time; }
-    public void setExpireAt(long expireAt)               { this.expireAt = expireAt; }
+    public void setId(String id)                   { this.id = id; }
+    public void setUserId(String userId)           { this.userId = userId; }
+    public void setUserName(String userName)       { this.userName = userName; }
+    public void setUserRole(String userRole)       { this.userRole = userRole; }
+    public void setCategory(String category)       { this.category = category; }
+    public void setSubcategory(String subcategory) { this.subcategory = subcategory; }
+    public void setCustomSubcategory(String s)     { this.customSubcategory = s; }
+    public void setTitle(String title)             { this.title = title; }
+    public void setDescription(String d)           { this.description = d; }
+    public void setPhone(String phone)             { this.phone = phone; }
+    public void setImageUrl(String imageUrl)       { this.imageUrl = imageUrl; }
+    public void setAudioUrl(String audioUrl)       { this.audioUrl = audioUrl; }
+    public void setLat(double lat)                 { this.lat = lat; }
+    public void setLng(double lng)                 { this.lng = lng; }
+    public void setTime(long time)                 { this.time = time; }
+    public void setExpireAt(long expireAt)         { this.expireAt = expireAt; }
 
     // ✅ NEW setters
-    public void setPostType(String postType)                       { this.postType = postType; }
-    public void setSelectedCategories(List<String> l)              { this.selectedCategories = l; }
-    public void setSelectedSubcategories(List<String> l)           { this.selectedSubcategories = l; }
-    public void setSelectedProducts(List<String> l)                { this.selectedProducts = l; }
+    public void setPostType(String postType)              { this.postType = postType; }
+    public void setSelectedCategories(List<String> l)     { this.selectedCategories = l; }
+    public void setSelectedSubcategories(List<String> l)  { this.selectedSubcategories = l; }
+    public void setSelectedProducts(List<String> l)       { this.selectedProducts = l; }
 
     // ── Display label ──────────────────────────────────────────────────────
     public String getDisplayCategoryLabel() {
@@ -93,7 +93,9 @@ public class Announcement {
         return (category == null) ? "" : category.trim();
     }
 
-    // ✅ NEW: product summary for feed card (first 3 products)
+    // ── Product summary ────────────────────────────────────────────────────
+
+    @Deprecated
     public String getProductSummary() {
         if (selectedProducts == null || selectedProducts.isEmpty()) return "";
         int count = Math.min(3, selectedProducts.size());
@@ -102,7 +104,21 @@ public class Announcement {
             if (i > 0) sb.append(" • ");
             sb.append(selectedProducts.get(i));
         }
-        if (selectedProducts.size() > 3) sb.append(" +" + (selectedProducts.size() - 3) + " more");
+        if (selectedProducts.size() > 3)
+            sb.append(" +").append(selectedProducts.size() - 3).append(" more");
+        return sb.toString();
+    }
+
+
+    public String getProductSummary(String moreSuffix) {
+        if (selectedProducts == null || selectedProducts.isEmpty()) return "";
+        int count = Math.min(3, selectedProducts.size());
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < count; i++) {
+            if (i > 0) sb.append(" • ");
+            sb.append(selectedProducts.get(i));
+        }
+        if (selectedProducts.size() > 3) sb.append(moreSuffix);
         return sb.toString();
     }
 }

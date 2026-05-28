@@ -409,4 +409,16 @@ public class AppStrings {
     public java.util.Locale ttsLocale() {
         return en ? java.util.Locale.ENGLISH : new java.util.Locale("bn", "BD");
     }
+
+    public String productMoreSuffix(int count) {
+        return p(" +" + count + " more", " +" + count + " আরও");
+    }
+
+    public String addStep2Header() {
+        return p("Select Products", "পণ্য নির্বাচন করুন");
+    }
+    public String addStep2SubHeader() {
+        return p("Buyers can filter by specific items (optional)",
+                "ক্রেতারা নির্দিষ্ট পণ্য দিয়ে ফিল্টার করতে পারবেন (ঐচ্ছিক)");
+    }
 }
