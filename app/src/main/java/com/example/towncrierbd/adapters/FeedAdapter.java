@@ -38,6 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
 
@@ -232,51 +233,68 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                     updateTranslateBtnLabel(h.btnTranslate, finalState, as);
 
                 } else {
-                    // ── Fetch translation ──────────────────────────────────
+                    // ── Fetch translation — title and desc SEPARATELY ──────
                     finalState.isLoading = true;
                     h.btnTranslate.setText(as.cardTranslating());
                     h.btnTranslate.setEnabled(false);
 
-                    String rawTitle = safe(a.getTitle());
-                    String rawDesc  = safe(a.getDescription());
+                    final String rawTitle = safe(a.getTitle());
+                    final String rawDesc  = safe(a.getDescription());
 
-                    // Use pre-detected lang pair from post's own language
-                    String langPair = finalState.detectedLangPair != null
+                    final String langPair = finalState.detectedLangPair != null
                             ? finalState.detectedLangPair
                             : TranslationHelper.detectLangPair(rawTitle);
 
-                    // Translate title + desc in one batch call
-                    String combined = rawTitle + " || " + rawDesc;
+                    // ✅ FIX: translate title and description independently
+                    // so each result lands in its own TextView — no separator splitting needed.
+                    final String[] results = new String[2]; // [0]=title, [1]=desc
+                    final AtomicInteger doneCount = new AtomicInteger(0);
+
+                    Runnable onBothDone = () -> {
+                        finalState.isLoading = false;
+                        finalState.translatedTitle = results[0] != null ? results[0] : rawTitle;
+                        finalState.translatedDesc  = results[1] != null ? results[1] : rawDesc;
+                        finalState.isTranslated = true;
+
+                        if (h.tvTitle != null) h.tvTitle.setText(finalState.translatedTitle);
+                        if (h.tvDesc  != null) h.tvDesc.setText(finalState.translatedDesc);
+                        h.btnTranslate.setEnabled(true);
+                        AppStrings as2 = AppStrings.get(context);
+                        updateTranslateBtnLabel(h.btnTranslate, finalState, as2);
+                    };
+
+                    // Translate title
                     TranslationHelper.translateWithLangPair(
-                            combined,
-                            langPair,
+                            rawTitle, langPair,
                             new TranslationHelper.TranslateCallback() {
                                 @Override
                                 public void onResult(String result) {
-                                    finalState.isLoading = false;
-                                    String[] parts = result.split("\\s*\\|\\|\\s*", 2);
-                                    finalState.translatedTitle = parts.length > 0
-                                            ? parts[0].trim() : rawTitle;
-                                    finalState.translatedDesc  = parts.length > 1
-                                            ? parts[1].trim() : rawDesc;
-                                    finalState.isTranslated = true;
-
-                                    // ✅ Only update title + desc — badge/expiry/distance untouched
-                                    if (h.tvTitle != null) h.tvTitle.setText(finalState.translatedTitle);
-                                    if (h.tvDesc  != null) h.tvDesc.setText(finalState.translatedDesc);
-                                    h.btnTranslate.setEnabled(true);
-                                    AppStrings as2 = AppStrings.get(context);
-                                    updateTranslateBtnLabel(h.btnTranslate, finalState, as2);
+                                    results[0] = result;
+                                    if (doneCount.incrementAndGet() == 2) onBothDone.run();
                                 }
-
                                 @Override
                                 public void onError(String originalText) {
-                                    finalState.isLoading = false;
-                                    h.btnTranslate.setEnabled(true);
+                                    results[0] = rawTitle; // fallback
+                                    if (doneCount.incrementAndGet() == 2) onBothDone.run();
                                     AppStrings as2 = AppStrings.get(context);
-                                    updateTranslateBtnLabel(h.btnTranslate, finalState, as2);
-                                    Toast.makeText(context, as2.cardTranslateFail(),
-                                            Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(context, as2.cardTranslateFail(), Toast.LENGTH_SHORT).show();
+                                }
+                            }
+                    );
+
+                    // Translate description
+                    TranslationHelper.translateWithLangPair(
+                            rawDesc, langPair,
+                            new TranslationHelper.TranslateCallback() {
+                                @Override
+                                public void onResult(String result) {
+                                    results[1] = result;
+                                    if (doneCount.incrementAndGet() == 2) onBothDone.run();
+                                }
+                                @Override
+                                public void onError(String originalText) {
+                                    results[1] = rawDesc; // fallback
+                                    if (doneCount.incrementAndGet() == 2) onBothDone.run();
                                 }
                             }
                     );
