@@ -54,6 +54,7 @@ import java.util.Locale;
 public class GeneralFeedActivity extends AppCompatActivity {
 
     private TextView tvWelcome, tvLocationName, tvRadius, tvToggleFilter;
+    private TextView tvGoodDay, tvSeeNearby, tvNearbyPosts, tvFilterLabel;
     private View scrollChips;
     private ChipGroup chipGroup;
     private RecyclerView rvFeed;
@@ -91,12 +92,17 @@ public class GeneralFeedActivity extends AppCompatActivity {
     private List<String> myPreferredSubcategories = new ArrayList<>();
 
     private NetworkMonitor networkMonitor;
-    AppStrings strings = AppStrings.get(this);
+
+    // ✅ FIX: Do NOT initialize here — context is null at field init time
+    private AppStrings strings;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_general_feed);
+
+        // ✅ FIX: Initialize AFTER setContentView so context is ready
+        strings = AppStrings.get(this);
 
         tvWelcome        = findViewById(R.id.tvWelcome);
         tvLocationName   = findViewById(R.id.tvLocationName);
@@ -111,6 +117,15 @@ public class GeneralFeedActivity extends AppCompatActivity {
         etSearch         = findViewById(R.id.etSearch);
         bannerNoInternet = findViewById(R.id.bannerNoInternet);
         bottomNav        = findViewById(R.id.bottomNav);
+
+        // ✅ IDs for previously hardcoded strings
+        tvGoodDay    = findViewById(R.id.tvGoodDay);
+        tvSeeNearby  = findViewById(R.id.tvSeeNearby);
+        tvNearbyPosts = findViewById(R.id.tvNearbyPosts);
+        tvFilterLabel = findViewById(R.id.tvFilterLabel);
+
+        // ✅ Apply all translatable strings
+        applyStrings();
 
         adapter = new FeedAdapter(this);
         rvFeed.setLayoutManager(new LinearLayoutManager(this));
@@ -169,22 +184,42 @@ public class GeneralFeedActivity extends AppCompatActivity {
             tvLangToggle.setText(LanguageManager.getToggleLabel(this));
             tvLangToggle.setOnClickListener(v -> {
                 LanguageManager.toggle(this);
-                // Firebase-এ save করো
                 String uid = auth.getUid();
                 if (uid != null) LanguageManager.saveToFirebase(this, uid);
-                // Activity recreate করো language apply করতে
                 recreate();
             });
         }
 
         setupBottomNav();
-
         locationClient = LocationServices.getFusedLocationProviderClient(this);
-
         requestNotificationPermission();
         startNetworkMonitoring();
         loadMyRoleThenStart();
         listenForUnreadMessages();
+    }
+
+    // ✅ Apply all translatable strings to views
+    private void applyStrings() {
+        AppStrings s = AppStrings.get(this);
+
+        if (tvGoodDay    != null) tvGoodDay.setText(s.feedGoodDay());
+        if (tvSeeNearby  != null) tvSeeNearby.setText(s.feedSeeNearby());
+        if (tvNearbyPosts != null) tvNearbyPosts.setText(s.feedNearbyPosts());
+        if (tvFilterLabel != null) tvFilterLabel.setText(s.feedFilterCategory());
+        if (tvToggleFilter != null) tvToggleFilter.setText(s.feedShowFilter());
+        if (etSearch != null) etSearch.setHint(s.feedSearchHint());
+
+        // No internet banner
+        if (bannerNoInternet instanceof TextView)
+            ((TextView) bannerNoInternet).setText(s.feedNoInternet());
+
+        // Empty state
+        if (layoutEmpty != null) {
+            TextView tvEmptyTitle = layoutEmpty.findViewById(R.id.tvEmptyTitle);
+            TextView tvEmptySub   = layoutEmpty.findViewById(R.id.tvEmptySub);
+            if (tvEmptyTitle != null) tvEmptyTitle.setText(s.feedEmptyTitle());
+            if (tvEmptySub   != null) tvEmptySub.setText(s.feedEmptySubtitle());
+        }
     }
 
     private void setupBottomNav() {
@@ -209,29 +244,22 @@ public class GeneralFeedActivity extends AppCompatActivity {
     private void listenForUnreadMessages() {
         String myUid = auth.getUid();
         if (myUid == null || bottomNav == null) return;
-
         unreadListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 int totalUnread = 0;
-
                 for (DataSnapshot roomSnap : snapshot.getChildren()) {
                     String roomId = roomSnap.getKey();
                     if (roomId == null) continue;
-
-                    // ✅ FIX: Use ChatActivity helpers — "|" separator, no "_" splitting bug
                     if (!ChatActivity.isMyRoom(roomId, myUid)) continue;
                     String otherUid = ChatActivity.getOtherUidFromRoom(roomId, myUid);
                     if (otherUid == null) continue;
-
                     for (DataSnapshot msgSnap : roomSnap.getChildren()) {
                         String senderId = msgSnap.child("senderId").getValue(String.class);
                         Boolean read    = msgSnap.child("read").getValue(Boolean.class);
-                        // Only count messages from the OTHER user
                         if (otherUid.equals(senderId) && (read == null || !read)) totalUnread++;
                     }
                 }
-
                 final int unread = totalUnread;
                 runOnUiThread(() -> {
                     try {
@@ -258,13 +286,13 @@ public class GeneralFeedActivity extends AppCompatActivity {
                 if (ActivityCompat.shouldShowRequestPermissionRationale(this,
                         Manifest.permission.POST_NOTIFICATIONS)) {
                     new AlertDialog.Builder(this)
-                            .setTitle("Enable Notifications")
-                            .setMessage("Town Crier BD sends notifications when new announcements are nearby.")
-                            .setPositiveButton("Allow", (d, w) ->
+                            .setTitle(strings.notifEnableTitle())
+                            .setMessage(strings.notifEnableMsgAnn())
+                            .setPositiveButton(strings.notifAllow(), (d, w) ->
                                     ActivityCompat.requestPermissions(this,
                                             new String[]{Manifest.permission.POST_NOTIFICATIONS},
                                             NOTIFICATION_REQ))
-                            .setNegativeButton("Not now", null).show();
+                            .setNegativeButton(strings.notifNotNow(), null).show();
                 } else {
                     ActivityCompat.requestPermissions(this,
                             new String[]{Manifest.permission.POST_NOTIFICATIONS},
@@ -325,46 +353,35 @@ public class GeneralFeedActivity extends AppCompatActivity {
     private void loadMyRoleThenStart() {
         String uid = auth.getUid();
         if (uid == null) return;
-
         userRef.child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 UserModel u = snapshot.getValue(UserModel.class);
                 if (u == null) return;
-
                 myRole = safe(u.getRole());
                 if (myRole.isEmpty()) myRole = Constants.ROLE_USER;
-
                 wantRole = Constants.ROLE_ANNOUNCER.equals(myRole)
                         ? Constants.ROLE_USER : Constants.ROLE_ANNOUNCER;
-
                 myPreferredCategories    = u.getHawkerCategories();
                 myPreferredSubcategories = u.getHawkerSubcategories();
-
                 if (u.getName() != null)
                     tvWelcome.setText(strings.feedWelcomeBack() + u.getName() + "!");
-
                 if (u.getLanguage() != null && !u.getLanguage().isEmpty()) {
                     LanguageManager.setLanguage(GeneralFeedActivity.this, u.getLanguage());
                 }
-
                 attachFeedListenerOnce();
                 startLiveLocation();
             }
-
-
-
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 Toast.makeText(GeneralFeedActivity.this,
-                        strings.feedProfileFailed() , Toast.LENGTH_SHORT).show();
+                        strings.feedProfileFailed(), Toast.LENGTH_SHORT).show();
             }
         });
     }
 
     private void attachFeedListenerOnce() {
         if (feedListener != null) return;
-
         feedListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -377,7 +394,6 @@ public class GeneralFeedActivity extends AppCompatActivity {
                 }
                 applyAndShow();
             }
-
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 Toast.makeText(GeneralFeedActivity.this,
@@ -396,10 +412,8 @@ public class GeneralFeedActivity extends AppCompatActivity {
             if (a == null) continue;
             if (myUid != null && myUid.equals(a.getUserId())) continue;
             if (a.getExpireAt() > 0 && now > a.getExpireAt()) continue;
-
             String postRole = safe(a.getUserRole());
             if (!wantRole.equals(postRole)) continue;
-
             if (!myPreferredCategories.isEmpty()) {
                 boolean matchesPreference = false;
                 List<String> postCategories = a.getSelectedCategories();
@@ -414,12 +428,10 @@ public class GeneralFeedActivity extends AppCompatActivity {
                 }
                 if (!matchesPreference) continue;
             }
-
             if (!CategoryConfig.CAT_ALL.equals(selectedCategory)) {
                 String c = a.getCategory() == null ? "" : a.getCategory().trim();
                 if (!selectedCategory.equals(c)) continue;
             }
-
             if (!searchQuery.isEmpty()) {
                 String title = safe(a.getTitle()).toLowerCase();
                 String desc  = safe(a.getDescription()).toLowerCase();
@@ -428,7 +440,6 @@ public class GeneralFeedActivity extends AppCompatActivity {
                         !desc.contains(searchQuery) &&
                         !cat.contains(searchQuery)) continue;
             }
-
             if (!locationReady) continue;
             double dist = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
             if (dist <= selectedRadius) out.add(a);
@@ -436,28 +447,33 @@ public class GeneralFeedActivity extends AppCompatActivity {
 
         adapter.setData(out);
         if (locationReady) adapter.setMyLocation(myLat, myLng);
-
         if (layoutEmpty != null)
             layoutEmpty.setVisibility(out.isEmpty() && locationReady ? View.VISIBLE : View.GONE);
     }
 
     private void buildCategoryChips() {
         chipGroup.removeAllViews();
-        addChip(CategoryConfig.CAT_ALL, true);
-        for (String c : CategoryConfig.MAIN) addChip(c, false);
-
+        boolean isBn = !LanguageManager.isEnglish(this);
+        // "All" chip
+        addChip(CategoryConfig.CAT_ALL, isBn ? CategoryConfig.CAT_ALL_BN : CategoryConfig.CAT_ALL, true);
+        for (com.example.towncrierbd.utils.CategoryConfig.HawkerCategory cat : CategoryConfig.HAWKER_CATEGORIES) {
+            addChip(cat.name, isBn ? cat.nameBn : cat.name, false);
+        }
         chipGroup.setOnCheckedChangeListener((group, checkedId) -> {
             Chip ch = group.findViewById(checkedId);
             if (ch != null) {
-                selectedCategory = ch.getText().toString();
+                // Tag stores English key
+                Object tag = ch.getTag();
+                selectedCategory = (tag != null) ? tag.toString() : ch.getText().toString();
                 applyAndShow();
             }
         });
     }
 
-    private void addChip(String text, boolean checked) {
+    private void addChip(String englishKey, String displayText, boolean checked) {
         Chip chip = new Chip(this);
-        chip.setText(text);
+        chip.setText(displayText);
+        chip.setTag(englishKey); // always English for filtering
         chip.setCheckable(true);
         chip.setChecked(checked);
         chipGroup.addView(chip);
@@ -469,38 +485,31 @@ public class GeneralFeedActivity extends AppCompatActivity {
             startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
             return;
         }
-
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this,
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_REQ);
             return;
         }
-
         LocationRequest req = new LocationRequest.Builder(
                 Priority.PRIORITY_BALANCED_POWER_ACCURACY, 10000)
                 .setMinUpdateIntervalMillis(5000)
                 .build();
-
         locationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(@NonNull LocationResult result) {
                 Location loc = result.getLastLocation();
                 if (loc == null) return;
-
                 myLat = loc.getLatitude();
                 myLng = loc.getLongitude();
                 locationReady = true;
-
                 String nice = getNiceLocationName(myLat, myLng);
                 if (tvLocationName != null) tvLocationName.setText(nice);
-
                 updateUserLocationInFirebase(myLat, myLng, nice);
                 adapter.setMyLocation(myLat, myLng);
                 applyAndShow();
             }
         };
-
         locationClient.requestLocationUpdates(req, locationCallback, Looper.getMainLooper());
     }
 
@@ -547,7 +556,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             startLiveLocation();
         } else if (requestCode == LOCATION_REQ) {
-            if (tvLocationName != null) tvLocationName.setText("Permission denied");
+            if (tvLocationName != null) tvLocationName.setText(strings.feedPermissionDenied());
             Toast.makeText(this, strings.feedPermissionDenied(), Toast.LENGTH_SHORT).show();
         }
     }

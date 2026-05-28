@@ -25,6 +25,7 @@ public class LoginActivity extends AppCompatActivity {
     private EditText etEmail, etPassword;
     private Button btnLogin;
     private TextView tvGotoSignup, tvForgotPassword, tvLangToggle;
+    private TextView tvAppName, tvSubtitle;
 
     private FirebaseAuth auth;
 
@@ -49,6 +50,8 @@ public class LoginActivity extends AppCompatActivity {
         tvGotoSignup     = findViewById(R.id.tvGotoSignup);
         tvForgotPassword = findViewById(R.id.tvForgotPassword);
         tvLangToggle     = findViewById(R.id.tvLangToggle);
+        tvAppName        = findViewById(R.id.tvAppName);
+        tvSubtitle       = findViewById(R.id.tvSubtitle);
 
         applyStrings();
 
@@ -62,25 +65,33 @@ public class LoginActivity extends AppCompatActivity {
                     startActivity(new Intent(this, ForgotPasswordActivity.class)));
         }
 
-        // Language toggle button
+        // Language toggle — recreate so all views refresh properly
         if (tvLangToggle != null) {
             tvLangToggle.setOnClickListener(v -> {
                 LanguageManager.toggle(this);
-                applyStrings(); // Refresh UI immediately
+                recreate(); // Full recreate ensures hints update without overwriting passwords
             });
         }
     }
 
-    /** Apply all UI strings from AppStrings based on current language */
+    /** Apply all UI strings from AppStrings based on current language.
+     *  Only sets HINTS (never touches existing text), plus static labels. */
     private void applyStrings() {
         AppStrings s = AppStrings.get(this);
 
-        if (etEmail      != null) etEmail.setHint(s.loginHintEmailPhone());
-        if (etPassword   != null) etPassword.setHint(s.loginHintPassword());
-        if (btnLogin     != null) btnLogin.setText(s.loginBtn());
-        if (tvGotoSignup != null) tvGotoSignup.setText(s.loginGoSignup());
+        // Static labels
+        if (tvAppName  != null) tvAppName.setText(s.loginTitle());
+        if (tvSubtitle != null) tvSubtitle.setText(s.loginSubtitle());
+
+        // Hints only — never setText on input fields (that overwrites user input)
+        if (etEmail    != null) etEmail.setHint(s.loginHintEmailPhone());
+        if (etPassword != null) etPassword.setHint(s.loginHintPassword());
+
+        // Buttons & links
+        if (btnLogin         != null) btnLogin.setText(s.loginBtn());
+        if (tvGotoSignup     != null) tvGotoSignup.setText(s.loginGoSignup());
         if (tvForgotPassword != null) tvForgotPassword.setText(s.loginForgot());
-        if (tvLangToggle != null) tvLangToggle.setText(LanguageManager.getToggleLabel(this));
+        if (tvLangToggle     != null) tvLangToggle.setText(LanguageManager.getToggleLabel(this));
     }
 
     private void login() {

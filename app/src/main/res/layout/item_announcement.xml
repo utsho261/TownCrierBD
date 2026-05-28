@@ -26,7 +26,8 @@
             android:visibility="gone"
             android:contentDescription="Post image" />
 
-        <!-- Badge + Audio Badge + Expiry + Translate row -->
+        <!-- Badge row: Category badge + Audio badge + Expiry -->
+        <!-- NOTE: translate button REMOVED — language follows app language automatically -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -71,28 +72,12 @@
                 android:layout_height="1dp"
                 android:layout_weight="1"/>
 
-            <!-- ✅ NEW: Translate toggle button -->
-            <Button
-                android:id="@+id/btnTranslate"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:text="🌐 English"
-                android:textAllCaps="false"
-                android:textSize="11sp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:layout_marginEnd="6dp"
-                android:visibility="visible"/>
-
             <!-- Expiry Countdown -->
             <TextView
                 android:id="@+id/tvExpiry"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="⏳ Expires in 24 hrs"
+                android:text="⏳ 24 hrs"
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:textColor="#388E3C"
@@ -191,7 +176,7 @@
 
         </LinearLayout>
 
-        <!-- Feed mode action buttons: Listen + Chat -->
+        <!-- Feed mode: Listen + Chat -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -266,7 +251,7 @@
 
         </LinearLayout>
 
-        <!-- Profile mode: Edit / Delete / Details buttons -->
+        <!-- Profile mode: Edit / Delete / Details -->
         <LinearLayout
             android:id="@+id/layoutEditDelete"
             android:layout_width="match_parent"

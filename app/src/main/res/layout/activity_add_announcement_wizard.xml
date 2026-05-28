@@ -77,7 +77,6 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- ✅ FIX: Added tvStep1Title ID -->
             <TextView
                 android:id="@+id/tvStep1Title"
                 android:layout_width="wrap_content"
@@ -87,7 +86,6 @@
                 android:textSize="17sp"
                 android:textColor="#111111"/>
 
-            <!-- ✅ FIX: Added tvStep1Subtitle ID -->
             <TextView
                 android:id="@+id/tvStep1Subtitle"
                 android:layout_width="wrap_content"
@@ -109,7 +107,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
                 android:layout_marginTop="20dp"
-                android:text="Next: Choose Products →"
+                android:text="Next →"
                 android:textColor="@android:color/white"
                 android:background="@drawable/bg_btn_publish"/>
 
@@ -131,6 +129,7 @@
             android:padding="16dp">
 
             <TextView
+                android:id="@+id/tvStep2Title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Select Products"
@@ -139,6 +138,7 @@
                 android:textColor="#111111"/>
 
             <TextView
+                android:id="@+id/tvStep2Subtitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Buyers can filter by specific items (optional)"
@@ -150,7 +150,7 @@
                 android:id="@+id/etCustomCategory"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
-                android:hint="Describe your 'Others' category (e.g. Flower pot seller)"
+                android:hint="Describe your others category"
                 android:background="@drawable/bg_input"
                 android:padding="14dp"
                 android:visibility="gone"
@@ -183,7 +183,7 @@
                     android:layout_width="0dp"
                     android:layout_height="52dp"
                     android:layout_weight="2"
-                    android:text="Next: Post Details →"
+                    android:text="Next →"
                     android:textColor="@android:color/white"
                     android:background="@drawable/bg_btn_publish"/>
             </LinearLayout>
@@ -205,8 +205,9 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- Title -->
+            <!-- Title label -->
             <TextView
+                android:id="@+id/tvLabelTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Title *"
@@ -224,8 +225,9 @@
                 android:padding="14dp"
                 android:textSize="14sp"/>
 
-            <!-- Description -->
+            <!-- Description label -->
             <TextView
+                android:id="@+id/tvLabelDesc"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
@@ -267,6 +269,7 @@
                         android:src="@android:drawable/ic_menu_camera"
                         app:tint="#2563EB"/>
                     <TextView
+                        android:id="@+id/tvBtnAddImage"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="6dp"
@@ -292,6 +295,7 @@
                         android:src="@android:drawable/ic_btn_speak_now"
                         app:tint="#A21CAF"/>
                     <TextView
+                        android:id="@+id/tvBtnAddAudio"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="6dp"
@@ -343,7 +347,9 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
+                    <!-- Expiry label — set in Java -->
                     <TextView
+                        android:id="@+id/tvLabelExpiry"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
@@ -352,20 +358,24 @@
                         android:textSize="15sp"
                         android:textColor="#202020"/>
 
+                    <!-- Max days text — set in Java, hidden by default -->
                     <TextView
+                        android:id="@+id/tvExpiryMax"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="max 7 days"
+                        android:text=""
                         android:textSize="11sp"
                         android:textColor="#EF4444"/>
                 </LinearLayout>
 
+                <!-- Expiry info — set in Java -->
                 <TextView
+                    android:id="@+id/tvExpiryInfo"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:layout_marginBottom="10dp"
-                    android:text="Post disappears automatically after this time"
+                    android:text=""
                     android:textSize="12sp"
                     android:textColor="#6B7280"/>
 
@@ -381,7 +391,7 @@
                         android:layout_width="0dp"
                         android:layout_height="60dp"
                         android:layout_weight="1"
-                        android:hint="e.g. 2"
+                        android:hint="2"
                         android:inputType="numberDecimal"
                         android:background="@drawable/bg_input"
                         android:padding="14dp"

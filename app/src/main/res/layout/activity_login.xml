@@ -49,9 +49,9 @@
             android:contentDescription="@string/app_name" />
 
         <TextView
+            android:id="@+id/tvAppName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:id="@+id/tvAppName"
             android:text="Town Crier BD"
             android:textColor="@color/text_primary"
             android:textStyle="bold"
@@ -59,13 +59,14 @@
             android:layout_marginTop="8dp" />
 
         <TextView
+            android:id="@+id/tvSubtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:id="@+id/tvSubtitle"
             android:text="Connect with your neighborhood"
             android:textColor="@color/hint_gray"
             android:layout_marginBottom="16dp" />
 
+        <!-- Email/Phone field - hint set programmatically -->
         <EditText
             android:id="@+id/etEmail"
             android:layout_width="match_parent"
@@ -75,7 +76,9 @@
             android:inputType="text"
             android:padding="12dp" />
 
+        <!-- Password field - SEPARATE layout so hint doesn't override text -->
         <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilPassword"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:endIconMode="password_toggle"
@@ -87,7 +90,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
                 android:hint="Password"
-                android:drawableStart="@android:drawable/ic_lock_idle_lock"
                 android:inputType="textPassword"
                 android:padding="12dp" />
         </com.google.android.material.textfield.TextInputLayout>

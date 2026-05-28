@@ -17,19 +17,29 @@ public class ForgotPasswordActivity extends AppCompatActivity {
     private EditText etEmail;
     private Button btnSendOTP;
     private FirebaseAuth auth;
-    AppStrings strings = AppStrings.get(this);
+
+    // ✅ FIX: Do NOT initialize here — context is null at field init time
+    private AppStrings strings;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_forgot_password);
 
+        // ✅ FIX: Initialize AFTER setContentView
+        strings = AppStrings.get(this);
+
         auth       = FirebaseAuth.getInstance();
         etEmail    = findViewById(R.id.etEmail);
         btnSendOTP = findViewById(R.id.btnSendOTP);
 
+        // ✅ Apply translated strings
+        if (etEmail    != null) etEmail.setHint(strings.forgotHint());
+        if (btnSendOTP != null) btnSendOTP.setText(strings.forgotSendBtn());
+
         TextView tvBackToLogin = findViewById(R.id.tvBackToLogin);
         if (tvBackToLogin != null) {
+            tvBackToLogin.setText(strings.forgotBackToLogin());
             tvBackToLogin.setOnClickListener(v -> finish());
         }
 
@@ -60,7 +70,7 @@ public class ForgotPasswordActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> {
                     btnSendOTP.setEnabled(true);
                     btnSendOTP.setText(strings.forgotSendBtn());
-                    toast("Failed: " + e.getMessage());
+                    toast(strings.forgotFailed(e.getMessage() != null ? e.getMessage() : ""));
                 });
     }
 

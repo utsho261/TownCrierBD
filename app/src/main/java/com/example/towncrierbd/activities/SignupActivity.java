@@ -88,6 +88,7 @@ public class SignupActivity extends AppCompatActivity {
         locationClient = LocationServices.getFusedLocationProviderClient(this);
         requestLocation();
 
+        // Apply hints & labels (never setText on input fields)
         applyStrings();
 
         etDob.setOnClickListener(v -> openDatePicker());
@@ -97,7 +98,8 @@ public class SignupActivity extends AppCompatActivity {
         if (tvLangToggle != null) {
             tvLangToggle.setOnClickListener(v -> {
                 LanguageManager.toggle(this);
-                applyStrings();
+                // Use recreate so hints refresh cleanly without overwriting user input
+                recreate();
             });
         }
 
@@ -134,21 +136,26 @@ public class SignupActivity extends AppCompatActivity {
         );
     }
 
+    /** Set HINTS only — never call setText() on input fields */
     private void applyStrings() {
         AppStrings s = AppStrings.get(this);
-        if (tvLangToggle  != null) tvLangToggle.setText(LanguageManager.getToggleLabel(this));
-        if (tvAppName     != null) tvAppName.setText(s.appName());
-        if (tvSubtitle    != null) tvSubtitle.setText(s.signupSubtitle());
-        if (etName        != null) etName.setHint(s.signupHintName());
-        if (etPhone       != null) etPhone.setHint(s.signupHintPhone());
-        if (etEmail       != null) etEmail.setHint(s.signupHintEmail());
-        if (etDob         != null) etDob.setHint(s.signupHintDob());
-        if (etPassword    != null) etPassword.setHint(s.signupHintPassword());
-        if (tvIAm         != null) tvIAm.setText(s.signupIAm());
-        if (rbGeneral     != null) rbGeneral.setText(s.signupRoleGeneral());
-        if (rbAnnouncer   != null) rbAnnouncer.setText(s.signupRoleAnnouncer());
-        if (btnSignup     != null) btnSignup.setText(s.signupBtn());
-        if (tvGotoLogin   != null) tvGotoLogin.setText(s.signupGoLogin());
+        if (tvLangToggle != null) tvLangToggle.setText(LanguageManager.getToggleLabel(this));
+        if (tvAppName    != null) tvAppName.setText(s.appName());
+        if (tvSubtitle   != null) tvSubtitle.setText(s.signupSubtitle());
+
+        // Hints only
+        if (etName     != null) etName.setHint(s.signupHintName());
+        if (etPhone    != null) etPhone.setHint(s.signupHintPhone());
+        if (etEmail    != null) etEmail.setHint(s.signupHintEmail());
+        if (etDob      != null) etDob.setHint(s.signupHintDob());
+        if (etPassword != null) etPassword.setHint(s.signupHintPassword());
+
+        // Labels & buttons (not input fields)
+        if (tvIAm       != null) tvIAm.setText(s.signupIAm());
+        if (rbGeneral   != null) rbGeneral.setText(s.signupRoleGeneral());
+        if (rbAnnouncer != null) rbAnnouncer.setText(s.signupRoleAnnouncer());
+        if (btnSignup   != null) btnSignup.setText(s.signupBtn());
+        if (tvGotoLogin != null) tvGotoLogin.setText(s.signupGoLogin());
     }
 
     private void routeLoggedInUser(String uid) {

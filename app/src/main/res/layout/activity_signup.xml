@@ -78,6 +78,7 @@
                 android:inputType="textPersonName"
                 android:padding="12dp"/>
 
+            <!-- Phone - hint set programmatically, no hardcoded +880 in XML -->
             <EditText
                 android:id="@+id/etPhone"
                 android:layout_width="match_parent"
@@ -88,6 +89,7 @@
                 android:padding="12dp"
                 android:layout_marginTop="8dp"/>
 
+            <!-- Email - hint set programmatically -->
             <EditText
                 android:id="@+id/etEmail"
                 android:layout_width="match_parent"
@@ -109,7 +111,9 @@
                 android:padding="12dp"
                 android:layout_marginTop="8dp" />
 
+            <!-- Password - TextInputLayout so toggle works, hint set programmatically -->
             <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilPassword"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:endIconMode="password_toggle"
@@ -121,7 +125,6 @@
                     android:layout_width="match_parent"
                     android:layout_height="50dp"
                     android:hint="Password"
-                    android:drawableStart="@android:drawable/ic_lock_idle_lock"
                     android:inputType="textPassword"
                     android:padding="12dp"/>
             </com.google.android.material.textfield.TextInputLayout>

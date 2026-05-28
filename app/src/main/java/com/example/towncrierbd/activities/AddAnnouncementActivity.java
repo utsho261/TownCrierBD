@@ -60,6 +60,13 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     private TextView tvImageStatus, tvAudioStatus;
     private View     btnAddImage, btnRecordAudio;
 
+    // Step 3 bilingual labels
+    private TextView tvLabelTitle, tvLabelDesc, tvLabelExpiry, tvExpiryMax, tvExpiryInfo;
+    private TextView tvBtnAddImage, tvBtnAddAudio;
+
+    // Step 2 labels
+    private TextView tvStep2Title, tvStep2Subtitle;
+
     private String postType = "announcement";
 
     private FirebaseAuth      auth;
@@ -108,6 +115,19 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         btnAddImage     = findViewById(R.id.btnAddImage);
         btnRecordAudio  = findViewById(R.id.btnRecordAudio);
 
+        // Step 3 bilingual label views
+        tvLabelTitle   = findViewById(R.id.tvLabelTitle);
+        tvLabelDesc    = findViewById(R.id.tvLabelDesc);
+        tvLabelExpiry  = findViewById(R.id.tvLabelExpiry);
+        tvExpiryMax    = findViewById(R.id.tvExpiryMax);
+        tvExpiryInfo   = findViewById(R.id.tvExpiryInfo);
+        tvBtnAddImage  = findViewById(R.id.tvBtnAddImage);
+        tvBtnAddAudio  = findViewById(R.id.tvBtnAddAudio);
+
+        // Step 2 label views
+        tvStep2Title    = findViewById(R.id.tvStep2Title);
+        tvStep2Subtitle = findViewById(R.id.tvStep2Subtitle);
+
         View btnClose = findViewById(R.id.btnClose);
         if (btnClose != null) btnClose.setOnClickListener(v -> finish());
         if (btnAddImage != null)    btnAddImage.setOnClickListener(v -> showImageChooser());
@@ -133,13 +153,13 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // Apply bilingual strings to wizard layout
+    // Apply bilingual strings to ALL wizard views
     // ════════════════════════════════════════════════════════════════════════
 
     private void applyWizardStrings() {
         AppStrings s = AppStrings.get(this);
 
-        // Step 1 labels
+        // ── Step 1 ──
         TextView tvStep1Title = stepCategory != null ? stepCategory.findViewById(R.id.tvStep1Title) : null;
         TextView tvStep1Sub   = stepCategory != null ? stepCategory.findViewById(R.id.tvStep1Subtitle) : null;
         Button   btnNext1     = stepCategory != null ? stepCategory.findViewById(R.id.btnNextStep1) : null;
@@ -147,38 +167,40 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         if (tvStep1Sub   != null) tvStep1Sub.setText(s.addStep1Subtitle());
         if (btnNext1     != null) btnNext1.setText(s.addStep1Next());
 
-        // Step 2 labels
+        // ── Step 2 ──
+        if (tvStep2Title    != null) tvStep2Title.setText(s.addStep2Title());
+        if (tvStep2Subtitle != null) tvStep2Subtitle.setText(s.addStep2Subtitle());
         Button btnBack2 = stepProducts != null ? stepProducts.findViewById(R.id.btnBackStep2) : null;
         Button btnNext2 = stepProducts != null ? stepProducts.findViewById(R.id.btnNextStep2) : null;
         if (btnBack2 != null) btnBack2.setText(s.addStep2Back());
         if (btnNext2 != null) btnNext2.setText(s.addStep2Next());
 
-        // Step 3 labels
-        if (etTitle != null) etTitle.setHint(s.addStep3HintTitle());
-        if (etDesc  != null) etDesc.setHint(s.addStep3HintDesc());
+        // ── Step 3 labels ──
+        if (tvLabelTitle  != null) tvLabelTitle.setText(s.addStep3LabelTitle());
+        if (tvLabelDesc   != null) tvLabelDesc.setText(s.addStep3LabelDesc());
+        if (tvLabelExpiry != null) tvLabelExpiry.setText(s.addStep3ExpiryLabel());
+        if (tvExpiryMax   != null) tvExpiryMax.setText(s.addStep3ExpiryMax());
+        if (tvExpiryInfo  != null) tvExpiryInfo.setText(s.addStep3ExpiryInfo());
+
+        // ── Step 3 hint texts ──
+        if (etTitle       != null) etTitle.setHint(s.addStep3HintTitle());
+        if (etDesc        != null) etDesc.setHint(s.addStep3HintDesc());
         if (etExpiryValue != null) etExpiryValue.setHint(s.addStep3ExpiryHint());
+
+        // ── Image / Audio button labels ──
+        if (tvBtnAddImage != null) tvBtnAddImage.setText(s.addStep3AddImage());
+        if (tvBtnAddAudio != null) tvBtnAddAudio.setText(s.addStep3AddAudio());
+
+        // ── Publish button ──
         if (btnPublish != null) btnPublish.setText(s.addStep3Publish());
 
+        // ── Back button on step 3 ──
         Button btnBack3 = stepDetails != null ? stepDetails.findViewById(R.id.btnBackStep3) : null;
         if (btnBack3 != null) btnBack3.setText(s.addStep3Back());
 
-        // Image / Audio buttons
-        if (btnAddImage instanceof LinearLayout) {
-            LinearLayout ll = (LinearLayout) btnAddImage;
-            for (int i = 0; i < ll.getChildCount(); i++) {
-                View c = ll.getChildAt(i);
-                if (c instanceof TextView && !(c instanceof Button))
-                    ((TextView) c).setText(s.addStep3AddImage());
-            }
-        }
-        if (btnRecordAudio instanceof LinearLayout) {
-            LinearLayout ll = (LinearLayout) btnRecordAudio;
-            for (int i = 0; i < ll.getChildCount(); i++) {
-                View c = ll.getChildAt(i);
-                if (c instanceof TextView && !(c instanceof Button))
-                    ((TextView) c).setText(s.addStep3AddAudio());
-            }
-        }
+        // ── Custom category hint ──
+        if (etCustomCategoryText != null)
+            etCustomCategoryText.setHint(s.addStep2CustomHint());
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -393,7 +415,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             cb.setButtonTintList(ColorStateList.valueOf(0xFF1976F3));
 
             TextView tvLabel = new TextView(this);
-            // ✅ Bilingual category name
             tvLabel.setText(cat.emoji + "  " + (isBn ? cat.nameBn : cat.name));
             tvLabel.setTextSize(15);
             tvLabel.setTypeface(null, Typeface.BOLD);
@@ -431,7 +452,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             row.setOnClickListener(v -> cb.toggle());
             cb.setOnCheckedChangeListener((btn, checked) -> {
                 if (checked) {
-                    selectedCategories.add(cat.name); // Always English key
+                    selectedCategories.add(cat.name);
                     row.setBackground(roundedBg(0xFFEFF6FF, dp(12)));
                 } else {
                     selectedCategories.remove(cat.name);
@@ -482,7 +503,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             if ("Others".equals(cat.name)) continue;
 
             TextView tvCatHeader = new TextView(this);
-            // ✅ Bilingual category header
             tvCatHeader.setText(cat.emoji + "  " + (isBn ? cat.nameBn : cat.name));
             tvCatHeader.setTextSize(15);
             tvCatHeader.setTypeface(null, Typeface.BOLD);
@@ -526,7 +546,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 }
 
                 TextView tvSub = new TextView(this);
-                // ✅ Bilingual subgroup name
                 tvSub.setText("▸ " + (isBn ? group.groupNameBn : group.groupName));
                 tvSub.setTextSize(12);
                 tvSub.setTypeface(null, Typeface.BOLD);
@@ -569,11 +588,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * @param engKey     English key stored in Firebase
-     * @param displayText Bangla or English text shown to user
-     * @param subcategory English subcategory group name
-     */
     private void addProductCheckBox(LinearLayout parent, String engKey, String displayText, String subcategory) {
         CheckBox cb = new CheckBox(this);
         cb.setText(displayText);
@@ -585,7 +599,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         clp.setMargins(dp(2), dp(1), dp(2), dp(1));
         cb.setLayoutParams(clp);
-        cb.setTag(engKey); // Store English key
+        cb.setTag(engKey);
 
         cb.setOnCheckedChangeListener((btn, checked) -> {
             if (checked) {
@@ -854,14 +868,8 @@ public class AddAnnouncementActivity extends AppCompatActivity {
 
     private void updateAudioButton(boolean recording) {
         AppStrings s = AppStrings.get(this);
-        if (btnRecordAudio instanceof LinearLayout) {
-            LinearLayout ll = (LinearLayout) btnRecordAudio;
-            for (int i = 0; i < ll.getChildCount(); i++) {
-                View child = ll.getChildAt(i);
-                if (child instanceof TextView)
-                    ((TextView) child).setText(recording ? s.audioStopBtn() : s.audioAddBtn());
-            }
-        }
+        if (tvBtnAddAudio != null)
+            tvBtnAddAudio.setText(recording ? s.audioStopBtn() : s.addStep3AddAudio());
     }
 
     private void setupPermissions() {
