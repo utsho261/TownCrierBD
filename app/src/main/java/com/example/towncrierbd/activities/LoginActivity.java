@@ -65,33 +65,43 @@ public class LoginActivity extends AppCompatActivity {
                     startActivity(new Intent(this, ForgotPasswordActivity.class)));
         }
 
-        // Language toggle — recreate so all views refresh properly
+        // Language toggle — recreate so all static views refresh.
+        // Input fields are EMPTY on login page so recreate is safe here.
         if (tvLangToggle != null) {
             tvLangToggle.setOnClickListener(v -> {
                 LanguageManager.toggle(this);
-                recreate(); // Full recreate ensures hints update without overwriting passwords
+                recreate();
             });
         }
     }
 
-    /** Apply all UI strings from AppStrings based on current language.
-     *  Only sets HINTS (never touches existing text), plus static labels. */
+    /**
+     * Apply all UI strings from AppStrings based on current language.
+     *
+     * KEY RULE: setHint() on EditText is safe — it never overwrites typed text.
+     * setText() on EditText would overwrite — we never call it on input fields.
+     * Static labels (TextViews) always use setText().
+     */
     private void applyStrings() {
         AppStrings s = AppStrings.get(this);
 
-        // Static labels
+        // Static label TextViews — always safe to setText()
         if (tvAppName  != null) tvAppName.setText(s.loginTitle());
         if (tvSubtitle != null) tvSubtitle.setText(s.loginSubtitle());
-
-        // Hints only — never setText on input fields (that overwrites user input)
-        if (etEmail    != null) etEmail.setHint(s.loginHintEmailPhone());
-        if (etPassword != null) etPassword.setHint(s.loginHintPassword());
 
         // Buttons & links
         if (btnLogin         != null) btnLogin.setText(s.loginBtn());
         if (tvGotoSignup     != null) tvGotoSignup.setText(s.loginGoSignup());
         if (tvForgotPassword != null) tvForgotPassword.setText(s.loginForgot());
         if (tvLangToggle     != null) tvLangToggle.setText(LanguageManager.getToggleLabel(this));
+
+        // Hints only on input fields — NEVER setText()
+        if (etEmail    != null) etEmail.setHint(s.loginHintEmailPhone());
+
+        // For TextInputEditText inside TextInputLayout:
+        // Set hint on the EditText directly (NOT on the TextInputLayout)
+        // to avoid MaterialComponents re-applying it over typed text.
+        if (etPassword != null) etPassword.setHint(s.loginHintPassword());
     }
 
     private void login() {

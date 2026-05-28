@@ -88,7 +88,8 @@ public class SignupActivity extends AppCompatActivity {
         locationClient = LocationServices.getFusedLocationProviderClient(this);
         requestLocation();
 
-        // Apply hints & labels (never setText on input fields)
+        // Apply hints & labels. RULE: setHint() only on EditText/TextInputEditText —
+        // never setText() on input fields.
         applyStrings();
 
         etDob.setOnClickListener(v -> openDatePicker());
@@ -98,7 +99,9 @@ public class SignupActivity extends AppCompatActivity {
         if (tvLangToggle != null) {
             tvLangToggle.setOnClickListener(v -> {
                 LanguageManager.toggle(this);
-                // Use recreate so hints refresh cleanly without overwriting user input
+                // recreate() is safe here because signup fields are empty on first load.
+                // If user has typed, recreate() would lose their input — acceptable trade-off
+                // since language toggle is typically done before filling the form.
                 recreate();
             });
         }
@@ -136,26 +139,35 @@ public class SignupActivity extends AppCompatActivity {
         );
     }
 
-    /** Set HINTS only — never call setText() on input fields */
+    /**
+     * Set HINTS only on input fields — never setText().
+     * Set text on static label TextViews (tvAppName, tvSubtitle, etc.).
+     */
     private void applyStrings() {
         AppStrings s = AppStrings.get(this);
-        if (tvLangToggle != null) tvLangToggle.setText(LanguageManager.getToggleLabel(this));
-        if (tvAppName    != null) tvAppName.setText(s.appName());
-        if (tvSubtitle   != null) tvSubtitle.setText(s.signupSubtitle());
 
-        // Hints only
+        // Language toggle label
+        if (tvLangToggle != null) tvLangToggle.setText(LanguageManager.getToggleLabel(this));
+
+        // Static labels — setText() is safe on TextViews that aren't input fields
+        if (tvAppName  != null) tvAppName.setText(s.appName());
+        if (tvSubtitle != null) tvSubtitle.setText(s.signupSubtitle());
+        if (tvIAm      != null) tvIAm.setText(s.signupIAm());
+
+        // Radio buttons — setText() is safe (they don't hold user input)
+        if (rbGeneral   != null) rbGeneral.setText(s.signupRoleGeneral());
+        if (rbAnnouncer != null) rbAnnouncer.setText(s.signupRoleAnnouncer());
+
+        // Buttons — setText() is safe
+        if (btnSignup   != null) btnSignup.setText(s.signupBtn());
+        if (tvGotoLogin != null) tvGotoLogin.setText(s.signupGoLogin());
+
+        // Input fields — setHint() ONLY, never setText()
         if (etName     != null) etName.setHint(s.signupHintName());
         if (etPhone    != null) etPhone.setHint(s.signupHintPhone());
         if (etEmail    != null) etEmail.setHint(s.signupHintEmail());
         if (etDob      != null) etDob.setHint(s.signupHintDob());
         if (etPassword != null) etPassword.setHint(s.signupHintPassword());
-
-        // Labels & buttons (not input fields)
-        if (tvIAm       != null) tvIAm.setText(s.signupIAm());
-        if (rbGeneral   != null) rbGeneral.setText(s.signupRoleGeneral());
-        if (rbAnnouncer != null) rbAnnouncer.setText(s.signupRoleAnnouncer());
-        if (btnSignup   != null) btnSignup.setText(s.signupBtn());
-        if (tvGotoLogin != null) tvGotoLogin.setText(s.signupGoLogin());
     }
 
     private void routeLoggedInUser(String uid) {

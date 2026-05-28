@@ -66,17 +66,25 @@
             android:textColor="@color/hint_gray"
             android:layout_marginBottom="16dp" />
 
-        <!-- Email/Phone field - hint set programmatically -->
+        <!--
+            Email/Phone field.
+            IMPORTANT: Do NOT use TextInputLayout here — it caches the hint
+            and re-applies it on language toggle, which overwrites user input.
+            Plain EditText with programmatic setHint() is safe.
+        -->
         <EditText
             android:id="@+id/etEmail"
             android:layout_width="match_parent"
             android:layout_height="50dp"
-            android:hint="Number or Email"
             android:drawableStart="@android:drawable/ic_menu_call"
             android:inputType="text"
             android:padding="12dp" />
 
-        <!-- Password field - SEPARATE layout so hint doesn't override text -->
+        <!--
+            Password field wrapped in TextInputLayout for the show/hide toggle.
+            Hint is set only once in applyStrings() via etPassword.setHint(),
+            NOT via TextInputLayout.setHint(), so it won't overwrite typed text.
+        -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/tilPassword"
             android:layout_width="match_parent"
@@ -89,7 +97,6 @@
                 android:id="@+id/etPassword"
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
-                android:hint="Password"
                 android:inputType="textPassword"
                 android:padding="12dp" />
         </com.google.android.material.textfield.TextInputLayout>
