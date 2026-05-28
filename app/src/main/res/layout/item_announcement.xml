@@ -116,16 +116,40 @@
             android:maxLines="3"
             android:ellipsize="end"/>
 
-        <!-- Time -->
-        <TextView
-            android:id="@+id/tvTime"
-            android:layout_width="wrap_content"
+        <!-- Time + Translate button row -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
             android:layout_marginStart="12dp"
-            android:layout_marginTop="4dp"
-            android:text="Just now"
-            android:textColor="#999999"
-            android:textSize="12sp" />
+            android:layout_marginEnd="12dp"
+            android:layout_marginTop="6dp">
+
+            <TextView
+                android:id="@+id/tvTime"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Just now"
+                android:textColor="#999999"
+                android:textSize="12sp" />
+
+            <!-- ✅ Translate button — only translates title + description -->
+            <Button
+                android:id="@+id/btnTranslate"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:text="🌐 ইংরেজি"
+                android:textAllCaps="false"
+                android:textSize="11sp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"/>
+
+        </LinearLayout>
 
         <!-- User row -->
         <LinearLayout
@@ -175,13 +199,22 @@
 
         </LinearLayout>
 
+        <!-- Divider before action buttons -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:layout_marginTop="12dp"
+            android:background="#F0F0F0"/>
+
         <!-- Feed mode: Listen + Chat -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
             android:layout_marginEnd="12dp"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="10dp"
             android:layout_marginBottom="4dp"
             android:orientation="horizontal">
 

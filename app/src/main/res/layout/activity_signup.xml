@@ -51,7 +51,7 @@
                 app:tint="@color/blue_start"
                 android:contentDescription="@string/app_name" />
 
-            <!-- ✅ tvAppName — NO hardcoded text, set via Java -->
+            <!-- tvAppName — NO hardcoded text, set via Java -->
             <TextView
                 android:id="@+id/tvAppName"
                 android:layout_width="wrap_content"
@@ -61,7 +61,7 @@
                 android:textSize="22sp"
                 android:layout_marginTop="8dp" />
 
-            <!-- ✅ tvSubtitle — NO hardcoded text, set via Java -->
+            <!-- tvSubtitle — NO hardcoded text, set via Java -->
             <TextView
                 android:id="@+id/tvSubtitle"
                 android:layout_width="wrap_content"
@@ -69,17 +69,14 @@
                 android:textColor="@color/hint_gray"
                 android:layout_marginBottom="16dp" />
 
-            <!--
-                ✅ ALL EditText fields: NO hint in XML.
-                Hints are set programmatically via setHint() in applyStrings().
-                setHint() NEVER overwrites user-typed text.
-            -->
+            <!-- ALL EditText: hints set via setHint() in Java only -->
 
             <EditText
                 android:id="@+id/etName"
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
                 android:drawableStart="@android:drawable/ic_menu_edit"
+                android:drawablePadding="8dp"
                 android:inputType="textPersonName"
                 android:padding="12dp"/>
 
@@ -88,6 +85,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
                 android:drawableStart="@android:drawable/ic_menu_call"
+                android:drawablePadding="8dp"
                 android:inputType="phone"
                 android:padding="12dp"
                 android:layout_marginTop="8dp"/>
@@ -97,6 +95,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
                 android:drawableStart="@android:drawable/ic_dialog_email"
+                android:drawablePadding="8dp"
                 android:inputType="textEmailAddress"
                 android:padding="12dp"
                 android:layout_marginTop="8dp"/>
@@ -106,16 +105,16 @@
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
                 android:drawableStart="@android:drawable/ic_menu_my_calendar"
+                android:drawablePadding="8dp"
                 android:focusable="false"
                 android:clickable="true"
                 android:padding="12dp"
                 android:layout_marginTop="8dp" />
 
             <!--
-                ✅ Password: TextInputLayout for show/hide toggle.
-                NO hint in XML on layout or EditText — set only via etPassword.setHint() in Java.
-                Setting hint on TextInputLayout itself causes MaterialComponents to cache it
-                and re-apply it over typed text on every layout pass — so we never do that.
+                Password: TextInputLayout with lock icon + show/hide toggle.
+                Lock icon via startIconDrawable (Material design recommended).
+                NO hint in XML — set only via etPassword.setHint() in Java.
             -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilPassword"
@@ -123,6 +122,8 @@
                 android:layout_height="wrap_content"
                 app:endIconMode="password_toggle"
                 app:endIconTint="@color/blue_start"
+                app:startIconDrawable="@android:drawable/ic_lock_lock"
+                app:startIconTint="@color/hint_gray"
                 android:layout_marginTop="8dp">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -133,7 +134,7 @@
                     android:padding="12dp"/>
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- ✅ tvIAm — NO hardcoded text, set via Java -->
+            <!-- tvIAm — NO hardcoded text, set via Java -->
             <TextView
                 android:id="@+id/tvIAm"
                 android:layout_width="wrap_content"
@@ -149,14 +150,12 @@
                 android:gravity="center"
                 android:layout_marginTop="4dp">
 
-                <!-- ✅ rbGeneral — NO hardcoded text, set via Java -->
                 <RadioButton
                     android:id="@+id/rbGeneral"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:checked="true"/>
 
-                <!-- ✅ rbAnnouncer — NO hardcoded text, set via Java -->
                 <RadioButton
                     android:id="@+id/rbAnnouncer"
                     android:layout_width="wrap_content"
@@ -164,7 +163,7 @@
                     android:layout_marginStart="32dp"/>
             </RadioGroup>
 
-            <!-- ✅ btnSignup — NO hardcoded text, set via Java -->
+            <!-- btnSignup — NO hardcoded text, set via Java -->
             <Button
                 android:id="@+id/btnSignup"
                 android:layout_width="match_parent"
@@ -173,7 +172,7 @@
                 android:backgroundTint="@color/blue_start"
                 android:layout_marginTop="12dp"/>
 
-            <!-- ✅ tvGotoLogin — NO hardcoded text, set via Java -->
+            <!-- tvGotoLogin — NO hardcoded text, set via Java -->
             <TextView
                 android:id="@+id/tvGotoLogin"
                 android:layout_width="wrap_content"

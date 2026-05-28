@@ -48,7 +48,7 @@
             app:tint="@color/blue_start"
             android:contentDescription="@string/app_name" />
 
-        <!-- ✅ tvAppName — setText() in Java -->
+        <!-- tvAppName — setText() in Java -->
         <TextView
             android:id="@+id/tvAppName"
             android:layout_width="wrap_content"
@@ -58,7 +58,7 @@
             android:textSize="22sp"
             android:layout_marginTop="8dp" />
 
-        <!-- ✅ tvSubtitle — setText() in Java, NO hardcoded text -->
+        <!-- tvSubtitle — setText() in Java -->
         <TextView
             android:id="@+id/tvSubtitle"
             android:layout_width="wrap_content"
@@ -66,30 +66,25 @@
             android:textColor="@color/hint_gray"
             android:layout_marginBottom="16dp" />
 
-        <!--
-            ✅ etEmail — Plain EditText, NO hint in XML.
-            Hint set via setHint() in applyStrings() — never setText().
-        -->
+        <!-- Email/Phone field with call icon -->
         <EditText
             android:id="@+id/etEmail"
             android:layout_width="match_parent"
             android:layout_height="50dp"
             android:drawableStart="@android:drawable/ic_menu_call"
+            android:drawablePadding="8dp"
             android:inputType="text"
             android:padding="12dp" />
 
-        <!--
-            ✅ Password — TextInputLayout for show/hide toggle.
-            NO hint in XML on either the layout or the inner EditText.
-            Hint set only once via etPassword.setHint() in applyStrings().
-            This prevents MaterialComponents from re-applying and overwriting typed text.
-        -->
+        <!-- Password field — TextInputLayout with lock icon + show/hide toggle -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/tilPassword"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:endIconMode="password_toggle"
             app:endIconTint="@color/blue_start"
+            app:startIconDrawable="@android:drawable/ic_lock_lock"
+            app:startIconTint="@color/hint_gray"
             android:layout_marginTop="8dp">
 
             <com.google.android.material.textfield.TextInputEditText
@@ -100,7 +95,7 @@
                 android:padding="12dp" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- ✅ tvForgotPassword — setText() in Java -->
+        <!-- tvForgotPassword — setText() in Java -->
         <TextView
             android:id="@+id/tvForgotPassword"
             android:layout_width="wrap_content"
@@ -111,7 +106,7 @@
             android:clickable="true"
             android:focusable="true"/>
 
-        <!-- ✅ btnLogin — setText() in Java -->
+        <!-- btnLogin — setText() in Java -->
         <Button
             android:id="@+id/btnLogin"
             android:layout_width="match_parent"
@@ -120,7 +115,7 @@
             android:backgroundTint="@color/blue_start"
             android:layout_marginTop="14dp" />
 
-        <!-- ✅ tvGotoSignup — setText() in Java -->
+        <!-- tvGotoSignup — setText() in Java -->
         <TextView
             android:id="@+id/tvGotoSignup"
             android:layout_width="wrap_content"

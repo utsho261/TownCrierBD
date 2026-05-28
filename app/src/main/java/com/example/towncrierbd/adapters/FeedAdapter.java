@@ -25,15 +25,19 @@ import com.example.towncrierbd.activities.AnnouncementDetailActivity;
 import com.example.towncrierbd.activities.ChatActivity;
 import com.example.towncrierbd.models.Announcement;
 import com.example.towncrierbd.utils.AppStrings;
+import com.example.towncrierbd.utils.CategoryConfig;
 import com.example.towncrierbd.utils.Constants;
 import com.example.towncrierbd.utils.DistanceUtil;
 import com.example.towncrierbd.utils.LanguageManager;
+import com.example.towncrierbd.utils.TranslationHelper;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
 
@@ -47,6 +51,23 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
 
     private TextToSpeech tts;
     private MediaPlayer  mediaPlayer;
+
+    /**
+     * Per-item translation state.
+     * Key  = announcement id
+     * ONLY title + description are ever translated.
+     * Category badge, expiry, distance, time — NEVER translated here.
+     */
+    private final Map<String, TranslateState> translateStateMap = new HashMap<>();
+
+    private static class TranslateState {
+        boolean isTranslated    = false;
+        boolean isLoading       = false;
+        String  translatedTitle = null;
+        String  translatedDesc  = null;
+        // Store the detected lang-pair so button label is always accurate
+        String  detectedLangPair = null; // e.g. "bn|en" or "en|bn"
+    }
 
     public FeedAdapter(Context context) {
         this.context = context;
@@ -80,6 +101,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
     public void setData(List<Announcement> data) {
         items.clear();
         if (data != null) items.addAll(data);
+        if (data == null || data.isEmpty()) translateStateMap.clear();
         notifyDataSetChanged();
     }
 
@@ -96,7 +118,8 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         Announcement a = items.get(pos);
         AppStrings s = AppStrings.get(context);
 
-        // ✅ Badge — auto-follow app language (no translate button)
+        // ── Category badge ─────────────────────────────────────────────────
+        // Always follows APP language — never changes with translate button.
         String badgeEn = safe(a.getDisplayCategoryLabel());
         if (badgeEn.isEmpty()) badgeEn = safe(a.getCategory());
         String badgeDisplay = LanguageManager.isEnglish(context)
@@ -104,17 +127,36 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                 : getCategoryBn(badgeEn);
         if (h.tvBadge != null) h.tvBadge.setText(badgeDisplay);
 
-        if (h.tvTitle != null) h.tvTitle.setText(safe(a.getTitle()));
-        if (h.tvDesc  != null) h.tvDesc.setText(safe(a.getDescription()));
+        // ── Translate state for this item ──────────────────────────────────
+        String itemId = safe(a.getId());
+        if (itemId.isEmpty()) itemId = String.valueOf(pos);
+        TranslateState state = translateStateMap.get(itemId);
+        if (state == null) {
+            state = new TranslateState();
+            // Pre-detect language pair from title so button label is correct immediately
+            state.detectedLangPair = TranslationHelper.detectLangPair(safe(a.getTitle()));
+            translateStateMap.put(itemId, state);
+        }
 
+        // ── Title & Description (show translated or original) ──────────────
+        String displayTitle = (state.isTranslated && state.translatedTitle != null)
+                ? state.translatedTitle : safe(a.getTitle());
+        String displayDesc  = (state.isTranslated && state.translatedDesc  != null)
+                ? state.translatedDesc  : safe(a.getDescription());
+
+        if (h.tvTitle != null) h.tvTitle.setText(displayTitle);
+        if (h.tvDesc  != null) h.tvDesc.setText(displayDesc);
+
+        // ── User info ──────────────────────────────────────────────────────
         String nm = safe(a.getUserName());
         if (h.tvName   != null) h.tvName.setText(nm);
         if (h.tvAvatar != null)
             h.tvAvatar.setText(nm.isEmpty() ? "U" : String.valueOf(Character.toUpperCase(nm.charAt(0))));
 
+        // ── Time ───────────────────────────────────────────────────────────
         if (h.tvTime != null) h.tvTime.setText(getRelativeTime(a.getTime(), s));
 
-        // Expiry
+        // ── Expiry ─────────────────────────────────────────────────────────
         if (h.tvExpiry != null) {
             String expiry = getExpiryText(a.getExpireAt(), s);
             if (expiry.isEmpty()) {
@@ -130,14 +172,14 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             }
         }
 
-        // Audio badge
+        // ── Audio badge ────────────────────────────────────────────────────
         if (h.tvAudioBadge != null) {
             boolean hasAudio = a.getAudioUrl() != null && !a.getAudioUrl().isEmpty();
             h.tvAudioBadge.setVisibility(hasAudio ? View.VISIBLE : View.GONE);
             if (hasAudio) h.tvAudioBadge.setText(s.cardAudioBadge());
         }
 
-        // Image
+        // ── Image ──────────────────────────────────────────────────────────
         String imgUrl = safe(a.getImageUrl());
         if (h.ivPhoto != null) {
             if (!imgUrl.isEmpty()) {
@@ -150,7 +192,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             }
         }
 
-        // Distance
+        // ── Distance ───────────────────────────────────────────────────────
         if (h.tvDistance != null) {
             if (hasMyLoc) {
                 double d = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
@@ -161,42 +203,130 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             }
         }
 
+        // ── Translate button ───────────────────────────────────────────────
+        // ONLY title + description are translated. Everything else is untouched.
+        if (h.btnTranslate != null) {
+            updateTranslateBtnLabel(h.btnTranslate, state, s);
+
+            final String finalItemId      = itemId;
+            final TranslateState finalState = state;
+
+            h.btnTranslate.setOnClickListener(v -> {
+                if (finalState.isLoading) return; // prevent double-tap
+
+                AppStrings as = AppStrings.get(context);
+
+                if (finalState.isTranslated) {
+                    // ── Revert to original ─────────────────────────────────
+                    finalState.isTranslated = false;
+                    if (h.tvTitle != null) h.tvTitle.setText(safe(a.getTitle()));
+                    if (h.tvDesc  != null) h.tvDesc.setText(safe(a.getDescription()));
+                    updateTranslateBtnLabel(h.btnTranslate, finalState, as);
+
+                } else if (finalState.translatedTitle != null) {
+                    // ── Use cached translation ─────────────────────────────
+                    finalState.isTranslated = true;
+                    if (h.tvTitle != null) h.tvTitle.setText(finalState.translatedTitle);
+                    if (h.tvDesc  != null) h.tvDesc.setText(
+                            finalState.translatedDesc != null ? finalState.translatedDesc : "");
+                    updateTranslateBtnLabel(h.btnTranslate, finalState, as);
+
+                } else {
+                    // ── Fetch translation ──────────────────────────────────
+                    finalState.isLoading = true;
+                    h.btnTranslate.setText(as.cardTranslating());
+                    h.btnTranslate.setEnabled(false);
+
+                    String rawTitle = safe(a.getTitle());
+                    String rawDesc  = safe(a.getDescription());
+
+                    // Use pre-detected lang pair from post's own language
+                    String langPair = finalState.detectedLangPair != null
+                            ? finalState.detectedLangPair
+                            : TranslationHelper.detectLangPair(rawTitle);
+
+                    // Translate title + desc in one batch call
+                    String combined = rawTitle + " || " + rawDesc;
+                    TranslationHelper.translateWithLangPair(
+                            combined,
+                            langPair,
+                            new TranslationHelper.TranslateCallback() {
+                                @Override
+                                public void onResult(String result) {
+                                    finalState.isLoading = false;
+                                    String[] parts = result.split("\\s*\\|\\|\\s*", 2);
+                                    finalState.translatedTitle = parts.length > 0
+                                            ? parts[0].trim() : rawTitle;
+                                    finalState.translatedDesc  = parts.length > 1
+                                            ? parts[1].trim() : rawDesc;
+                                    finalState.isTranslated = true;
+
+                                    // ✅ Only update title + desc — badge/expiry/distance untouched
+                                    if (h.tvTitle != null) h.tvTitle.setText(finalState.translatedTitle);
+                                    if (h.tvDesc  != null) h.tvDesc.setText(finalState.translatedDesc);
+                                    h.btnTranslate.setEnabled(true);
+                                    AppStrings as2 = AppStrings.get(context);
+                                    updateTranslateBtnLabel(h.btnTranslate, finalState, as2);
+                                }
+
+                                @Override
+                                public void onError(String originalText) {
+                                    finalState.isLoading = false;
+                                    h.btnTranslate.setEnabled(true);
+                                    AppStrings as2 = AppStrings.get(context);
+                                    updateTranslateBtnLabel(h.btnTranslate, finalState, as2);
+                                    Toast.makeText(context, as2.cardTranslateFail(),
+                                            Toast.LENGTH_SHORT).show();
+                                }
+                            }
+                    );
+                }
+            });
+        }
+
+        // ── Action buttons (feed vs profile mode) ─────────────────────────
         if (showEditDelete) {
-            // Profile mode
             if (h.btnListen        != null) h.btnListen.setVisibility(View.GONE);
             if (h.btnChat          != null) h.btnChat.setVisibility(View.GONE);
             if (h.btnCall          != null) h.btnCall.setVisibility(View.GONE);
             if (h.btnDirection     != null) h.btnDirection.setVisibility(View.GONE);
             if (h.layoutEditDelete != null) h.layoutEditDelete.setVisibility(View.VISIBLE);
+            // Hide translate in profile/edit mode — not needed there
+            if (h.btnTranslate     != null) h.btnTranslate.setVisibility(View.GONE);
 
             if (h.btnEdit   != null) h.btnEdit.setText(s.cardEdit());
             if (h.btnDelete != null) h.btnDelete.setText(s.cardDelete());
             if (h.btnDetails!= null) h.btnDetails.setText(s.cardDetails());
 
-            if (h.btnEdit   != null) h.btnEdit.setOnClickListener(v -> showEditDialog(a, h.getAdapterPosition()));
+            if (h.btnEdit != null)
+                h.btnEdit.setOnClickListener(v -> showEditDialog(a, h.getAdapterPosition()));
             if (h.btnDelete != null) {
                 h.btnDelete.setOnClickListener(v ->
                         new AlertDialog.Builder(context)
                                 .setTitle(s.cardDeleteConfirmTitle())
                                 .setMessage(s.cardDeleteConfirmMsg())
-                                .setPositiveButton(s.delete(), (d, w) -> deletePost(a, h.getAdapterPosition()))
+                                .setPositiveButton(s.delete(),
+                                        (d, w) -> deletePost(a, h.getAdapterPosition()))
                                 .setNegativeButton(s.cancel(), null)
                                 .show());
             }
             if (h.btnDetails != null) h.btnDetails.setOnClickListener(v -> openDetail(a));
 
         } else {
-            // Feed mode
-            if (h.btnListen        != null) { h.btnListen.setVisibility(View.VISIBLE); h.btnListen.setText(s.cardListen()); }
-            if (h.btnChat          != null) { h.btnChat.setVisibility(View.VISIBLE);   h.btnChat.setText(s.cardChat()); }
-            if (h.btnCall          != null) { h.btnCall.setVisibility(View.VISIBLE);   h.btnCall.setText(s.cardCall()); }
-            if (h.btnDirection     != null) { h.btnDirection.setVisibility(View.VISIBLE); h.btnDirection.setText(s.cardDirection()); }
+            if (h.btnListen    != null) { h.btnListen.setVisibility(View.VISIBLE);    h.btnListen.setText(s.cardListen()); }
+            if (h.btnChat      != null) { h.btnChat.setVisibility(View.VISIBLE);      h.btnChat.setText(s.cardChat()); }
+            if (h.btnCall      != null) { h.btnCall.setVisibility(View.VISIBLE);      h.btnCall.setText(s.cardCall()); }
+            if (h.btnDirection != null) { h.btnDirection.setVisibility(View.VISIBLE); h.btnDirection.setText(s.cardDirection()); }
             if (h.layoutEditDelete != null) h.layoutEditDelete.setVisibility(View.GONE);
+            if (h.btnTranslate != null) h.btnTranslate.setVisibility(View.VISIBLE);
 
             if (h.btnCall != null) {
                 h.btnCall.setOnClickListener(v -> {
                     String phone = safe(a.getPhone());
-                    if (phone.isEmpty()) { Toast.makeText(context, s.cardNoPhone(), Toast.LENGTH_SHORT).show(); return; }
+                    if (phone.isEmpty()) {
+                        Toast.makeText(context, s.cardNoPhone(), Toast.LENGTH_SHORT).show();
+                        return;
+                    }
                     context.startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + phone)));
                 });
             }
@@ -205,8 +335,14 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                 h.btnChat.setOnClickListener(v -> {
                     String postOwnerUid = safe(a.getUserId());
                     String myUid = safe(FirebaseAuth.getInstance().getUid());
-                    if (postOwnerUid.isEmpty()) { Toast.makeText(context, s.cardNoChatEmpty(), Toast.LENGTH_SHORT).show(); return; }
-                    if (myUid.equals(postOwnerUid)) { Toast.makeText(context, s.cardNoChatSelf(), Toast.LENGTH_SHORT).show(); return; }
+                    if (postOwnerUid.isEmpty()) {
+                        Toast.makeText(context, s.cardNoChatEmpty(), Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (myUid.equals(postOwnerUid)) {
+                        Toast.makeText(context, s.cardNoChatSelf(), Toast.LENGTH_SHORT).show();
+                        return;
+                    }
                     Intent i = new Intent(context, ChatActivity.class);
                     i.putExtra(ChatActivity.EXTRA_OTHER_UID,  postOwnerUid);
                     i.putExtra(ChatActivity.EXTRA_OTHER_NAME, safe(a.getUserName()));
@@ -214,10 +350,13 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                 });
             }
 
-            if (h.btnDirection != null) h.btnDirection.setOnClickListener(v -> openDirections(a.getLat(), a.getLng()));
-            if (h.btnListen    != null) h.btnListen.setOnClickListener(v -> playAudioOrTts(a));
+            if (h.btnDirection != null)
+                h.btnDirection.setOnClickListener(v -> openDirections(a.getLat(), a.getLng()));
+            if (h.btnListen != null)
+                h.btnListen.setOnClickListener(v -> playAudioOrTts(a));
         }
 
+        // ── Card click → detail ────────────────────────────────────────────
         if (!disableCardClick) {
             h.itemView.setOnClickListener(v -> openDetail(a));
         } else {
@@ -225,9 +364,35 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         }
     }
 
+    // ── Translate button label ─────────────────────────────────────────────
+    // Uses the POST'S own language (detectedLangPair) — not the app language —
+    // so the label is always accurate regardless of app language setting.
+    private void updateTranslateBtnLabel(Button btn, TranslateState state, AppStrings s) {
+        if (state.isLoading) {
+            btn.setText(s.cardTranslating());
+            return;
+        }
+        if (state.isTranslated) {
+            // Currently showing translation → offer to revert
+            // If we translated bn→en, translation is now English → offer বাংলা
+            // If we translated en→bn, translation is now Bangla → offer English
+            boolean translatedIsBangla = "en|bn".equals(state.detectedLangPair);
+            btn.setText(translatedIsBangla ? s.cardTranslateToEn() : s.cardTranslateToBn());
+        } else {
+            // Currently showing original → offer the translation
+            // bn|en means original is Bangla → offer English
+            // en|bn means original is English → offer Bangla
+            if ("bn|en".equals(state.detectedLangPair)) {
+                btn.setText(s.cardTranslateToEn());   // "🌐 English"
+            } else {
+                btn.setText(s.cardTranslateToBn());   // "🌐 বাংলা"
+            }
+        }
+    }
+
     /** Get Bangla category name; fall back to English if not mapped */
     private String getCategoryBn(String englishKey) {
-        String bn = com.example.towncrierbd.utils.CategoryConfig.MAIN_BN.get(englishKey);
+        String bn = CategoryConfig.MAIN_BN.get(englishKey);
         return (bn != null) ? bn : englishKey;
     }
 
@@ -238,7 +403,8 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         if (mapIntent.resolveActivity(context.getPackageManager()) != null) {
             context.startActivity(mapIntent);
         } else {
-            Uri web = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=" + destLat + "," + destLng + "&travelmode=driving");
+            Uri web = Uri.parse("https://www.google.com/maps/dir/?api=1&destination="
+                    + destLat + "," + destLng + "&travelmode=driving");
             context.startActivity(new Intent(Intent.ACTION_VIEW, web));
         }
     }
@@ -300,9 +466,12 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             dist = s.cardKmAway(fmt);
         }
         Intent intent = new Intent(context, AnnouncementDetailActivity.class);
+        // Always pass ORIGINAL text — detail screen has its own translate button
         intent.putExtra(AnnouncementDetailActivity.EXTRA_TITLE,     safe(a.getTitle()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_DESC,      safe(a.getDescription()));
-        intent.putExtra(AnnouncementDetailActivity.EXTRA_CATEGORY,  safe(a.getDisplayCategoryLabel()));
+        // ✅ Pass English category key — detail screen converts to app language itself
+        intent.putExtra(AnnouncementDetailActivity.EXTRA_CATEGORY,  safe(a.getCategory()).isEmpty()
+                ? safe(a.getDisplayCategoryLabel()) : safe(a.getCategory()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_PHONE,     safe(a.getPhone()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_IMAGE_URL, safe(a.getImageUrl()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_AUDIO_URL, safe(a.getAudioUrl()));
@@ -359,6 +528,8 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                             .child(a.getId()).child("description").setValue(newDesc);
                     a.setTitle(newTitle);
                     a.setDescription(newDesc);
+                    // Clear translate cache since original changed
+                    translateStateMap.remove(safe(a.getId()));
                     int currentPos = items.indexOf(a);
                     if (currentPos >= 0) notifyItemChanged(currentPos);
                     Toast.makeText(context, s.cardUpdated(), Toast.LENGTH_SHORT).show();
@@ -379,6 +550,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                 .addOnSuccessListener(v -> {
                     int currentPos = items.indexOf(a);
                     if (currentPos >= 0) {
+                        translateStateMap.remove(safe(a.getId()));
                         items.remove(currentPos);
                         notifyItemRemoved(currentPos);
                         notifyItemRangeChanged(currentPos, items.size());
@@ -408,7 +580,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         TextView  tvBadge, tvTitle, tvDesc, tvAvatar, tvName, tvDistance, tvTime;
         TextView  tvExpiry, tvAudioBadge;
         Button    btnListen, btnChat, btnCall, btnDirection;
-        // ✅ btnTranslate REMOVED — no longer in layout or adapter
+        Button    btnTranslate; // ✅ Only translates title + desc — nothing else
         View      layoutEditDelete;
         Button    btnEdit, btnDelete, btnDetails;
 
@@ -428,6 +600,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             btnChat          = itemView.findViewById(R.id.btnChat);
             btnCall          = itemView.findViewById(R.id.btnCall);
             btnDirection     = itemView.findViewById(R.id.btnDirection);
+            btnTranslate     = itemView.findViewById(R.id.btnTranslate);
             layoutEditDelete = itemView.findViewById(R.id.layoutEditDelete);
             btnEdit          = itemView.findViewById(R.id.btnEdit);
             btnDelete        = itemView.findViewById(R.id.btnDelete);
