@@ -19,6 +19,8 @@ import com.example.towncrierbd.utils.LanguageManager;
 import com.example.towncrierbd.utils.TranslationHelper;
 import com.google.android.material.button.MaterialButton;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class AnnouncementDetailActivity extends AppCompatActivity {
 
     public static final String EXTRA_TITLE      = "title";
@@ -115,24 +117,17 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
         // ── Translate Button ────────────────────────────────────────────
         if (btnTranslate != null) {
             boolean isBanglaPost = TranslationHelper.isBangla(originalTitle + originalDesc);
-            boolean isViewerBn   = !LanguageManager.isEnglish(this);
 
-            // Show button only when post language ≠ viewer language
-            if ((isBanglaPost && !isViewerBn) || (!isBanglaPost && isViewerBn)) {
-                btnTranslate.setVisibility(View.VISIBLE);
-            } else {
-                // Still show for manual toggle convenience
-                btnTranslate.setVisibility(View.VISIBLE);
-            }
-
+            btnTranslate.setVisibility(View.VISIBLE);
             btnTranslate.setText(isBanglaPost ? s.detailTranslateToEn() : s.detailTranslateToBn());
 
             String langPair = isBanglaPost ? "bn|en" : "en|bn";
 
             btnTranslate.setOnClickListener(v -> {
                 AppStrings as = AppStrings.get(this);
+
                 if (isTranslated) {
-                    // Show original
+                    // ── Revert to original — each field goes back to its own view ──
                     isTranslated = false;
                     if (tvCategory != null) tvCategory.setText(originalCategory);
                     if (tvTitle    != null) tvTitle.setText(originalTitle);
@@ -140,46 +135,97 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
                     btnTranslate.setText(isBanglaPost ? as.detailTranslateToEn() : as.detailTranslateToBn());
 
                 } else {
-                    // Use cache if available
-                    if (translatedTitle != null) {
+                    // ── Use cache if all three are already translated ──
+                    if (translatedTitle != null && translatedDesc != null && translatedCategory != null) {
                         isTranslated = true;
-                        if (tvCategory != null && translatedCategory != null)
-                            tvCategory.setText(translatedCategory);
+                        if (tvCategory != null) tvCategory.setText(translatedCategory);
                         if (tvTitle    != null) tvTitle.setText(translatedTitle);
                         if (tvDesc     != null) tvDesc.setText(translatedDesc);
                         btnTranslate.setText(isBanglaPost ? as.detailTranslateToBn() : as.detailTranslateToEn());
                         return;
                     }
 
+                    // ── Translate each field INDEPENDENTLY ──
+                    // This avoids the "all text in one box" bug caused by
+                    // translateFields() joining fields with " || " — MyMemory
+                    // sometimes drops the separator, merging all results into
+                    // the first field (tvCategory) and leaving tvTitle/tvDesc empty.
                     btnTranslate.setEnabled(false);
                     btnTranslate.setText(as.detailTranslating());
 
-                    String[] fields = {originalCategory, originalTitle, originalDesc};
+                    final String[] results = new String[3]; // [0]=category, [1]=title, [2]=desc
+                    final AtomicInteger doneCount = new AtomicInteger(0);
 
-                    TranslationHelper.translateFields(fields, langPair, results -> {
-                        if (results != null && results.length >= 3) {
-                            translatedCategory = results[0];
-                            translatedTitle    = results[1];
-                            translatedDesc     = results[2];
+                    Runnable onAllDone = () -> {
+                        // Each result is guaranteed to belong to its own field
+                        translatedCategory = results[0] != null && !results[0].isEmpty()
+                                ? results[0] : originalCategory;
+                        translatedTitle    = results[1] != null && !results[1].isEmpty()
+                                ? results[1] : originalTitle;
+                        translatedDesc     = results[2] != null && !results[2].isEmpty()
+                                ? results[2] : originalDesc;
 
-                            isTranslated = true;
-                            if (tvCategory != null && !translatedCategory.isEmpty())
-                                tvCategory.setText(translatedCategory);
-                            if (tvTitle    != null && !translatedTitle.isEmpty())
-                                tvTitle.setText(translatedTitle);
-                            if (tvDesc     != null && !translatedDesc.isEmpty())
-                                tvDesc.setText(translatedDesc);
-                        } else {
-                            Toast.makeText(this, as.detailTranslateFail(), Toast.LENGTH_SHORT).show();
-                        }
+                        isTranslated = true;
+
+                        // Each translated string goes into its correct, dedicated TextView
+                        if (tvCategory != null) tvCategory.setText(translatedCategory);
+                        if (tvTitle    != null) tvTitle.setText(translatedTitle);
+                        if (tvDesc     != null) tvDesc.setText(translatedDesc);
+
                         btnTranslate.setEnabled(true);
-                        btnTranslate.setText(isBanglaPost ? as.detailTranslateToBn() : as.detailTranslateToEn());
-                    });
+                        AppStrings as2 = AppStrings.get(this);
+                        btnTranslate.setText(isBanglaPost ? as2.detailTranslateToBn() : as2.detailTranslateToEn());
+                    };
+
+                    // Translate category (index 0)
+                    TranslationHelper.translateWithLangPair(
+                            originalCategory, langPair,
+                            new TranslationHelper.TranslateCallback() {
+                                @Override public void onResult(String result) {
+                                    results[0] = result;
+                                    if (doneCount.incrementAndGet() == 3) onAllDone.run();
+                                }
+                                @Override public void onError(String originalText) {
+                                    results[0] = originalCategory; // fallback
+                                    if (doneCount.incrementAndGet() == 3) onAllDone.run();
+                                }
+                            });
+
+                    // Translate title (index 1)
+                    TranslationHelper.translateWithLangPair(
+                            originalTitle, langPair,
+                            new TranslationHelper.TranslateCallback() {
+                                @Override public void onResult(String result) {
+                                    results[1] = result;
+                                    if (doneCount.incrementAndGet() == 3) onAllDone.run();
+                                }
+                                @Override public void onError(String originalText) {
+                                    results[1] = originalTitle; // fallback
+                                    if (doneCount.incrementAndGet() == 3) onAllDone.run();
+                                    AppStrings as2 = AppStrings.get(AnnouncementDetailActivity.this);
+                                    Toast.makeText(AnnouncementDetailActivity.this,
+                                            as2.detailTranslateFail(), Toast.LENGTH_SHORT).show();
+                                }
+                            });
+
+                    // Translate description (index 2)
+                    TranslationHelper.translateWithLangPair(
+                            originalDesc, langPair,
+                            new TranslationHelper.TranslateCallback() {
+                                @Override public void onResult(String result) {
+                                    results[2] = result;
+                                    if (doneCount.incrementAndGet() == 3) onAllDone.run();
+                                }
+                                @Override public void onError(String originalText) {
+                                    results[2] = originalDesc; // fallback
+                                    if (doneCount.incrementAndGet() == 3) onAllDone.run();
+                                }
+                            });
                 }
             });
         }
 
-        // Audio button — all strings from AppStrings
+        // Audio button
         if (btnPlayAudio != null) {
             if (audioUrl != null && !audioUrl.isEmpty()) {
                 btnPlayAudio.setVisibility(View.VISIBLE);
