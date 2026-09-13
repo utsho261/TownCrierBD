@@ -133,14 +133,18 @@ public class AppStrings {
     public String feedSelectRadius()      { return p("Select Radius", "রেডিয়াস নির্বাচন করুন"); }
     public String feedNoInternet()        { return p("⚠️  No internet connection", "⚠️  ইন্টারনেট সংযোগ নেই"); }
     public String feedWithinKmBanner(double km) {
+        if (km < 1.0) {
+            int m = (int) (km * 1000);
+            return p("within " + m + " m  ▾", m + " মি-এর মধ্যে  ▾");
+        }
         return p("within " + (int) km + " km  ▾", (int) km + " কিমি-এর মধ্যে  ▾");
     }
 
     /** Radius options shown in dialog */
     public String[] feedRadiusOptions() {
         return en
-                ? new String[]{"1 km", "3 km", "5 km", "10 km"}
-                : new String[]{"১ কিমি", "৩ কিমি", "৫ কিমি", "১০ কিমি"};
+                ? new String[]{"100 m", "500 m", "1 km", "2 km", "3 km"}
+                : new String[]{"১০০ মি", "৫০০ মি", "১ কিমি", "২ কিমি", "৩ কিমি"};
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -180,6 +184,19 @@ public class AppStrings {
     public String expirySoon()            { return p("⏳ Expiring soon", "⏳ শীঘ্রই মেয়াদ শেষ"); }
     public String expired()               { return p("Expired", "মেয়াদ শেষ"); }
 
+    // Active / Deactive post management
+    public String cardStatusActive()      { return p("🟢 Active", "🟢 সক্রিয়"); }
+    public String cardStatusInactive()    { return p("🔴 Inactive", "🔴 নিষ্ক্রিয়"); }
+    public String cardStatusExpired()     { return p("⏰ Expired", "⏰ মেয়াদ শেষ"); }
+    public String cardActivate()          { return p("Activate", "সক্রিয় করুন"); }
+    public String cardDeactivate()        { return p("Deactivate", "নিষ্ক্রিয় করুন"); }
+    public String cardPostActivated()     { return p("Post activated ✅", "পোস্টটি সক্রিয় করা হয়েছে ✅"); }
+    public String cardPostDeactivated()   { return p("Post deactivated ⏸", "পোস্টটি নিষ্ক্রিয় করা হয়েছে ⏸"); }
+    public String cardReactivateDurationTitle() { return p("Select validity to activate:", "সক্রিয় করার জন্য মেয়াদ নির্বাচন করুন:"); }
+    public String addEditWizardTitle()     { return p("Edit Announcement", "পোস্ট সম্পাদনা করুন"); }
+    public String addEditWizardUpdateBtn() { return p("Update Announcement ✅", "পোস্ট আপডেট করুন ✅"); }
+    public String addEditWizardSuccess()   { return p("Announcement updated successfully! ✅", "পোস্ট সফলভাবে আপডেট হয়েছে! ✅"); }
+
     // Relative time
     public String timeMinAgo(long m)  { return p(m + " min ago", m + " মিনিট আগে"); }
     public String timeHrAgo(long h)   { return p(h + " hr ago", h + " ঘণ্টা আগে"); }
@@ -217,7 +234,7 @@ public class AppStrings {
     // Step 3
     public String addStep3LabelTitle()    { return p("Title *", "শিরোনাম *"); }
     public String addStep3HintTitle()     { return p("e.g. Fresh vegetables available today", "যেমন: আজ তাজা সবজি পাওয়া যাচ্ছে"); }
-    public String addStep3LabelDesc()     { return p("Description *", "বিবরণ *"); }
+    public String addStep3LabelDesc()     { return p("Description (optional)", "বিবরণ (ঐচ্ছিক)"); }
     public String addStep3HintDesc()      { return p("Add details about your post...", "পোস্টের বিস্তারিত লিখুন..."); }
     public String addStep3AddImage()      { return p("Add Image", "ছবি যোগ করুন"); }
     public String addStep3AddAudio()      { return p("Add Audio", "অডিও যোগ করুন"); }
@@ -327,6 +344,8 @@ public class AppStrings {
 
     public String profileEditBtn()           { return p("Edit Profile", "প্রোফাইল সম্পাদনা"); }
     public String profileLogout()            { return p("Logout", "লগআউট"); }
+    public String profileLogoutConfirmTitle(){ return p("Logout", "লগআউট নিশ্চিতকরণ"); }
+    public String profileLogoutConfirmMsg()  { return p("Are you sure you want to log out? You will no longer receive notifications.", "আপনি কি নিশ্চিত আপনি লগআউট করতে চান? লগআউট করলে আর কোনো নোটিফিকেশন আসবে না।"); }
     public String profileEditCategories()    { return p("🛒 Edit My Selling Categories", "🛒 আমার বিক্রির ক্যাটাগরি সম্পাদনা"); }
     public String profileMyPosts()           { return p("My Posts", "আমার পোস্ট"); }
     public String profileEditDialogTitle()   { return p("Edit Profile", "প্রোফাইল সম্পাদনা"); }
@@ -370,7 +389,7 @@ public class AppStrings {
 
     public String catScreenTitle()        { return p("What do you sell?", "আপনি কী বিক্রি করেন?"); }
     public String catScreenSubtitle()     { return p("Select your categories — buyers nearby will find you", "আপনার ক্যাটাগরি নির্বাচন করুন — কাছাকাছি ক্রেতারা আপনাকে খুঁজে পাবেন"); }
-    public String catScreenHint()         { return p("Tap a category to select. Tap again to see and choose specific items.", "নির্বাচন করতে একটি ক্যাটাগরিতে ট্যাপ করুন। নির্দিষ্ট পণ্য দেখতে আবার ট্যাপ করুন।"); }
+    public String catScreenHint()         { return p("Tap a category to select. Tap arrow (▾) to see items.", "নির্বাচন বা বাতিল করতে ক্যাটাগরিতে ট্যাপ করুন। পণ্য দেখতে তীরে (▾) ট্যাপ করুন।"); }
     public String catSelectAll(String cat){ return p("✓ Select all items from " + cat, "✓ " + cat + " থেকে সব পণ্য নির্বাচন"); }
     public String catOthersLabel()        { return p("Category name *", "ক্যাটাগরির নাম *"); }
     public String catOthersHint()         { return p("e.g. Flower pot seller", "যেমন: ফুলের টব বিক্রেতা"); }

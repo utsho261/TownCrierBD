@@ -1,14 +1,14 @@
 {
   "project_info": {
-    "project_number": "646841063724",
-    "firebase_url": "https://towncrierbd-default-rtdb.asia-southeast1.firebasedatabase.app",
-    "project_id": "towncrierbd",
-    "storage_bucket": "towncrierbd.firebasestorage.app"
+    "project_number": "123456789000",
+    "firebase_url": "https://your-project-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "your-project-id",
+    "storage_bucket": "your-project-id.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:646841063724:android:2127d444efec5c4ee17489",
+        "mobilesdk_app_id": "1:123456789000:android:abcdef0123456789abcdef",
         "android_client_info": {
           "package_name": "com.example.towncrierbd"
         }
@@ -16,7 +16,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBTW0Gqht1oDxfnt8txbb6K9eTBeWgSyJ4"
+          "current_key": "YOUR_FIREBASE_API_KEY_HERE"
         }
       ],
       "services": {

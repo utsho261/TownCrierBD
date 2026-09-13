@@ -171,6 +171,7 @@ public class SignupActivity extends AppCompatActivity {
     }
 
     private void routeLoggedInUser(String uid) {
+        com.example.towncrierbd.utils.AuthUtils.syncFcmToken();
         FirebaseDatabase.getInstance()
                 .getReference(Constants.DB_USERS)
                 .child(uid)
@@ -334,6 +335,7 @@ public class SignupActivity extends AppCompatActivity {
                     }
 
                     LanguageManager.saveToFirebase(SignupActivity.this, uid);
+                    com.example.towncrierbd.utils.AuthUtils.syncFcmToken();
 
                     btnSignup.setEnabled(true);
                     Class<?> dest = Constants.ROLE_ANNOUNCER.equals(user.getRole())

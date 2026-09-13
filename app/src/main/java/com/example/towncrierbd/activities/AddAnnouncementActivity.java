@@ -9,8 +9,11 @@ import android.graphics.Bitmap;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
+import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -25,6 +28,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
+import com.bumptech.glide.Glide;
 import com.example.towncrierbd.R;
 import com.example.towncrierbd.models.Announcement;
 import com.example.towncrierbd.models.UserModel;
@@ -56,9 +60,15 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     private EditText etTitle, etDesc, etExpiryValue;
     private TextView tvExpiryPreview;
     private Button   btnPublish;
-    private ImageView ivPreview;
     private TextView tvImageStatus, tvAudioStatus;
     private View     btnAddImage, btnRecordAudio;
+
+    // Audio Player UI
+    private LinearLayout llAudioPlayer;
+    private ImageView    btnPlayAudio, btnDeleteAudio;
+    private TextView     tvAudioDuration;
+    private MediaPlayer  mediaPlayer;
+    private Handler      playbackHandler = new Handler(Looper.getMainLooper());
 
     // Step 3 bilingual label views
     private TextView tvLabelTitle, tvLabelDesc, tvLabelExpiry, tvExpiryMax, tvExpiryInfo;
@@ -76,7 +86,16 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     private List<String> userHawkerSubcategories = new ArrayList<>();
     private String       userHawkerOthersName    = "";
 
-    private Bitmap            selectedBitmap;
+    public static final String EXTRA_EDIT_ID = "editAnnouncementId";
+
+    private String            editAnnouncementId = null;
+    private Announcement      existingAnnouncement = null;
+    private final List<String> existingImageUrls = new ArrayList<>();
+    private String            existingAudioUrl = null;
+
+    private List<Bitmap>      selectedBitmaps = new ArrayList<>();
+    private LinearLayout      llImagePreviews;
+    private HorizontalScrollView hsvImagePreview;
     private AudioRecorderHelper audioRecorder;
     private String            recordedAudioPath;
     private boolean           isRecording;
@@ -88,6 +107,10 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_announcement_wizard);
+
+        if (getIntent() != null && getIntent().hasExtra(EXTRA_EDIT_ID)) {
+            editAnnouncementId = getIntent().getStringExtra(EXTRA_EDIT_ID);
+        }
 
         auth    = FirebaseAuth.getInstance();
         annRef  = FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS);
@@ -109,11 +132,21 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         etExpiryValue   = findViewById(R.id.etExpiryValue);
         tvExpiryPreview = findViewById(R.id.tvExpiryPreview);
         btnPublish      = findViewById(R.id.btnPublish);
-        ivPreview       = findViewById(R.id.ivPreview);
         tvImageStatus   = findViewById(R.id.tvImageStatus);
         tvAudioStatus   = findViewById(R.id.tvAudioStatus);
         btnAddImage     = findViewById(R.id.btnAddImage);
         btnRecordAudio  = findViewById(R.id.btnRecordAudio);
+
+        llImagePreviews = findViewById(R.id.llImagePreviews);
+        hsvImagePreview = findViewById(R.id.hsvImagePreview);
+
+        llAudioPlayer   = findViewById(R.id.llAudioPlayer);
+        btnPlayAudio    = findViewById(R.id.btnPlayAudio);
+        btnDeleteAudio  = findViewById(R.id.btnDeleteAudio);
+        tvAudioDuration = findViewById(R.id.tvAudioDuration);
+
+        if (btnPlayAudio != null) btnPlayAudio.setOnClickListener(v -> toggleAudioPlayback());
+        if (btnDeleteAudio != null) btnDeleteAudio.setOnClickListener(v -> deleteSelectedAudio());
 
         // Step 3 bilingual label views
         tvLabelTitle   = findViewById(R.id.tvLabelTitle);
@@ -193,7 +226,9 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         if (tvBtnAddAudio != null) tvBtnAddAudio.setText(s.addStep3AddAudio());
 
         // ── Publish button ──
-        if (btnPublish != null) btnPublish.setText(s.addStep3Publish());
+        if (btnPublish != null) {
+            btnPublish.setText(editAnnouncementId != null ? s.addEditWizardUpdateBtn() : s.addStep3Publish());
+        }
 
         // ── Back button on step 3 ──
         Button btnBack3 = stepDetails != null ? stepDetails.findViewById(R.id.btnBackStep3) : null;
@@ -342,7 +377,11 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 userHawkerSubcategories = u.getHawkerSubcategories();
                 userHawkerOthersName    = u.getHawkerOthersName();
 
-                buildCategoryStep();
+                if (editAnnouncementId != null) {
+                    loadAnnouncementForEdit(editAnnouncementId);
+                } else {
+                    buildCategoryStep();
+                }
             }
             @Override public void onCancelled(@NonNull DatabaseError e) {}
         });
@@ -351,11 +390,108 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     private void updatePostTypeHeader() {
         if (tvPostTypeHeader == null) return;
         AppStrings s = AppStrings.get(this);
+        if (editAnnouncementId != null) {
+            tvPostTypeHeader.setText(s.addEditWizardTitle());
+            return;
+        }
         if ("request".equals(postType)) {
             tvPostTypeHeader.setText(s.addHeaderRequest());
         } else {
             tvPostTypeHeader.setText(s.addHeaderAnnouncement());
         }
+    }
+
+    private void loadAnnouncementForEdit(String id) {
+        annRef.child(id).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot s) {
+                Announcement a = s.getValue(Announcement.class);
+                if (a == null) {
+                    toast(LanguageManager.isEnglish(AddAnnouncementActivity.this) ? "Post not found" : "পোস্টটি পাওয়া যায়নি");
+                    finish();
+                    return;
+                }
+                if (a.getId() == null || a.getId().isEmpty()) a.setId(s.getKey());
+                existingAnnouncement = a;
+
+                if (a.getPostType() != null && !a.getPostType().isEmpty()) {
+                    postType = a.getPostType();
+                }
+                updatePostTypeHeader();
+
+                AppStrings str = AppStrings.get(AddAnnouncementActivity.this);
+                if (btnPublish != null) {
+                    btnPublish.setText(str.addEditWizardUpdateBtn());
+                }
+
+                selectedCategories.clear();
+                if (a.getSelectedCategories() != null && !a.getSelectedCategories().isEmpty()) {
+                    selectedCategories.addAll(a.getSelectedCategories());
+                } else if (a.getCategory() != null && !a.getCategory().isEmpty()) {
+                    selectedCategories.add(a.getCategory());
+                }
+
+                selectedSubcategories.clear();
+                if (a.getSelectedSubcategories() != null) {
+                    selectedSubcategories.addAll(a.getSelectedSubcategories());
+                }
+
+                selectedProducts.clear();
+                if (a.getSelectedProducts() != null) {
+                    selectedProducts.addAll(a.getSelectedProducts());
+                }
+
+                if (etTitle != null) etTitle.setText(a.getTitle());
+                if (etDesc != null) etDesc.setText(a.getDescription());
+                if (etCustomCategoryText != null && a.getCustomSubcategory() != null) {
+                    etCustomCategoryText.setText(a.getCustomSubcategory());
+                }
+
+                // Expiry setup
+                long now = System.currentTimeMillis();
+                long diff = a.getExpireAt() - now;
+                if (diff > 0) {
+                    long hours = diff / 3600_000L;
+                    if (hours >= 1) {
+                        if (spExpiryUnit != null) spExpiryUnit.setSelection(UNIT_HOURS);
+                        if (etExpiryValue != null) etExpiryValue.setText(String.valueOf(hours));
+                    } else {
+                        long mins = Math.max(1, diff / 60_000L);
+                        if (spExpiryUnit != null) spExpiryUnit.setSelection(UNIT_MINUTES);
+                        if (etExpiryValue != null) etExpiryValue.setText(String.valueOf(mins));
+                    }
+                } else {
+                    if (spExpiryUnit != null) spExpiryUnit.setSelection(UNIT_HOURS);
+                    if (etExpiryValue != null) etExpiryValue.setText("24");
+                }
+                updateExpiryPreview();
+
+                // Existing images
+                existingImageUrls.clear();
+                if (a.getImageUrls() != null && !a.getImageUrls().isEmpty()) {
+                    existingImageUrls.addAll(a.getImageUrls());
+                } else if (a.getImageUrl() != null && !a.getImageUrl().isEmpty()) {
+                    existingImageUrls.add(a.getImageUrl());
+                }
+                updateImagePreviews();
+
+                // Existing audio
+                existingAudioUrl = a.getAudioUrl();
+                if (existingAudioUrl != null && !existingAudioUrl.isEmpty()) {
+                    showAudioPlayer();
+                    if (tvAudioStatus != null)
+                        tvAudioStatus.setText(LanguageManager.isEnglish(AddAnnouncementActivity.this)
+                                ? "Existing audio attached" : "বিদ্যমান অডিও সংযুক্ত আছে");
+                }
+
+                buildCategoryStep();
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                toast(LanguageManager.isEnglish(AddAnnouncementActivity.this) ? "Failed to load post" : "পোস্ট লোড করতে ব্যর্থ হয়েছে");
+            }
+        });
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -398,6 +534,14 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         }
         if (categoriesToShow.isEmpty()) categoriesToShow = CategoryConfig.HAWKER_CATEGORIES;
 
+        if (!selectedCategories.isEmpty()) {
+            for (CategoryConfig.HawkerCategory cat : CategoryConfig.HAWKER_CATEGORIES) {
+                if (selectedCategories.contains(cat.name) && !categoriesToShow.contains(cat)) {
+                    categoriesToShow.add(cat);
+                }
+            }
+        }
+
         for (CategoryConfig.HawkerCategory cat : categoriesToShow) {
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
@@ -411,6 +555,10 @@ public class AddAnnouncementActivity extends AppCompatActivity {
 
             CheckBox cb = new CheckBox(this);
             cb.setButtonTintList(ColorStateList.valueOf(0xFF1976F3));
+            if (selectedCategories.contains(cat.name)) {
+                cb.setChecked(true);
+                row.setBackground(roundedBg(0xFFEFF6FF, dp(12)));
+            }
 
             TextView tvLabel = new TextView(this);
             tvLabel.setText(cat.emoji + "  " + (isBn ? cat.nameBn : cat.name));
@@ -633,7 +781,6 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         String desc  = etDesc.getText().toString().trim();
 
         if (title.isEmpty()) { toast(s.addPublishNoTitle()); etTitle.requestFocus(); return; }
-        if (desc.isEmpty())  { toast(s.addPublishNoDesc());  etDesc.requestFocus();  return; }
 
         long expiryMillis = getExpiryMillis();
         if (expiryMillis == -1) {
@@ -661,18 +808,24 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                     reset(); toast(s.addPublishNoLoc()); return;
                 }
 
-                String id = annRef.push().getKey();
+                String id = (editAnnouncementId != null) ? editAnnouncementId : annRef.push().getKey();
                 if (id == null) { reset(); return; }
 
                 long now = System.currentTimeMillis();
 
-                Announcement a = new Announcement();
+                Announcement a = (existingAnnouncement != null) ? existingAnnouncement : new Announcement();
                 a.setId(id);
-                a.setUserId(uid);
-                a.setUserName(u.getName());
-                String role = (u.getRole() == null || u.getRole().trim().isEmpty())
-                        ? Constants.ROLE_USER : u.getRole().trim();
-                a.setUserRole(role);
+                a.setActive(true);
+                if (existingAnnouncement == null) {
+                    a.setUserId(uid);
+                    a.setUserName(u.getName());
+                    String role = (u.getRole() == null || u.getRole().trim().isEmpty())
+                            ? Constants.ROLE_USER : u.getRole().trim();
+                    a.setUserRole(role);
+                    a.setPhone(u.getPhone());
+                    a.setLat(u.getLat());
+                    a.setLng(u.getLng());
+                }
                 a.setPostType(postType);
 
                 String primaryCat = selectedCategories.isEmpty()
@@ -686,33 +839,21 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                         && etCustomCategoryText.getVisibility() == View.VISIBLE) {
                     String custom = etCustomCategoryText.getText().toString().trim();
                     if (!custom.isEmpty()) a.setCustomSubcategory(custom);
+                    else a.setCustomSubcategory("");
+                } else {
+                    a.setCustomSubcategory("");
                 }
 
                 a.setTitle(title);
                 a.setDescription(desc);
-                a.setPhone(u.getPhone());
-                a.setLat(u.getLat());
-                a.setLng(u.getLng());
                 a.setTime(now);
                 a.setExpireAt(now + expiryMillis);
 
-                if (selectedBitmap != null) {
-                    if (tvImageStatus != null) tvImageStatus.setText(s.addPublishImgUploading());
-                    CloudinaryUploader.uploadBitmap(
-                            AddAnnouncementActivity.this, selectedBitmap,
-                            new CloudinaryUploader.UploadListener() {
-                                @Override public void onSuccess(String url) {
-                                    a.setImageUrl(url);
-                                    uploadAudioThenSave(a, id);
-                                }
-                                @Override public void onError(String msg) {
-                                    a.setImageUrl("");
-                                    toast(s.addPublishImgFailed());
-                                    uploadAudioThenSave(a, id);
-                                }
-                            });
+                if (!selectedBitmaps.isEmpty()) {
+                    uploadImagesThenAudio(a, id, 0, new ArrayList<>());
                 } else {
-                    a.setImageUrl("");
+                    a.setImageUrls(new ArrayList<>(existingImageUrls));
+                    a.setImageUrl(existingImageUrls.isEmpty() ? "" : existingImageUrls.get(0));
                     uploadAudioThenSave(a, id);
                 }
             }
@@ -720,6 +861,41 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 reset(); toast(s.addPublishFailed(e.getMessage()));
             }
         });
+    }
+
+    private void uploadImagesThenAudio(Announcement a, String annId, int index, List<String> uploadedUrls) {
+        AppStrings s = AppStrings.get(this);
+        if (index >= selectedBitmaps.size()) {
+            List<String> finalUrls = new ArrayList<>(existingImageUrls);
+            finalUrls.addAll(uploadedUrls);
+            a.setImageUrls(finalUrls);
+            a.setImageUrl(finalUrls.isEmpty() ? "" : finalUrls.get(0));
+            uploadAudioThenSave(a, annId);
+            return;
+        }
+
+        if (tvImageStatus != null) {
+            tvImageStatus.setText(p("Uploading image " + (index + 1) + "/" + selectedBitmaps.size() + "...",
+                    "ছবি আপলোড হচ্ছে " + (index + 1) + "/" + selectedBitmaps.size() + "..."));
+        }
+
+        CloudinaryUploader.uploadBitmap(this, selectedBitmaps.get(index), new CloudinaryUploader.UploadListener() {
+            @Override
+            public void onSuccess(String url) {
+                uploadedUrls.add(url);
+                uploadImagesThenAudio(a, annId, index + 1, uploadedUrls);
+            }
+
+            @Override
+            public void onError(String message) {
+                // If one fails, continue with what we have
+                uploadImagesThenAudio(a, annId, index + 1, uploadedUrls);
+            }
+        });
+    }
+
+    private String p(String en, String bn) {
+        return LanguageManager.isEnglish(this) ? en : bn;
     }
 
     private void uploadAudioThenSave(Announcement a, String annId) {
@@ -746,6 +922,9 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                             });
                         }
                     });
+        } else if (existingAudioUrl != null && !existingAudioUrl.isEmpty()) {
+            a.setAudioUrl(existingAudioUrl);
+            saveAnnouncement(a);
         } else {
             a.setAudioUrl("");
             saveAnnouncement(a);
@@ -757,10 +936,14 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         if (tvImageStatus != null) tvImageStatus.setText(s.addPublishing());
         annRef.child(a.getId()).setValue(a)
                 .addOnSuccessListener(v -> {
-                    NotificationSender.sendAnnouncementNotification(
-                            a.getId(), a.getTitle(), a.getDescription(),
-                            a.getLat(), a.getLng(), a.getUserId());
-                    toast(s.addPublishSuccess(postType));
+                    if (editAnnouncementId == null) {
+                        NotificationSender.sendAnnouncementNotification(
+                                a.getId(), a.getTitle(), a.getDescription(),
+                                a.getLat(), a.getLng(), a.getUserId());
+                        toast(s.addPublishSuccess(postType));
+                    } else {
+                        toast(s.addEditWizardSuccess());
+                    }
                     finish();
                 })
                 .addOnFailureListener(e -> {
@@ -807,6 +990,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             in.close(); os.close();
             recordedAudioPath = out.getAbsolutePath();
             if (tvAudioStatus != null) tvAudioStatus.setText(s.audioFileSelected());
+            showAudioPlayer();
         } catch (IOException e) { toast(s.audioLoadFailed()); }
     }
 
@@ -848,6 +1032,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                     AppStrings s = AppStrings.get(AddAnnouncementActivity.this);
                     if (tvAudioStatus != null) tvAudioStatus.setText(s.audioRecorded());
                     updateAudioButton(false);
+                    showAudioPlayer();
                 });
             }
             @Override public void onError(String msg) {
@@ -867,6 +1052,97 @@ public class AddAnnouncementActivity extends AppCompatActivity {
             tvBtnAddAudio.setText(recording ? s.audioStopBtn() : s.addStep3AddAudio());
     }
 
+    private void showAudioPlayer() {
+        boolean hasAudio = (recordedAudioPath != null && !recordedAudioPath.isEmpty())
+                || (existingAudioUrl != null && !existingAudioUrl.isEmpty());
+        if (!hasAudio) {
+            if (llAudioPlayer != null) llAudioPlayer.setVisibility(View.GONE);
+            return;
+        }
+        if (llAudioPlayer != null) {
+            llAudioPlayer.setVisibility(View.VISIBLE);
+            tvAudioDuration.setText("0:00");
+            btnPlayAudio.setImageResource(android.R.drawable.ic_media_play);
+        }
+    }
+
+    private void toggleAudioPlayback() {
+        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+            stopPlayback();
+        } else {
+            startPlayback();
+        }
+    }
+
+    private void startPlayback() {
+        String audioSource = (recordedAudioPath != null && !recordedAudioPath.isEmpty())
+                ? recordedAudioPath : existingAudioUrl;
+        if (audioSource == null || audioSource.isEmpty()) return;
+        try {
+            if (mediaPlayer == null) {
+                mediaPlayer = new MediaPlayer();
+            } else {
+                mediaPlayer.reset();
+            }
+            mediaPlayer.setDataSource(audioSource);
+            mediaPlayer.setOnPreparedListener(mp -> {
+                mp.start();
+                btnPlayAudio.setImageResource(android.R.drawable.ic_media_pause);
+                updatePlaybackProgress();
+            });
+            mediaPlayer.setOnCompletionListener(mp -> {
+                btnPlayAudio.setImageResource(android.R.drawable.ic_media_play);
+                playbackHandler.removeCallbacksAndMessages(null);
+                if (mediaPlayer != null) {
+                    tvAudioDuration.setText(formatTime(mediaPlayer.getDuration()));
+                }
+            });
+            mediaPlayer.prepareAsync();
+        } catch (Exception e) {
+            toast(LanguageManager.isEnglish(this) ? "Playback error" : "অডিও চালানো যায়নি");
+        }
+    }
+
+    private void stopPlayback() {
+        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+            mediaPlayer.pause();
+            btnPlayAudio.setImageResource(android.R.drawable.ic_media_play);
+            playbackHandler.removeCallbacksAndMessages(null);
+        }
+    }
+
+    private void updatePlaybackProgress() {
+        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+            tvAudioDuration.setText(formatTime(mediaPlayer.getCurrentPosition()));
+            playbackHandler.postDelayed(this::updatePlaybackProgress, 500);
+        }
+    }
+
+    private String formatTime(int ms) {
+        int sec = ms / 1000;
+        int m = sec / 60;
+        int s = sec % 60;
+        return String.format(Locale.getDefault(), "%d:%02d", m, s);
+    }
+
+    private void deleteSelectedAudio() {
+        if (mediaPlayer != null) {
+            mediaPlayer.stop();
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+        playbackHandler.removeCallbacksAndMessages(null);
+        if (recordedAudioPath != null) {
+            File f = new File(recordedAudioPath);
+            if (f.exists()) f.delete();
+            recordedAudioPath = null;
+        }
+        existingAudioUrl = null;
+        if (llAudioPlayer != null) llAudioPlayer.setVisibility(View.GONE);
+        if (tvAudioStatus != null) tvAudioStatus.setText("");
+        toast(LanguageManager.isEnglish(this) ? "Audio removed" : "অডিও সরানো হয়েছে");
+    }
+
     private void setupPermissions() {
         permissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestMultiplePermissions(), result -> {
@@ -879,16 +1155,16 @@ public class AddAnnouncementActivity extends AppCompatActivity {
         galleryLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(), res -> {
                     if (res.getResultCode() == RESULT_OK && res.getData() != null) {
-                        Uri uri = res.getData().getData();
-                        if (uri == null) return;
-                        try {
-                            selectedBitmap = android.provider.MediaStore.Images.Media.getBitmap(getContentResolver(), uri);
-                            if (ivPreview != null) {
-                                ivPreview.setVisibility(View.VISIBLE);
-                                ivPreview.setImageBitmap(selectedBitmap);
+                        Intent data = res.getData();
+                        if (data.getClipData() != null) {
+                            int count = data.getClipData().getItemCount();
+                            for (int i = 0; i < count; i++) {
+                                Uri uri = data.getClipData().getItemAt(i).getUri();
+                                addImageFromUri(uri);
                             }
-                            if (tvImageStatus != null) tvImageStatus.setText(AppStrings.get(this).imageSelected());
-                        } catch (IOException e) { toast(AppStrings.get(this).imageReadFailed()); }
+                        } else if (data.getData() != null) {
+                            addImageFromUri(data.getData());
+                        }
                     }
                 });
         audioFileLauncher = registerForActivityResult(
@@ -898,6 +1174,72 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 });
     }
 
+    private void addImageFromUri(Uri uri) {
+        try {
+            Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), uri);
+            selectedBitmaps.add(bitmap);
+            updateImagePreviews();
+        } catch (IOException e) {
+            toast(AppStrings.get(this).imageReadFailed());
+        }
+    }
+
+    private void updateImagePreviews() {
+        if (llImagePreviews == null) return;
+        llImagePreviews.removeAllViews();
+
+        int total = existingImageUrls.size() + selectedBitmaps.size();
+        if (total == 0) {
+            if (hsvImagePreview != null) hsvImagePreview.setVisibility(View.GONE);
+            if (tvImageStatus != null) tvImageStatus.setText("");
+            return;
+        }
+
+        if (hsvImagePreview != null) hsvImagePreview.setVisibility(View.VISIBLE);
+        if (tvImageStatus != null)
+            tvImageStatus.setText(AppStrings.get(this).imageSelected() + " (" + total + ")");
+
+        // Existing image URLs
+        for (int i = 0; i < existingImageUrls.size(); i++) {
+            final int index = i;
+            String url = existingImageUrls.get(i);
+
+            View v = getLayoutInflater().inflate(R.layout.item_image_preview, llImagePreviews, false);
+            ImageView iv = v.findViewById(R.id.ivPreview);
+            ImageView btnDel = v.findViewById(R.id.btnDelete);
+
+            com.bumptech.glide.Glide.with(this)
+                    .load(url)
+                    .centerCrop()
+                    .into(iv);
+
+            btnDel.setOnClickListener(view -> {
+                existingImageUrls.remove(index);
+                updateImagePreviews();
+            });
+
+            llImagePreviews.addView(v);
+        }
+
+        // New bitmaps
+        for (int i = 0; i < selectedBitmaps.size(); i++) {
+            final int index = i;
+            Bitmap bmp = selectedBitmaps.get(i);
+
+            View v = getLayoutInflater().inflate(R.layout.item_image_preview, llImagePreviews, false);
+            ImageView iv = v.findViewById(R.id.ivPreview);
+            ImageView btnDel = v.findViewById(R.id.btnDelete);
+
+            iv.setImageBitmap(bmp);
+            btnDel.setOnClickListener(view -> {
+                selectedBitmaps.remove(index);
+                updateImagePreviews();
+            });
+
+            llImagePreviews.addView(v);
+        }
+    }
+
     private void showImageChooser() {
         AppStrings s = AppStrings.get(this);
         new AlertDialog.Builder(this)
@@ -905,6 +1247,7 @@ public class AddAnnouncementActivity extends AppCompatActivity {
                 .setItems(new String[]{s.imageGallery()}, (d, w) -> {
                     Intent i = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
                     i.setType("image/*");
+                    i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
                     galleryLauncher.launch(i);
                 }).show();
     }
@@ -913,6 +1256,11 @@ public class AddAnnouncementActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         if (audioRecorder != null && isRecording) audioRecorder.cancelRecording();
+        if (mediaPlayer != null) {
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+        playbackHandler.removeCallbacksAndMessages(null);
     }
 
     private GradientDrawable roundedBg(int color, int radius) {

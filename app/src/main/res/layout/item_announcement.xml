@@ -17,14 +17,35 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- Image -->
-        <ImageView
-            android:id="@+id/ivPhoto"
+        <!-- Image Slider -->
+        <FrameLayout
+            android:id="@+id/flImageSlider"
             android:layout_width="match_parent"
-            android:layout_height="180dp"
-            android:scaleType="centerCrop"
-            android:visibility="gone"
-            android:contentDescription="Post image" />
+            android:layout_height="200dp"
+            android:visibility="gone">
+
+            <androidx.viewpager2.widget.ViewPager2
+                android:id="@+id/vpImageSlider"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+            <TextView
+                android:id="@+id/tvImageIndex"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|end"
+                android:layout_margin="12dp"
+                android:background="#80000000"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:textColor="@android:color/white"
+                android:textSize="11sp"
+                android:text="1/1"
+                android:visibility="gone" />
+
+        </FrameLayout>
 
         <!-- Badge row: Category badge + Audio badge + Expiry -->
         <LinearLayout
@@ -70,6 +91,23 @@
                 android:layout_width="0dp"
                 android:layout_height="1dp"
                 android:layout_weight="1"/>
+
+            <!-- Active / Inactive Status Badge -->
+            <TextView
+                android:id="@+id/tvActiveStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:text="🟢 Active"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="#2E7D32"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:background="#E8F5E9"
+                android:visibility="gone"/>
 
             <!-- Expiry Countdown -->
             <TextView
@@ -293,6 +331,18 @@
             android:layout_marginBottom="12dp"
             android:orientation="horizontal"
             android:visibility="gone">
+
+            <Button
+                android:id="@+id/btnToggleActive"
+                android:layout_width="0dp"
+                android:layout_height="46dp"
+                android:layout_weight="1.2"
+                android:text="Deactivate"
+                android:textAllCaps="false"
+                android:textSize="12sp"
+                android:backgroundTint="#FF9800"
+                android:textColor="@android:color/white"
+                android:layout_marginEnd="6dp"/>
 
             <Button
                 android:id="@+id/btnEdit"

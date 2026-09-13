@@ -28,6 +28,13 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     public void onMessageReceived(@NonNull RemoteMessage remoteMessage) {
         super.onMessageReceived(remoteMessage);
 
+        // 1. User MUST be logged in. If user has logged out, suppress all notifications!
+        String currentUid = FirebaseAuth.getInstance().getUid();
+        if (currentUid == null) {
+            android.util.Log.d("MyFirebaseMsgService", "User is logged out; suppressing notification.");
+            return;
+        }
+
         String title = "Town Crier BD";
         String body  = "New activity!";
 
@@ -47,6 +54,12 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         String type = data.getOrDefault("type", "announcement");
 
         if ("chat".equals(type)) {
+            String receiverId  = data.getOrDefault("receiverId", "");
+            // If receiverId is provided, ensure message is meant for current logged-in user
+            if (!receiverId.isEmpty() && !currentUid.equals(receiverId)) {
+                android.util.Log.d("MyFirebaseMsgService", "Chat notification intended for different user; suppressing.");
+                return;
+            }
             String chatRoomId  = data.getOrDefault("chatRoomId", "");
             String senderName  = data.getOrDefault("senderName", "");
             String senderId    = data.getOrDefault("senderId", "");
@@ -59,17 +72,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     @Override
     public void onNewToken(@NonNull String token) {
         super.onNewToken(token);
-        saveTokenToFirebase(token);
-    }
-
-    private void saveTokenToFirebase(String token) {
-        String uid = FirebaseAuth.getInstance().getUid();
-        if (uid == null || token == null) return;
-        FirebaseDatabase.getInstance()
-                .getReference("users")
-                .child(uid)
-                .child("fcmToken")
-                .setValue(token);
+        com.example.towncrierbd.utils.AuthUtils.saveTokenToFirebase(token);
     }
 
     // ── Announcement Notification ──────────────────────────────

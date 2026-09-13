@@ -157,8 +157,8 @@ public class AudioRecorderHelper {
                                    String publicId,
                                    UploadListener listener) throws Exception {
 
-        String cloudName    = Constants.CLOUDINARY_CLOUD_NAME;   // "dilf73u5q"
-        String uploadPreset = Constants.CLOUDINARY_UPLOAD_PRESET; // "town_crier_preset"
+        String cloudName    = Constants.CLOUDINARY_CLOUD_NAME;
+        String uploadPreset = Constants.CLOUDINARY_UPLOAD_PRESET;
 
         // resource_type=raw → audio/video/any binary
         String apiUrl    = "https://api.cloudinary.com/v1_1/" + cloudName + "/raw/upload";

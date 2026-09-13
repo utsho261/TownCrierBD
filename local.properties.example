@@ -1,0 +1,11 @@
+## This file is an example template for local configuration.
+# Copy this file to local.properties and fill in your actual credentials.
+# local.properties is ignored by Git and will NEVER be pushed to GitHub.
+
+sdk.dir=C\:\\Users\\YOUR_USERNAME\\AppData\\Local\\Android\\Sdk
+
+# ── API Keys & Sensitive Configurations (Get your own keys) ────────────────────
+MAPS_API_KEY=YOUR_GOOGLE_MAPS_API_KEY
+CLOUDINARY_CLOUD_NAME=YOUR_CLOUDINARY_CLOUD_NAME
+CLOUDINARY_UPLOAD_PRESET=YOUR_CLOUDINARY_UPLOAD_PRESET
+SERVER_URL=https://tcbd-server.onrender.com

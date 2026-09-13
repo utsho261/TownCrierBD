@@ -17,6 +17,7 @@ import com.example.towncrierbd.adapters.FeedAdapter;
 import com.example.towncrierbd.models.Announcement;
 import com.example.towncrierbd.models.UserModel;
 import com.example.towncrierbd.utils.AppStrings;
+import com.example.towncrierbd.utils.AuthUtils;
 import com.example.towncrierbd.utils.Constants;
 import com.example.towncrierbd.utils.LanguageManager;
 import com.google.firebase.auth.FirebaseAuth;
@@ -95,11 +96,13 @@ public class ProfileActivity extends AppCompatActivity {
         }
 
         btnLogout.setOnClickListener(v -> {
-            auth.signOut();
-            Intent intent = new Intent(this, LoginActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            finish();
+            AppStrings s = AppStrings.get(this);
+            new AlertDialog.Builder(this)
+                    .setTitle(s.profileLogoutConfirmTitle())
+                    .setMessage(s.profileLogoutConfirmMsg())
+                    .setPositiveButton(s.profileLogout(), (dialog, which) -> AuthUtils.logout(this))
+                    .setNegativeButton(s.cancel(), null)
+                    .show();
         });
 
         if (btnEditProfile != null)
@@ -244,7 +247,6 @@ public class ProfileActivity extends AppCompatActivity {
                     if (a == null) continue;
                     if (a.getId() == null || a.getId().trim().isEmpty())
                         a.setId(s.getKey());
-                    if (a.getExpireAt() > 0 && now > a.getExpireAt()) continue;
                     list.add(a);
                 }
                 myPostsAdapter.setData(list);

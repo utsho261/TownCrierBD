@@ -18,9 +18,13 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.viewpager2.widget.ViewPager2;
 
+import android.content.res.ColorStateList;
+import android.graphics.drawable.GradientDrawable;
 import com.bumptech.glide.Glide;
 import com.example.towncrierbd.R;
+import com.example.towncrierbd.activities.AddAnnouncementActivity;
 import com.example.towncrierbd.activities.AnnouncementDetailActivity;
 import com.example.towncrierbd.activities.ChatActivity;
 import com.example.towncrierbd.models.Announcement;
@@ -146,7 +150,14 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                 ? state.translatedDesc  : safe(a.getDescription());
 
         if (h.tvTitle != null) h.tvTitle.setText(displayTitle);
-        if (h.tvDesc  != null) h.tvDesc.setText(displayDesc);
+        if (h.tvDesc  != null) {
+            if (displayDesc.isEmpty()) {
+                h.tvDesc.setVisibility(View.GONE);
+            } else {
+                h.tvDesc.setVisibility(View.VISIBLE);
+                h.tvDesc.setText(displayDesc);
+            }
+        }
 
         // ── User info ──────────────────────────────────────────────────────
         String nm = safe(a.getUserName());
@@ -180,16 +191,38 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             if (hasAudio) h.tvAudioBadge.setText(s.cardAudioBadge());
         }
 
-        // ── Image ──────────────────────────────────────────────────────────
-        String imgUrl = safe(a.getImageUrl());
-        if (h.ivPhoto != null) {
-            if (!imgUrl.isEmpty()) {
-                h.ivPhoto.setVisibility(View.VISIBLE);
-                Glide.with(context).load(imgUrl).centerCrop()
-                        .placeholder(android.R.drawable.ic_menu_gallery).into(h.ivPhoto);
+        // ── Image Slider ──────────────────────────────────────────────────
+        List<String> imageUrls = a.getImageUrls();
+        if (imageUrls == null) {
+            imageUrls = new ArrayList<>();
+            if (a.getImageUrl() != null && !a.getImageUrl().isEmpty()) {
+                imageUrls.add(a.getImageUrl());
+            }
+        }
+
+        if (h.flImageSlider != null) {
+            if (!imageUrls.isEmpty()) {
+                h.flImageSlider.setVisibility(View.VISIBLE);
+                ImageSliderAdapter sliderAdapter = new ImageSliderAdapter(imageUrls, v -> {
+                    if (!disableCardClick) openDetail(a);
+                });
+                h.vpImageSlider.setAdapter(sliderAdapter);
+
+                if (imageUrls.size() > 1) {
+                    h.tvImageIndex.setVisibility(View.VISIBLE);
+                    h.tvImageIndex.setText("1/" + imageUrls.size());
+                    final List<String> finalUrls = imageUrls;
+                    h.vpImageSlider.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+                        @Override
+                        public void onPageSelected(int position) {
+                            h.tvImageIndex.setText((position + 1) + "/" + finalUrls.size());
+                        }
+                    });
+                } else {
+                    h.tvImageIndex.setVisibility(View.GONE);
+                }
             } else {
-                h.ivPhoto.setVisibility(View.GONE);
-                h.ivPhoto.setImageDrawable(null);
+                h.flImageSlider.setVisibility(View.GONE);
             }
         }
 
@@ -312,12 +345,62 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             // Hide translate in profile/edit mode — not needed there
             if (h.btnTranslate     != null) h.btnTranslate.setVisibility(View.GONE);
 
+            // Active status badge
+            if (h.tvActiveStatus != null) {
+                h.tvActiveStatus.setVisibility(View.VISIBLE);
+                long now = System.currentTimeMillis();
+                boolean isExpired = a.getExpireAt() > 0 && now > a.getExpireAt();
+                if (!a.isActive()) {
+                    h.tvActiveStatus.setText(s.cardStatusInactive());
+                    h.tvActiveStatus.setTextColor(0xFFD32F2F);
+                    h.tvActiveStatus.setBackground(roundedStatusBg(0xFFFFEBEE, 6));
+                } else if (isExpired) {
+                    h.tvActiveStatus.setText(s.cardStatusExpired());
+                    h.tvActiveStatus.setTextColor(0xFFC62828);
+                    h.tvActiveStatus.setBackground(roundedStatusBg(0xFFFFEBEE, 6));
+                } else {
+                    h.tvActiveStatus.setText(s.cardStatusActive());
+                    h.tvActiveStatus.setTextColor(0xFF2E7D32);
+                    h.tvActiveStatus.setBackground(roundedStatusBg(0xFFE8F5E9, 6));
+                }
+            }
+
+            // Toggle active / deactive button
+            if (h.btnToggleActive != null) {
+                long now = System.currentTimeMillis();
+                boolean isExpired = a.getExpireAt() > 0 && now > a.getExpireAt();
+                boolean isCurrentlyLive = a.isActive() && !isExpired;
+
+                if (isCurrentlyLive) {
+                    h.btnToggleActive.setText(s.cardDeactivate());
+                    h.btnToggleActive.setBackgroundTintList(ColorStateList.valueOf(0xFFF57C00));
+                    h.btnToggleActive.setOnClickListener(v -> {
+                        if (a.getId() == null) return;
+                        FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS)
+                                .child(a.getId()).child("active").setValue(false);
+                        a.setActive(false);
+                        int adapterPos = h.getAdapterPosition();
+                        if (adapterPos >= 0 && adapterPos < items.size()) notifyItemChanged(adapterPos);
+                        Toast.makeText(context, s.cardPostDeactivated(), Toast.LENGTH_SHORT).show();
+                    });
+                } else {
+                    h.btnToggleActive.setText(s.cardActivate());
+                    h.btnToggleActive.setBackgroundTintList(ColorStateList.valueOf(0xFF2E7D32));
+                    h.btnToggleActive.setOnClickListener(v -> showReactivateDialog(a, h.getAdapterPosition()));
+                }
+            }
+
             if (h.btnEdit   != null) h.btnEdit.setText(s.cardEdit());
             if (h.btnDelete != null) h.btnDelete.setText(s.cardDelete());
             if (h.btnDetails!= null) h.btnDetails.setText(s.cardDetails());
 
-            if (h.btnEdit != null)
-                h.btnEdit.setOnClickListener(v -> showEditDialog(a, h.getAdapterPosition()));
+            if (h.btnEdit != null) {
+                h.btnEdit.setOnClickListener(v -> {
+                    Intent intent = new Intent(context, AddAnnouncementActivity.class);
+                    intent.putExtra(AddAnnouncementActivity.EXTRA_EDIT_ID, a.getId());
+                    context.startActivity(intent);
+                });
+            }
             if (h.btnDelete != null) {
                 h.btnDelete.setOnClickListener(v ->
                         new AlertDialog.Builder(context)
@@ -331,6 +414,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             if (h.btnDetails != null) h.btnDetails.setOnClickListener(v -> openDetail(a));
 
         } else {
+            if (h.tvActiveStatus != null) h.tvActiveStatus.setVisibility(View.GONE);
             if (h.btnListen    != null) { h.btnListen.setVisibility(View.VISIBLE);    h.btnListen.setText(s.cardListen()); }
             if (h.btnChat      != null) { h.btnChat.setVisibility(View.VISIBLE);      h.btnChat.setText(s.cardChat()); }
             if (h.btnCall      != null) { h.btnCall.setVisibility(View.VISIBLE);      h.btnCall.setText(s.cardCall()); }
@@ -492,6 +576,12 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                 ? safe(a.getDisplayCategoryLabel()) : safe(a.getCategory()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_PHONE,     safe(a.getPhone()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_IMAGE_URL, safe(a.getImageUrl()));
+
+        ArrayList<String> urls = new ArrayList<>();
+        if (a.getImageUrls() != null) urls.addAll(a.getImageUrls());
+        else if (!safe(a.getImageUrl()).isEmpty()) urls.add(a.getImageUrl());
+        intent.putStringArrayListExtra(AnnouncementDetailActivity.EXTRA_IMAGE_URLS, urls);
+
         intent.putExtra(AnnouncementDetailActivity.EXTRA_AUDIO_URL, safe(a.getAudioUrl()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_USER_NAME, safe(a.getUserName()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_DISTANCE,  dist);
@@ -579,6 +669,60 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                         Toast.makeText(context, s.cardDeleteFailed(), Toast.LENGTH_SHORT).show());
     }
 
+    private void showReactivateDialog(Announcement a, int pos) {
+        AppStrings s = AppStrings.get(context);
+        boolean isBn = !LanguageManager.isEnglish(context);
+        String[] options = isBn ? new String[]{
+                "১ ঘণ্টা", "৬ ঘণ্টা", "১২ ঘণ্টা", "২৪ ঘণ্টা (১ দিন)", "৩ দিন", "৭ দিন"
+        } : new String[]{
+                "1 hour", "6 hours", "12 hours", "24 hours (1 day)", "3 days", "7 days"
+        };
+        long[] millis = new long[]{
+                3600_000L,
+                6 * 3600_000L,
+                12 * 3600_000L,
+                24 * 3600_000L,
+                3 * 24 * 3600_000L,
+                7 * 24 * 3600_000L
+        };
+
+        new AlertDialog.Builder(context)
+                .setTitle(s.cardReactivateDurationTitle())
+                .setItems(options, (dialog, which) -> {
+                    if (a.getId() == null) return;
+                    long now = System.currentTimeMillis();
+                    long newExpireAt = now + millis[which];
+                    Map<String, Object> updates = new HashMap<>();
+                    updates.put("active", true);
+                    updates.put("time", now);
+                    updates.put("expireAt", newExpireAt);
+
+                    FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS)
+                            .child(a.getId())
+                            .updateChildren(updates)
+                            .addOnSuccessListener(v -> {
+                                a.setActive(true);
+                                a.setTime(now);
+                                a.setExpireAt(newExpireAt);
+                                int currentPos = items.indexOf(a);
+                                if (currentPos >= 0) notifyItemChanged(currentPos);
+                                Toast.makeText(context, s.cardPostActivated(), Toast.LENGTH_SHORT).show();
+                            })
+                            .addOnFailureListener(e ->
+                                    Toast.makeText(context, "Failed to activate post", Toast.LENGTH_SHORT).show());
+                })
+                .setNegativeButton(s.cancel(), null)
+                .show();
+    }
+
+    private GradientDrawable roundedStatusBg(int color, int radiusDp) {
+        GradientDrawable gd = new GradientDrawable();
+        gd.setColor(color);
+        float density = context.getResources().getDisplayMetrics().density;
+        gd.setCornerRadius(radiusDp * density);
+        return gd;
+    }
+
     @Override public int getItemCount() { return items.size(); }
 
     private String getRelativeTime(long timeMillis, AppStrings s) {
@@ -594,17 +738,21 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
     }
 
     public static class VH extends RecyclerView.ViewHolder {
-        ImageView ivPhoto;
+        View      flImageSlider;
+        ViewPager2 vpImageSlider;
+        TextView  tvImageIndex;
         TextView  tvBadge, tvTitle, tvDesc, tvAvatar, tvName, tvDistance, tvTime;
-        TextView  tvExpiry, tvAudioBadge;
+        TextView  tvExpiry, tvAudioBadge, tvActiveStatus;
         Button    btnListen, btnChat, btnCall, btnDirection;
         Button    btnTranslate; // ✅ Only translates title + desc — nothing else
         View      layoutEditDelete;
-        Button    btnEdit, btnDelete, btnDetails;
+        Button    btnToggleActive, btnEdit, btnDelete, btnDetails;
 
         public VH(@NonNull View itemView) {
             super(itemView);
-            ivPhoto          = itemView.findViewById(R.id.ivPhoto);
+            flImageSlider    = itemView.findViewById(R.id.flImageSlider);
+            vpImageSlider    = itemView.findViewById(R.id.vpImageSlider);
+            tvImageIndex     = itemView.findViewById(R.id.tvImageIndex);
             tvBadge          = itemView.findViewById(R.id.tvBadge);
             tvTitle          = itemView.findViewById(R.id.tvTitle);
             tvDesc           = itemView.findViewById(R.id.tvDesc);
@@ -614,12 +762,14 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             tvTime           = itemView.findViewById(R.id.tvTime);
             tvExpiry         = itemView.findViewById(R.id.tvExpiry);
             tvAudioBadge     = itemView.findViewById(R.id.tvAudioBadge);
+            tvActiveStatus   = itemView.findViewById(R.id.tvActiveStatus);
             btnListen        = itemView.findViewById(R.id.btnListen);
             btnChat          = itemView.findViewById(R.id.btnChat);
             btnCall          = itemView.findViewById(R.id.btnCall);
             btnDirection     = itemView.findViewById(R.id.btnDirection);
             btnTranslate     = itemView.findViewById(R.id.btnTranslate);
             layoutEditDelete = itemView.findViewById(R.id.layoutEditDelete);
+            btnToggleActive  = itemView.findViewById(R.id.btnToggleActive);
             btnEdit          = itemView.findViewById(R.id.btnEdit);
             btnDelete        = itemView.findViewById(R.id.btnDelete);
             btnDetails       = itemView.findViewById(R.id.btnDetails);

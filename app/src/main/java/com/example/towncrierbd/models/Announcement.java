@@ -26,6 +26,7 @@ public class Announcement {
     private String phone;
 
     private String imageUrl;
+    private List<String> imageUrls;
     private String audioUrl;
 
     private double lat;
@@ -33,6 +34,7 @@ public class Announcement {
 
     private long time;
     private long expireAt;
+    private boolean active = true;
 
     public Announcement() {}
 
@@ -48,11 +50,13 @@ public class Announcement {
     public String getDescription()       { return description; }
     public String getPhone()             { return phone; }
     public String getImageUrl()          { return imageUrl; }
+    public List<String> getImageUrls()   { return imageUrls; }
     public String getAudioUrl()          { return audioUrl; }
     public double getLat()               { return lat; }
     public double getLng()               { return lng; }
     public long   getTime()              { return time; }
     public long   getExpireAt()          { return expireAt; }
+    public boolean isActive()            { return active; }
 
     // ✅ NEW getters
     public String       getPostType()              { return postType; }
@@ -72,11 +76,13 @@ public class Announcement {
     public void setDescription(String d)           { this.description = d; }
     public void setPhone(String phone)             { this.phone = phone; }
     public void setImageUrl(String imageUrl)       { this.imageUrl = imageUrl; }
+    public void setImageUrls(List<String> urls)    { this.imageUrls = urls; }
     public void setAudioUrl(String audioUrl)       { this.audioUrl = audioUrl; }
     public void setLat(double lat)                 { this.lat = lat; }
     public void setLng(double lng)                 { this.lng = lng; }
     public void setTime(long time)                 { this.time = time; }
     public void setExpireAt(long expireAt)         { this.expireAt = expireAt; }
+    public void setActive(boolean active)          { this.active = active; }
 
     // ✅ NEW setters
     public void setPostType(String postType)              { this.postType = postType; }

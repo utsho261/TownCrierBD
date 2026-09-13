@@ -11,9 +11,11 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.viewpager2.widget.ViewPager2;
 
 import com.bumptech.glide.Glide;
 import com.example.towncrierbd.R;
+import com.example.towncrierbd.adapters.ImageSliderAdapter;
 import com.example.towncrierbd.utils.AppStrings;
 import com.example.towncrierbd.utils.LanguageManager;
 import com.example.towncrierbd.utils.TranslationHelper;
@@ -28,6 +30,7 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
     public static final String EXTRA_CATEGORY   = "category";
     public static final String EXTRA_PHONE      = "phone";
     public static final String EXTRA_IMAGE_URL  = "imageUrl";
+    public static final String EXTRA_IMAGE_URLS = "imageUrls";
     public static final String EXTRA_AUDIO_URL  = "audioUrl";
     public static final String EXTRA_USER_NAME  = "userName";
     public static final String EXTRA_DISTANCE   = "distance";
@@ -52,7 +55,8 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
         AppStrings s = AppStrings.get(this);
 
         // Bind views
-        ImageView      ivPhoto        = findViewById(R.id.ivPhoto);
+        ViewPager2     vpImageSlider  = findViewById(R.id.vpImageSlider);
+        TextView       tvImageIndex   = findViewById(R.id.tvImageIndex);
         TextView       tvCategory     = findViewById(R.id.tvCategory);
         TextView       tvTitle        = findViewById(R.id.tvTitle);
         TextView       tvDesc         = findViewById(R.id.tvDesc);
@@ -73,6 +77,7 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
         String category = getIntent().getStringExtra(EXTRA_CATEGORY);
         String phone    = getIntent().getStringExtra(EXTRA_PHONE);
         String imageUrl = getIntent().getStringExtra(EXTRA_IMAGE_URL);
+        java.util.ArrayList<String> imageUrls = getIntent().getStringArrayListExtra(EXTRA_IMAGE_URLS);
         String audioUrl = getIntent().getStringExtra(EXTRA_AUDIO_URL);
         String userName = getIntent().getStringExtra(EXTRA_USER_NAME);
         String distance = getIntent().getStringExtra(EXTRA_DISTANCE);
@@ -89,7 +94,14 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
         // Populate views
         if (tvCategory != null) tvCategory.setText(originalCategory);
         if (tvTitle    != null) tvTitle.setText(originalTitle);
-        if (tvDesc     != null) tvDesc.setText(originalDesc);
+        if (tvDesc     != null) {
+            if (originalDesc.isEmpty()) {
+                tvDesc.setVisibility(View.GONE);
+            } else {
+                tvDesc.setVisibility(View.VISIBLE);
+                tvDesc.setText(originalDesc);
+            }
+        }
         if (tvUserName != null) tvUserName.setText(safe(userName));
         if (tvDistance != null) tvDistance.setText(safe(distance));
         if (tvTime     != null) tvTime.setText(safe(time));
@@ -100,17 +112,34 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
                     String.valueOf(Character.toUpperCase(nm.charAt(0))));
         }
 
-        // Image
-        if (ivPhoto != null) {
-            if (imageUrl != null && !imageUrl.isEmpty()) {
-                ivPhoto.setVisibility(View.VISIBLE);
-                Glide.with(this)
-                        .load(imageUrl)
-                        .centerCrop()
-                        .placeholder(android.R.drawable.ic_menu_gallery)
-                        .into(ivPhoto);
+        // Images
+        if (vpImageSlider != null) {
+            if (imageUrls == null) imageUrls = new java.util.ArrayList<>();
+            if (imageUrls.isEmpty() && imageUrl != null && !imageUrl.isEmpty()) {
+                imageUrls.add(imageUrl);
+            }
+
+            if (!imageUrls.isEmpty()) {
+                vpImageSlider.setVisibility(View.VISIBLE);
+                ImageSliderAdapter adapter = new ImageSliderAdapter(imageUrls, null);
+                vpImageSlider.setAdapter(adapter);
+
+                if (imageUrls.size() > 1) {
+                    if (tvImageIndex != null) {
+                        tvImageIndex.setVisibility(View.VISIBLE);
+                        tvImageIndex.setText("1/" + imageUrls.size());
+                        final int total = imageUrls.size();
+                        vpImageSlider.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+                            @Override
+                            public void onPageSelected(int position) {
+                                tvImageIndex.setText((position + 1) + "/" + total);
+                            }
+                        });
+                    }
+                }
             } else {
-                ivPhoto.setVisibility(View.GONE);
+                vpImageSlider.setVisibility(View.GONE);
+                if (tvImageIndex != null) tvImageIndex.setVisibility(View.GONE);
             }
         }
 
@@ -131,7 +160,14 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
                     isTranslated = false;
                     if (tvCategory != null) tvCategory.setText(originalCategory);
                     if (tvTitle    != null) tvTitle.setText(originalTitle);
-                    if (tvDesc     != null) tvDesc.setText(originalDesc);
+                    if (tvDesc     != null) {
+                        if (originalDesc.isEmpty()) {
+                            tvDesc.setVisibility(View.GONE);
+                        } else {
+                            tvDesc.setVisibility(View.VISIBLE);
+                            tvDesc.setText(originalDesc);
+                        }
+                    }
                     btnTranslate.setText(isBanglaPost ? as.detailTranslateToEn() : as.detailTranslateToBn());
 
                 } else {
@@ -170,7 +206,14 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
                         // Each translated string goes into its correct, dedicated TextView
                         if (tvCategory != null) tvCategory.setText(translatedCategory);
                         if (tvTitle    != null) tvTitle.setText(translatedTitle);
-                        if (tvDesc     != null) tvDesc.setText(translatedDesc);
+                        if (tvDesc     != null) {
+                            if (translatedDesc.isEmpty()) {
+                                tvDesc.setVisibility(View.GONE);
+                            } else {
+                                tvDesc.setVisibility(View.VISIBLE);
+                                tvDesc.setText(translatedDesc);
+                            }
+                        }
 
                         btnTranslate.setEnabled(true);
                         AppStrings as2 = AppStrings.get(this);

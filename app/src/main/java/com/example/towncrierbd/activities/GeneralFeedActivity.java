@@ -30,14 +30,9 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.example.towncrierbd.R;
 import com.example.towncrierbd.adapters.FeedAdapter;
 import com.example.towncrierbd.models.Announcement;
+import com.example.towncrierbd.models.Announcement;
 import com.example.towncrierbd.models.UserModel;
-import com.example.towncrierbd.utils.AppStrings;
-import com.example.towncrierbd.utils.CategoryConfig;
-import com.example.towncrierbd.utils.Constants;
-import com.example.towncrierbd.utils.DistanceUtil;
-import com.example.towncrierbd.utils.ExpiredPostCleaner;
-import com.example.towncrierbd.utils.LanguageManager;
-import com.example.towncrierbd.utils.NetworkMonitor;
+import com.example.towncrierbd.utils.*;
 import com.google.android.gms.location.*;
 import com.google.android.material.badge.BadgeDrawable;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -54,7 +49,7 @@ import java.util.Locale;
 public class GeneralFeedActivity extends AppCompatActivity {
 
     private TextView tvWelcome, tvLocationName, tvRadius, tvToggleFilter;
-    private TextView tvGoodDay, tvSeeNearby, tvNearbyPosts, tvFilterLabel, tvYourLocation;
+    private TextView tvGoodDay, tvSeeNearby, tvFilterLabel, tvYourLocation;
     private View scrollChips;
     private ChipGroup chipGroup;
     private RecyclerView rvFeed;
@@ -86,7 +81,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
     private String myRole  = "";
     private String wantRole = "";
     private String searchQuery = "";
-    private double selectedRadius = Constants.FEED_RADIUS_KM;
+    private double selectedRadius;
 
     private List<String> myPreferredCategories    = new ArrayList<>();
     private List<String> myPreferredSubcategories = new ArrayList<>();
@@ -118,7 +113,6 @@ public class GeneralFeedActivity extends AppCompatActivity {
         // ✅ Bilingual label views
         tvGoodDay      = findViewById(R.id.tvGoodDay);
         tvSeeNearby    = findViewById(R.id.tvSeeNearby);
-        tvNearbyPosts  = findViewById(R.id.tvNearbyPosts);
         tvFilterLabel  = findViewById(R.id.tvFilterLabel);
         tvYourLocation = findViewById(R.id.tvYourLocation);
 
@@ -189,6 +183,8 @@ public class GeneralFeedActivity extends AppCompatActivity {
         }
 
         setupBottomNav();
+        selectedRadius = RadiusManager.getRadius(this);
+        updateRadiusText();
         locationClient = LocationServices.getFusedLocationProviderClient(this);
         requestNotificationPermission();
         startNetworkMonitoring();
@@ -202,7 +198,6 @@ public class GeneralFeedActivity extends AppCompatActivity {
 
         if (tvGoodDay      != null) tvGoodDay.setText(s.feedGoodDay());
         if (tvSeeNearby    != null) tvSeeNearby.setText(s.feedSeeNearby());
-        if (tvNearbyPosts  != null) tvNearbyPosts.setText(s.feedNearbyPosts());
         if (tvFilterLabel  != null) tvFilterLabel.setText(s.feedFilterCategory());
         if (tvToggleFilter != null) tvToggleFilter.setText(s.feedShowFilter());
         if (tvYourLocation != null) tvYourLocation.setText(s.feedYourLocation());
@@ -316,6 +311,20 @@ public class GeneralFeedActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        if (bottomNav != null) bottomNav.setSelectedItemId(R.id.menu_feed);
+
+        // Sync radius from Map/Global preference
+        double savedRadius = RadiusManager.getRadius(this);
+        if (savedRadius != selectedRadius) {
+            selectedRadius = savedRadius;
+            updateRadiusText();
+            applyAndShow();
+        }
+    }
+
+    @Override
     public void onBackPressed() {
         super.onBackPressed();
         moveTaskToBack(true);
@@ -334,11 +343,12 @@ public class GeneralFeedActivity extends AppCompatActivity {
 
     private void showRadiusDialog() {
         AppStrings s = AppStrings.get(this);
-        double[] values = {1.0, 3.0, 5.0, 10.0};
+        double[] values = {0.1, 0.5, 1.0, 2.0, 3.0};
         new AlertDialog.Builder(this)
                 .setTitle(s.feedSelectRadius())
                 .setItems(s.feedRadiusOptions(), (d, which) -> {
                     selectedRadius = values[which];
+                    RadiusManager.setRadius(this, selectedRadius);
                     updateRadiusText();
                     applyAndShow();
                 }).show();
@@ -412,6 +422,7 @@ public class GeneralFeedActivity extends AppCompatActivity {
         for (Announcement a : all) {
             if (a == null) continue;
             if (myUid != null && myUid.equals(a.getUserId())) continue;
+            if (!a.isActive()) continue;
             if (a.getExpireAt() > 0 && now > a.getExpireAt()) continue;
             String postRole = safe(a.getUserRole());
             if (!wantRole.equals(postRole)) continue;

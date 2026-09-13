@@ -45,11 +45,13 @@ public class ExpiredPostCleaner {
                             Announcement a = s.getValue(Announcement.class);
                             if (a == null) continue;
 
-                            // Only delete if expired and belongs to this user (double-check)
+                            // ✅ Auto-deactivate if expired (keep in database so announcer can reactivate/edit later)
                             if (a.getExpireAt() > 0
                                     && now > a.getExpireAt()
                                     && myUid.equals(a.getUserId())) {
-                                s.getRef().removeValue();
+                                if (a.isActive()) {
+                                    s.getRef().child("active").setValue(false);
+                                }
                             }
                         }
                     }

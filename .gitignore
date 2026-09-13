@@ -1,15 +1,53 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# Built application files
+*.apk
+*.aar
+*.ap_
+*.aab
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+build/
+app/build/
+**/build/
+
+# Gradle files
+.gradle/
+build/
+
+# Local configuration & Secrets
 local.properties
+secrets.properties
+.gradle/
+
+# Firebase configuration (contains sensitive API keys and IDs)
+google-services.json
+app/google-services.json
+**/google-services.json
+
+# Signing keystores & certificates
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+
+# Android Studio / IntelliJ IDEA
+*.iml
+.idea/
+
+# External native build
+.externalNativeBuild/
+.cxx/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+captures/

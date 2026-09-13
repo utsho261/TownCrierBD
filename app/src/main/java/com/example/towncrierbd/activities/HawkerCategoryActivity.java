@@ -40,9 +40,10 @@ public class HawkerCategoryActivity extends AppCompatActivity {
     private LinearLayout llCategoryList;
     private TextView     tvDoneBtn;
 
-    private final Map<String, View>     subPanels   = new LinkedHashMap<>();
-    private final Map<String, TextView> catCheckMap = new LinkedHashMap<>();
-    private final Map<String, View>     catRowMap   = new LinkedHashMap<>();
+    private final Map<String, View>     subPanels     = new LinkedHashMap<>();
+    private final Map<String, TextView> catCheckMap   = new LinkedHashMap<>();
+    private final Map<String, View>     catRowMap     = new LinkedHashMap<>();
+    private final Map<String, TextView> catChevronMap = new LinkedHashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -170,14 +171,9 @@ public class HawkerCategoryActivity extends AppCompatActivity {
 
             View row = catRowMap.get(cat.name);
             TextView tvCheck = catCheckMap.get(cat.name);
-            View subPanel = subPanels.get(cat.name);
 
             if (row != null) row.setBackground(roundedBg(0xFFEFF6FF, dp(14)));
             if (tvCheck != null) tvCheck.setVisibility(View.VISIBLE);
-            if (subPanel != null) {
-                boolean hasSubs = !cat.subGroups.isEmpty() || "Others".equals(cat.name);
-                subPanel.setVisibility(hasSubs ? View.VISIBLE : View.GONE);
-            }
 
             if ("Others".equals(cat.name) && !othersCustomName.isEmpty() && etOthersName != null) {
                 etOthersName.setText(othersCustomName);
@@ -248,9 +244,19 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         tvCheck.setVisibility(View.GONE);
 
         TextView tvChevron = new TextView(this);
-        tvChevron.setText("  ▾");
-        tvChevron.setTextSize(14);
-        tvChevron.setTextColor(0xFF9CA3AF);
+        tvChevron.setText("▾");
+        tvChevron.setTextSize(22);
+        tvChevron.setTypeface(null, android.graphics.Typeface.BOLD);
+        tvChevron.setTextColor(0xFF4B5563);
+        tvChevron.setGravity(Gravity.CENTER);
+        tvChevron.setPadding(dp(14), dp(6), dp(14), dp(6));
+        tvChevron.setBackground(roundedBg(0xFFF3F4F6, dp(10)));
+        LinearLayout.LayoutParams chevLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        chevLp.setMargins(dp(8), 0, 0, 0);
+        tvChevron.setLayoutParams(chevLp);
+        tvChevron.setClickable(true);
+        tvChevron.setFocusable(true);
 
         row.addView(tvEmoji);
         row.addView(tvName);
@@ -265,57 +271,62 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         subPanel.setPadding(dp(14), dp(8), dp(14), dp(12));
 
         if ("Others".equals(cat.name)) {
-            buildOthersPanel(subPanel);
+            buildOthersPanel(subPanel, cat, row, tvCheck);
         } else {
-            buildSubPanel(subPanel, cat);
+            buildSubPanel(subPanel, cat, row, tvCheck);
         }
 
         subPanels.put(cat.name, subPanel);
         catCheckMap.put(cat.name, tvCheck);
         catRowMap.put(cat.name, row);
+        catChevronMap.put(cat.name, tvChevron);
 
         wrapper.addView(row);
         wrapper.addView(subPanel);
         llCategoryList.addView(wrapper);
 
+        // Arrow click: ONLY toggle subPanel expansion
+        tvChevron.setOnClickListener(v -> {
+            boolean hasSubs = !cat.subGroups.isEmpty() || "Others".equals(cat.name);
+            if (!hasSubs) return;
+            if (subPanel.getVisibility() == View.VISIBLE) {
+                subPanel.setVisibility(View.GONE);
+                tvChevron.setText("▾");
+                tvChevron.setTextColor(0xFF4B5563);
+                tvChevron.setBackground(roundedBg(0xFFF3F4F6, dp(10)));
+            } else {
+                subPanel.setVisibility(View.VISIBLE);
+                tvChevron.setText("▴");
+                tvChevron.setTextColor(0xFF1976F3);
+                tvChevron.setBackground(roundedBg(0xFFDBEAFE, dp(10)));
+            }
+        });
+
+        // Row/Title click: toggle category selection on single tap
         row.setOnClickListener(v -> {
             boolean nowSelected = selectedCategories.contains(cat.name);
             if (!nowSelected) {
                 selectedCategories.add(cat.name);
                 row.setBackground(roundedBg(0xFFEFF6FF, dp(14)));
                 tvCheck.setVisibility(View.VISIBLE);
-                tvChevron.setText("  ▴");
-                boolean hasSubs = !cat.subGroups.isEmpty() || "Others".equals(cat.name);
-                subPanel.setVisibility(hasSubs ? View.VISIBLE : View.GONE);
             } else {
-                if (subPanel.getVisibility() == View.VISIBLE) {
-                    subPanel.setVisibility(View.GONE);
-                    tvChevron.setText("  ▾");
-                } else {
-                    boolean hasSubs = !cat.subGroups.isEmpty() || "Others".equals(cat.name);
-                    subPanel.setVisibility(hasSubs ? View.VISIBLE : View.GONE);
-                    tvChevron.setText("  ▴");
-                }
-            }
-            refreshDoneButton();
-        });
-
-        row.setOnLongClickListener(v -> {
-            if (selectedCategories.contains(cat.name)) {
                 selectedCategories.remove(cat.name);
                 removeSubcategoriesOf(cat);
                 row.setBackground(roundedBg(0xFFFFFFFF, dp(14)));
                 tvCheck.setVisibility(View.GONE);
-                tvChevron.setText("  ▾");
-                subPanel.setVisibility(View.GONE);
-                refreshDoneButton();
-                Toast.makeText(this, AppStrings.get(this).catDeselected(isBn ? cat.nameBn : cat.name), Toast.LENGTH_SHORT).show();
+                if (subPanel.getVisibility() == View.VISIBLE) {
+                    subPanel.setVisibility(View.GONE);
+                    tvChevron.setText("▾");
+                    tvChevron.setTextColor(0xFF4B5563);
+                    tvChevron.setBackground(roundedBg(0xFFF3F4F6, dp(10)));
+                }
+                recheckSelected(subPanel);
             }
-            return true;
+            refreshDoneButton();
         });
     }
 
-    private void buildSubPanel(LinearLayout panel, HawkerCategory cat) {
+    private void buildSubPanel(LinearLayout panel, HawkerCategory cat, LinearLayout row, TextView tvCheck) {
         AppStrings s = AppStrings.get(this);
         boolean isBn = !LanguageManager.isEnglish(this);
 
@@ -326,6 +337,11 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         tvSelectAll.setPadding(0, dp(6), 0, dp(8));
         tvSelectAll.setTypeface(null, android.graphics.Typeface.BOLD);
         tvSelectAll.setOnClickListener(v -> {
+            if (!selectedCategories.contains(cat.name)) {
+                selectedCategories.add(cat.name);
+                row.setBackground(roundedBg(0xFFEFF6FF, dp(14)));
+                tvCheck.setVisibility(View.VISIBLE);
+            }
             // Always store English keys internally
             for (SubGroup g : cat.subGroups) {
                 selectedSubcategories.addAll(g.items);
@@ -358,12 +374,12 @@ public class HawkerCategoryActivity extends AppCompatActivity {
                 // English key for storage, display text for UI
                 String engKey0 = group.items.get(i);
                 String dispTxt0 = displayItems.get(i);
-                addCheckItem(itemRow, engKey0, dispTxt0);
+                addCheckItem(itemRow, engKey0, dispTxt0, cat, row, tvCheck);
 
                 if (i + 1 < displayItems.size()) {
                     String engKey1 = group.items.get(i + 1);
                     String dispTxt1 = displayItems.get(i + 1);
-                    addCheckItem(itemRow, engKey1, dispTxt1);
+                    addCheckItem(itemRow, engKey1, dispTxt1, cat, row, tvCheck);
                 }
                 panel.addView(itemRow);
             }
@@ -374,7 +390,7 @@ public class HawkerCategoryActivity extends AppCompatActivity {
     private LinearLayout llOthersSubs;
     private EditText etOthersSubInput;
 
-    private void buildOthersPanel(LinearLayout panel) {
+    private void buildOthersPanel(LinearLayout panel, HawkerCategory cat, LinearLayout row, TextView tvCheck) {
         AppStrings s = AppStrings.get(this);
 
         TextView tvLabel = new TextView(this);
@@ -398,6 +414,12 @@ public class HawkerCategoryActivity extends AppCompatActivity {
             @Override public void afterTextChanged(Editable s2) {}
             @Override public void onTextChanged(CharSequence s2, int st, int b, int c) {
                 othersCustomName = s2.toString().trim();
+                if (!othersCustomName.isEmpty() && !selectedCategories.contains(cat.name)) {
+                    selectedCategories.add(cat.name);
+                    row.setBackground(roundedBg(0xFFEFF6FF, dp(14)));
+                    tvCheck.setVisibility(View.VISIBLE);
+                    refreshDoneButton();
+                }
             }
         });
 
@@ -449,6 +471,11 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         btnAdd.setOnClickListener(v -> {
             String text = etOthersSubInput.getText().toString().trim();
             if (text.isEmpty()) return;
+            if (!selectedCategories.contains(cat.name)) {
+                selectedCategories.add(cat.name);
+                row.setBackground(roundedBg(0xFFEFF6FF, dp(14)));
+                tvCheck.setVisibility(View.VISIBLE);
+            }
             othersCustomSubs.add(text);
             selectedSubcategories.add(text);
             addOthersSubChip(llOthersSubs, text);
@@ -498,7 +525,8 @@ public class HawkerCategoryActivity extends AppCompatActivity {
      * @param engKey     English key stored in Firebase
      * @param displayText Text shown to user (may be Bangla)
      */
-    private void addCheckItem(LinearLayout parent, String engKey, String displayText) {
+    private void addCheckItem(LinearLayout parent, String engKey, String displayText,
+                              HawkerCategory cat, LinearLayout row, TextView tvCheck) {
         CheckBox cb = new CheckBox(this);
         cb.setText(displayText);
         cb.setTextSize(13);
@@ -511,8 +539,16 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         cb.setTag(engKey); // Always store English key as tag
 
         cb.setOnCheckedChangeListener((btn, checked) -> {
-            if (checked) selectedSubcategories.add(engKey);
-            else selectedSubcategories.remove(engKey);
+            if (checked) {
+                selectedSubcategories.add(engKey);
+                if (!selectedCategories.contains(cat.name)) {
+                    selectedCategories.add(cat.name);
+                    row.setBackground(roundedBg(0xFFEFF6FF, dp(14)));
+                    tvCheck.setVisibility(View.VISIBLE);
+                }
+            } else {
+                selectedSubcategories.remove(engKey);
+            }
             refreshDoneButton();
         });
 

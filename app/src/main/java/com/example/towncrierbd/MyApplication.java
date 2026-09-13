@@ -16,17 +16,7 @@ public class MyApplication extends Application {
         // Cloudinary init
         CloudinaryUploader.init(this);
 
-        // FCM token refresh — app start এ token save করো
-        FirebaseMessaging.getInstance().getToken()
-                .addOnSuccessListener(token -> {
-                    String uid = FirebaseAuth.getInstance().getUid();
-                    if (uid != null && token != null) {
-                        FirebaseDatabase.getInstance()
-                                .getReference("users")
-                                .child(uid)
-                                .child("fcmToken")
-                                .setValue(token);
-                    }
-                });
+        // FCM token refresh — app start এ token save করো (if user logged in)
+        com.example.towncrierbd.utils.AuthUtils.syncFcmToken();
     }
 }

@@ -304,14 +304,22 @@
                 android:textSize="12sp"
                 android:textColor="#4B5563"/>
 
-            <ImageView
-                android:id="@+id/ivPreview"
+            <!-- Multiple Image Preview Container -->
+            <HorizontalScrollView
+                android:id="@+id/hsvImagePreview"
                 android:layout_width="match_parent"
-                android:layout_height="160dp"
-                android:layout_marginTop="6dp"
-                android:scaleType="centerCrop"
-                android:visibility="gone"
-                android:contentDescription="Selected image preview"/>
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:scrollbars="none"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:id="@+id/llImagePreviews"
+                    android:layout_width="wrap_content"
+                    android:layout_height="120dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"/>
+            </HorizontalScrollView>
 
             <TextView
                 android:id="@+id/tvAudioStatus"
@@ -321,6 +329,50 @@
                 android:text=""
                 android:textSize="12sp"
                 android:textColor="#4B5563"/>
+
+            <!-- Audio Player Preview -->
+            <LinearLayout
+                android:id="@+id/llAudioPlayer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_btn_soft"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="8dp"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/btnPlayAudio"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="8dp"
+                    android:src="@android:drawable/ic_media_play"
+                    app:tint="#A21CAF"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Play audio" />
+
+                <TextView
+                    android:id="@+id/tvAudioDuration"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:text="0:00"
+                    android:textSize="14sp"
+                    android:textColor="#A21CAF"
+                    android:textStyle="bold" />
+
+                <ImageView
+                    android:id="@+id/btnDeleteAudio"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="8dp"
+                    android:src="@android:drawable/ic_menu_delete"
+                    app:tint="#EF4444"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Delete audio" />
+            </LinearLayout>
 
             <!-- ══ EXPIRY SECTION ══ -->
             <LinearLayout

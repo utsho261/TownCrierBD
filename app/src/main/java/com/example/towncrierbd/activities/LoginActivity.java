@@ -279,6 +279,9 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
+        // Sync FCM token for the newly logged-in user
+        com.example.towncrierbd.utils.AuthUtils.syncFcmToken();
+
         FirebaseDatabase.getInstance()
                 .getReference(Constants.DB_USERS)
                 .child(uid)

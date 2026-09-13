@@ -24,9 +24,7 @@ import com.bumptech.glide.Glide;
 import com.example.towncrierbd.R;
 import com.example.towncrierbd.models.Announcement;
 import com.example.towncrierbd.models.UserModel;
-import com.example.towncrierbd.utils.AppStrings;
-import com.example.towncrierbd.utils.Constants;
-import com.example.towncrierbd.utils.DistanceUtil;
+import com.example.towncrierbd.utils.*;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -71,7 +69,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private ImageView ivCover;
     private ImageView btnCloseSheet;
     private View coverPlaceholder;
-    private TextView tvBadge, tvTitle, tvDesc, tvDistance;
+    private TextView tvBadge, tvTitle, tvDesc, tvDistance, tvRadius;
     private Button btnDetails;
     private ImageButton btnChat, btnCall;
     private ImageButton btnDirectionSheet;
@@ -80,6 +78,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private final Map<String, Announcement> markerMap = new HashMap<>();
     private Announcement lastSelected = null;
+    private double selectedRadius;
 
     private ValueEventListener annListener = null;
 
@@ -107,10 +106,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         tvTitle           = findViewById(R.id.tvTitle);
         tvDesc            = findViewById(R.id.tvDesc);
         tvDistance        = findViewById(R.id.tvDistance);
+        tvRadius          = findViewById(R.id.tvRadius);
         btnDetails        = findViewById(R.id.btnDetails);
         btnChat           = findViewById(R.id.btnChat);
         btnCall           = findViewById(R.id.btnCall);
         btnDirectionSheet = findViewById(R.id.btnDirectionSheet);
+        ImageView btnFilter = findViewById(R.id.btnFilter);
         fabMyLoc          = findViewById(R.id.fabMyLoc);
         fabDirections     = findViewById(R.id.fabDirections);
 
@@ -120,6 +121,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     sheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
             });
         }
+
+        if (btnFilter != null) {
+            btnFilter.setOnClickListener(v -> showRadiusDialog());
+        }
+
+        selectedRadius = RadiusManager.getRadius(this);
+        updateRadiusBanner();
+
+        selectedRadius = RadiusManager.getRadius(this);
+        updateRadiusBanner();
 
         if (fabMyLoc != null)      fabMyLoc.setOnClickListener(v -> requestLocation());
         if (fabDirections != null) fabDirections.setOnClickListener(v -> openDirectionsToSelected());
@@ -220,9 +231,18 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         hasMyLoc = true;
         if (mMap != null) {
             LatLng me = new LatLng(myLat, myLng);
-            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(me, 15f));
+            float zoom = getZoomForRadius(selectedRadius);
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(me, zoom));
             attachAnnouncementsListener();
         }
+    }
+
+    private float getZoomForRadius(double radiusKm) {
+        if (radiusKm <= 0.11) return 18.0f; // 100m
+        if (radiusKm <= 0.51) return 16.5f; // 500m
+        if (radiusKm <= 1.1)  return 15.5f; // 1km
+        if (radiusKm <= 2.1)  return 14.5f; // 2km
+        return 14.0f; // 3km or more
     }
 
     private boolean isLocationEnabled() {
@@ -276,12 +296,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     if (a.getId() == null || a.getId().trim().isEmpty()) a.setId(ds.getKey());
                     if (a.getId() == null) continue;
                     if (myUid != null && myUid.equals(a.getUserId())) continue;
+                    if (!a.isActive()) continue;
                     if (a.getExpireAt() > 0 && now > a.getExpireAt()) continue;
                     String postRole = safe(a.getUserRole());
                     if (!wantRole.equals(postRole)) continue;
                     if (hasMyLoc) {
                         double d = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
-                        if (d > Constants.FEED_RADIUS_KM) continue;
+                        if (d > selectedRadius) continue;
                     }
                     LatLng pos = new LatLng(a.getLat(), a.getLng());
                     Marker m = mMap.addMarker(new MarkerOptions()
@@ -428,6 +449,32 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     + destLat + "," + destLng + "&travelmode=driving");
             startActivity(new Intent(Intent.ACTION_VIEW, web));
         }
+    }
+
+    private void updateRadiusBanner() {
+        if (tvRadius != null)
+            tvRadius.setText(AppStrings.get(this).feedWithinKmBanner(selectedRadius));
+    }
+
+    private void showRadiusDialog() {
+        AppStrings s = AppStrings.get(this);
+        double[] values = {0.1, 0.5, 1.0, 2.0, 3.0};
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(s.feedSelectRadius())
+                .setItems(s.feedRadiusOptions(), (d, which) -> {
+                    selectedRadius = values[which];
+                    RadiusManager.setRadius(this, selectedRadius);
+                    updateRadiusBanner();
+
+                    // Adjust camera zoom based on new radius if we have location
+                    if (hasMyLoc) {
+                        LatLng me = new LatLng(myLat, myLng);
+                        float zoom = getZoomForRadius(selectedRadius);
+                        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(me, zoom));
+                    }
+
+                    attachAnnouncementsListener(); // Refresh map markers
+                }).show();
     }
 
     private String getRelativeTime(long timeMillis) {

@@ -31,12 +31,7 @@ import com.example.towncrierbd.R;
 import com.example.towncrierbd.adapters.FeedAdapter;
 import com.example.towncrierbd.models.Announcement;
 import com.example.towncrierbd.models.UserModel;
-import com.example.towncrierbd.utils.AppStrings;
-import com.example.towncrierbd.utils.Constants;
-import com.example.towncrierbd.utils.DistanceUtil;
-import com.example.towncrierbd.utils.ExpiredPostCleaner;
-import com.example.towncrierbd.utils.LanguageManager;
-import com.example.towncrierbd.utils.NetworkMonitor;
+import com.example.towncrierbd.utils.*;
 import com.google.android.gms.location.*;
 import com.google.android.material.badge.BadgeDrawable;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -79,7 +74,7 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     private final Set<String>         roleFetching = new HashSet<>();
 
     private String searchQuery   = "";
-    private double selectedRadius = Constants.FEED_RADIUS_KM;
+    private double selectedRadius;
 
     private List<String> myHawkerCategories    = new ArrayList<>();
     private List<String> myHawkerSubcategories = new ArrayList<>();
@@ -127,6 +122,7 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         updateRadiusText();
 
         if (tvRadius != null) {
+            tvRadius.setVisibility(View.VISIBLE);
             tvRadius.setOnClickListener(v -> showRadiusDialog());
         }
 
@@ -168,6 +164,8 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         }
 
         setupBottomNav();
+        selectedRadius = RadiusManager.getRadius(this);
+        updateRadiusText();
         locationClient = LocationServices.getFusedLocationProviderClient(this);
         requestNotificationPermission();
         startNetworkMonitoring();
@@ -201,6 +199,14 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         super.onResume();
         if (fabAdd != null) fabAdd.show();
         if (bottomNav != null) bottomNav.setSelectedItemId(R.id.menu_feed);
+
+        // Sync radius from Map/Global preference
+        double savedRadius = RadiusManager.getRadius(this);
+        if (savedRadius != selectedRadius) {
+            selectedRadius = savedRadius;
+            updateRadiusText();
+            applyAndShow();
+        }
     }
 
     private void setupBottomNav() {
@@ -319,11 +325,12 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
 
     private void showRadiusDialog() {
         AppStrings s = AppStrings.get(this);
-        double[] values = {1.0, 3.0, 5.0, 10.0};
+        double[] values = {0.1, 0.5, 1.0, 2.0, 3.0};
         new AlertDialog.Builder(this)
                 .setTitle(s.feedSelectRadius())
                 .setItems(s.feedRadiusOptions(), (d, which) -> {
                     selectedRadius = values[which];
+                    RadiusManager.setRadius(this, selectedRadius);
                     updateRadiusText();
                     applyAndShow();
                 }).show();
@@ -401,22 +408,11 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         for (Announcement a : all) {
             if (a == null) continue;
             if (myUid != null && myUid.equals(a.getUserId())) continue;
+            if (!a.isActive()) continue;
             if (a.getExpireAt() > 0 && now > a.getExpireAt()) continue;
 
             String postRole = resolvePostRole(a);
             if (!Constants.ROLE_USER.equals(postRole)) continue;
-
-            if (!myHawkerCategories.isEmpty()) {
-                boolean matches = false;
-                String primaryCat = safe(a.getCategory());
-                if (myHawkerCategories.contains(primaryCat)) matches = true;
-                if (!matches && a.getSelectedCategories() != null) {
-                    for (String pc : a.getSelectedCategories()) {
-                        if (myHawkerCategories.contains(pc)) { matches = true; break; }
-                    }
-                }
-                if (!matches) continue;
-            }
 
             if (!searchQuery.isEmpty()) {
                 String title = safe(a.getTitle()).toLowerCase();
@@ -429,7 +425,23 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
 
             if (!locationReady) continue;
             double dist = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
-            if (dist <= selectedRadius) out.add(a);
+            if (dist <= selectedRadius) {
+                out.add(a);
+            }
+        }
+
+        // Sort posts within radius by distance in ascending order (closest to announcer first)
+        if (locationReady) {
+            Collections.sort(out, (a1, a2) -> {
+                double d1 = DistanceUtil.distanceKm(myLat, myLng, a1.getLat(), a1.getLng());
+                double d2 = DistanceUtil.distanceKm(myLat, myLng, a2.getLat(), a2.getLng());
+                int cmp = Double.compare(d1, d2);
+                if (cmp != 0) return cmp;
+                return Long.compare(a2.getTime(), a1.getTime());
+            });
+        } else {
+            // Fallback before location is resolved: sort by newest
+            Collections.sort(out, (a1, a2) -> Long.compare(a2.getTime(), a1.getTime()));
         }
 
         adapter.setData(out);
