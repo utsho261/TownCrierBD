@@ -20,6 +20,9 @@ import com.google.firebase.messaging.FirebaseMessaging;
  */
 public class AuthUtils {
 
+    private static volatile long sessionGeneration;
+    private static volatile boolean loggingOut;
+    private static com.google.android.gms.tasks.Task<Void> tokenDeletion;
     private static final String TAG = "AuthUtils";
 
     /**
@@ -27,13 +30,14 @@ public class AuthUtils {
      */
     public static void saveTokenToFirebase(String token) {
         String uid = FirebaseAuth.getInstance().getUid();
-        if (uid == null || token == null || token.isEmpty()) return;
+        if (loggingOut || uid == null || token == null || token.isEmpty()) return;
 
+        java.util.Map<String,Object> update=new java.util.HashMap<>();update.put("fcmToken",token);update.put("notificationsEnabled",true);
         FirebaseDatabase.getInstance()
                 .getReference(Constants.DB_USERS)
                 .child(uid)
-                .child("fcmToken")
-                .setValue(token)
+                .updateChildren(update)
+                .addOnSuccessListener(v -> PresenceManager.trackCurrentPresence())
                 .addOnFailureListener(e -> Log.e(TAG, "Failed to save FCM token: " + e.getMessage()));
     }
 
@@ -45,10 +49,16 @@ public class AuthUtils {
         String uid = FirebaseAuth.getInstance().getUid();
         if (uid == null) return;
 
+        loggingOut=false;
+        if(tokenDeletion!=null && !tokenDeletion.isComplete()){
+            tokenDeletion.addOnCompleteListener(done->{if(uid.equals(FirebaseAuth.getInstance().getUid()))syncFcmToken();});return;
+        }
+        final long generation=sessionGeneration;
+        FirebaseMessaging.getInstance().setAutoInitEnabled(true);
         try {
             FirebaseMessaging.getInstance().getToken()
                     .addOnSuccessListener(token -> {
-                        if (token != null && !token.isEmpty()) {
+                        if (generation==sessionGeneration && uid.equals(FirebaseAuth.getInstance().getUid()) && token != null && !token.isEmpty()) {
                             saveTokenToFirebase(token);
                         }
                     })
@@ -67,16 +77,18 @@ public class AuthUtils {
      * 5. Redirects to LoginActivity clearing all back-stack activities.
      */
     public static void logout(@NonNull Activity activity) {
+        loggingOut=true;
+        ++sessionGeneration;
+        PresenceManager.setOfflineNow();
+        PresenceManager.stopTracking();
+        FirebaseMessaging.getInstance().setAutoInitEnabled(false);
         String uid = FirebaseAuth.getInstance().getUid();
 
         // 1. Remove fcmToken from Firebase Database so server will not send notifications
         if (uid != null) {
             try {
-                FirebaseDatabase.getInstance()
-                        .getReference(Constants.DB_USERS)
-                        .child(uid)
-                        .child("fcmToken")
-                        .removeValue();
+                java.util.Map<String,Object> update=new java.util.HashMap<>();update.put("fcmToken",null);update.put("notificationsEnabled",false);
+                FirebaseDatabase.getInstance().getReference(Constants.DB_USERS).child(uid).updateChildren(update);
             } catch (Exception e) {
                 Log.e(TAG, "Error removing fcmToken from database: " + e.getMessage());
             }
@@ -84,7 +96,7 @@ public class AuthUtils {
 
         // 2. Unregister and delete FCM token from this device
         try {
-            FirebaseMessaging.getInstance().deleteToken()
+            tokenDeletion=FirebaseMessaging.getInstance().deleteToken()
                     .addOnCompleteListener(task -> Log.d(TAG, "FCM token deleted on logout: " + task.isSuccessful()));
         } catch (Exception e) {
             Log.e(TAG, "Error deleting FCM token: " + e.getMessage());

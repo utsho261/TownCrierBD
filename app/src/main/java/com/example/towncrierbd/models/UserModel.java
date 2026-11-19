@@ -4,6 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class UserModel {
+    private String photoUrl = "";
+    public String getPhotoUrl() { return photoUrl == null ? "" : photoUrl; }
+    public void setPhotoUrl(String value) { photoUrl = value; }
+
     private String uid;
     private String name;
     private String email;
@@ -26,6 +30,24 @@ public class UserModel {
     // e.g. "Flower pot seller"
     private String hawkerOthersName;
 
+    private double notificationRadiusKm = 1;
+    private List<String> notificationCategories;
+    private boolean notificationConfigured = false;
+    private long locationUpdatedAt;
+    private boolean online = false;
+    private long lastSeen = 0;
+    public boolean isOnline() { return online; }
+    public void setOnline(boolean online) { this.online = online; }
+    public long getLastSeen() { return lastSeen; }
+    public void setLastSeen(long lastSeen) { this.lastSeen = lastSeen; }
+    public double getNotificationRadiusKm() { return notificationRadiusKm; }
+    public void setNotificationRadiusKm(double value) { notificationRadiusKm = value; }
+    public List<String> getNotificationCategories() { return notificationCategories; }
+    public void setNotificationCategories(List<String> value) { notificationCategories = value; }
+    public boolean isNotificationConfigured() { return notificationConfigured || (notificationCategories != null && !notificationCategories.isEmpty()); }
+    public void setNotificationConfigured(boolean value) { notificationConfigured = value; }
+    public long getLocationUpdatedAt() { return locationUpdatedAt; }
+    public void setLocationUpdatedAt(long value) { locationUpdatedAt = value; }
     public UserModel() {}
 
     public UserModel(String uid, String name, String email, String phone,

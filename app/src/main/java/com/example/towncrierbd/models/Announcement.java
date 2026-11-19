@@ -1,8 +1,47 @@
 package com.example.towncrierbd.models;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Announcement {
+    private String sourceAnnouncementId = "";
+    public String getSourceAnnouncementId() { return sourceAnnouncementId == null ? "" : sourceAnnouncementId; }
+    public void setSourceAnnouncementId(String value) { sourceAnnouncementId = value; }
+    private String sourceAnnouncerUid = "";
+    public String getSourceAnnouncerUid() { return sourceAnnouncerUid == null ? "" : sourceAnnouncerUid; }
+    public void setSourceAnnouncerUid(String value) { sourceAnnouncerUid = value; }
+    private String sourcePostTitle = "";
+    public String getSourcePostTitle() { return sourcePostTitle == null ? "" : sourcePostTitle; }
+    public void setSourcePostTitle(String value) { sourcePostTitle = value; }
+    private String acceptedByUid = "";
+    public String getAcceptedByUid() { return acceptedByUid == null ? "" : acceptedByUid; }
+    public void setAcceptedByUid(String value) { acceptedByUid = value; }
+    private String acceptedByName = "";
+    public String getAcceptedByName() { return acceptedByName == null ? "" : acceptedByName; }
+    public void setAcceptedByName(String value) { acceptedByName = value; }
+    private String cancelledByUid = "";
+    public String getCancelledByUid() { return cancelledByUid == null ? "" : cancelledByUid; }
+    public void setCancelledByUid(String value) { cancelledByUid = value; }
+    private String cancelledByName = "";
+    public String getCancelledByName() { return cancelledByName == null ? "" : cancelledByName; }
+    public void setCancelledByName(String value) { cancelledByName = value; }
+    private String cancellationReason = "";
+    public String getCancellationReason() { return cancellationReason == null ? "" : cancellationReason; }
+    public void setCancellationReason(String value) { cancellationReason = value; }
+    private long acceptedAt;
+    public long getAcceptedAt() { return acceptedAt; }
+    public void setAcceptedAt(long value) { acceptedAt = value; }
+    private long cancelledAt;
+    public long getCancelledAt() { return cancelledAt; }
+    public void setCancelledAt(long value) { cancelledAt = value; }
+    private long statusUpdatedAt;
+    public long getStatusUpdatedAt() { return statusUpdatedAt; }
+    public void setStatusUpdatedAt(long value) { statusUpdatedAt = value; }
+    private long workflowRevision;
+    public long getWorkflowRevision() { return workflowRevision; }
+    public void setWorkflowRevision(long value) { workflowRevision = value; }
+
 
     private String id;
     private String userId;
@@ -20,6 +59,10 @@ public class Announcement {
 
     // ✅ "announcement" (Announcer post) or "request" (General User post)
     private String postType;
+    private String requestMode = "active_posts";
+
+    public String getRequestMode() { return com.example.towncrierbd.utils.RequestMode.normalize(requestMode); }
+    public void setRequestMode(String value) { requestMode = com.example.towncrierbd.utils.RequestMode.normalize(value); }
 
     private String title;
     private String description;
@@ -35,6 +78,48 @@ public class Announcement {
     private long time;
     private long expireAt;
     private boolean active = true;
+
+    private String status = "open";
+    private String deliveredByUid;
+    private String deliveredByName;
+    private long deliveredAt;
+    private long receivedAt;
+    private String contactMethod = "chat";
+    private boolean showPhone;
+    private String priority = "normal";
+    private int frequencyMinutes;
+    private double requestRadiusKm = 1;
+    private List<RequestedItem> requestedItems;
+
+    public String getStatus() { return status == null ? "open" : status; }
+    public void setStatus(String value) { status = value; }
+    public String getDeliveredByUid() { return deliveredByUid; }
+    public void setDeliveredByUid(String value) { deliveredByUid = value; }
+    public String getDeliveredByName() { return deliveredByName; }
+    public void setDeliveredByName(String value) { deliveredByName = value; }
+    public long getDeliveredAt() { return deliveredAt; }
+    public void setDeliveredAt(long value) { deliveredAt = value; }
+    public long getReceivedAt() { return receivedAt; }
+    public void setReceivedAt(long value) { receivedAt = value; }
+    public String getContactMethod() { return contactMethod == null ? "chat" : contactMethod; }
+    public void setContactMethod(String value) { contactMethod = value; }
+    public boolean isShowPhone() { return showPhone; }
+    public void setShowPhone(boolean value) { showPhone = value; }
+    public String getPriority() { return priority == null ? "normal" : priority; }
+    public void setPriority(String value) { priority = value; }
+    public int getFrequencyMinutes() { return frequencyMinutes; }
+    public void setFrequencyMinutes(int value) { frequencyMinutes = value; }
+    public double getRequestRadiusKm() { return requestRadiusKm; }
+    public void setRequestRadiusKm(double value) { requestRadiusKm = value; }
+    public List<RequestedItem> getRequestedItems() { return requestedItems; }
+    public void setRequestedItems(List<RequestedItem> value) { requestedItems = value; }
+
+    private long originalExpireAt;
+    private Map<String, RequestBid> acceptedBids;
+    public long getOriginalExpireAt() { return originalExpireAt; }
+    public void setOriginalExpireAt(long value) { originalExpireAt = value; }
+    public Map<String, RequestBid> getAcceptedBids() { return acceptedBids; }
+    public void setAcceptedBids(Map<String, RequestBid> value) { acceptedBids = value; }
 
     public Announcement() {}
 

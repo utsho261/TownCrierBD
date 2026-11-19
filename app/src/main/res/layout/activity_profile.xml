@@ -7,201 +7,320 @@
     android:orientation="vertical"
     android:background="#EEF3FB">
 
-    <!-- Profile Header (gradient top section) -->
-    <com.google.android.material.card.MaterialCardView
+    <!-- Top App Bar with Back Button -->
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="14dp"
-        app:cardCornerRadius="26dp"
-        app:cardElevation="8dp"
-        app:cardBackgroundColor="#1565C0">
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="12dp"
+        android:paddingEnd="16dp"
+        android:background="#1565C0">
+
+        <ImageView
+            android:id="@+id/btnBack"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="8dp"
+            android:src="@drawable/ic_arrow_back"
+            app:tint="@android:color/white"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Back"/>
+
+        <TextView
+            android:id="@+id/tvProfileTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="Profile"
+            android:textColor="@android:color/white"
+            android:textStyle="bold"
+            android:textSize="19sp"/>
+
+        <TextView
+            android:id="@+id/tvLangToggle"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone"/>
+    </LinearLayout>
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:padding="22dp"
             android:orientation="vertical">
 
-            <!-- Avatar + Name row -->
-            <LinearLayout
+            <!-- Profile Header Card (modern gradient) -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <!-- Large Avatar circle -->
-                <TextView
-                    android:layout_width="64dp"
-                    android:layout_height="64dp"
-                    android:gravity="center"
-                    android:text="U"
-                    android:id="@+id/tvAvatarLarge"
-                    android:textStyle="bold"
-                    android:textColor="@android:color/white"
-                    android:textSize="28sp"
-                    android:background="#1976F3"/>
+                android:layout_marginStart="14dp"
+                android:layout_marginEnd="14dp"
+                android:layout_marginTop="14dp"
+                android:layout_marginBottom="8dp"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="6dp"
+                app:cardBackgroundColor="#1565C0">
 
                 <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="14dp"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/tvName"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Name"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        android:textColor="@android:color/white"/>
-
-                    <TextView
-                        android:id="@+id/tvRole"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="General User"
-                        android:textStyle="bold"
-                        android:textColor="#90CAF9"
-                        android:textSize="13sp"
-                        android:layout_marginTop="3dp"/>
-                </LinearLayout>
-            </LinearLayout>
-
-            <!-- Divider -->
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#2C86F6"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="14dp"/>
-
-            <!-- Contact info -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <TextView
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
-                    android:text="✉"
-                    android:textSize="14sp"
-                    android:textColor="#90CAF9"
-                    android:gravity="center"/>
-
-                <TextView
-                    android:id="@+id/tvEmail"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Email"
-                    android:textColor="#D6E7FF"
-                    android:textSize="14sp"
-                    android:layout_marginStart="8dp"/>
-            </LinearLayout>
+                    android:padding="20dp"
+                    android:orientation="vertical">
 
+                    <!-- Avatar + Name row -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <!-- Large Avatar circle with camera indicator -->
+                        <FrameLayout
+                            android:layout_width="76dp"
+                            android:layout_height="76dp">
+
+                            <TextView
+                                android:id="@+id/tvAvatarLarge"
+                                android:layout_width="76dp"
+                                android:layout_height="76dp"
+                                android:gravity="center"
+                                android:text="U"
+                                android:textStyle="bold"
+                                android:textColor="@android:color/white"
+                                android:textSize="30sp"
+                                android:background="@drawable/bg_avatar_circle"
+                                android:backgroundTint="#2563EB"
+                                android:elevation="2dp"/>
+
+                            <ImageView
+                                android:id="@+id/ivProfilePhoto"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:scaleType="centerCrop"
+                                android:elevation="2dp"
+                                android:visibility="gone"
+                                android:contentDescription="Profile photo" />
+
+                            <!-- Mini camera badge -->
+                            <FrameLayout
+                                android:layout_width="26dp"
+                                android:layout_height="26dp"
+                                android:layout_gravity="bottom|end"
+                                android:background="@drawable/bg_avatar_circle"
+                                android:backgroundTint="#0D47A1"
+                                android:elevation="4dp">
+
+                                <ImageView
+                                    android:layout_width="14dp"
+                                    android:layout_height="14dp"
+                                    android:layout_gravity="center"
+                                    android:src="@android:drawable/ic_menu_camera"
+                                    app:tint="@android:color/white"
+                                    android:contentDescription="Change photo"/>
+                            </FrameLayout>
+                        </FrameLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="16dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvName"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Name"
+                                android:textSize="20sp"
+                                android:textStyle="bold"
+                                android:textColor="@android:color/white"/>
+
+                            <!-- Role Pill Badge -->
+                            <TextView
+                                android:id="@+id/tvRole"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="General User"
+                                android:textStyle="bold"
+                                android:textColor="#E0F2FE"
+                                android:textSize="12sp"
+                                android:background="@drawable/bg_role_badge"
+                                android:paddingStart="10dp"
+                                android:paddingEnd="10dp"
+                                android:paddingTop="3dp"
+                                android:paddingBottom="3dp"
+                                android:layout_marginTop="6dp"/>
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Divider -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="#2E7CE4"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="14dp"/>
+
+                    <!-- Contact info: Email -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:src="@android:drawable/ic_dialog_email"
+                            app:tint="#90CAF9"
+                            android:contentDescription="Email icon"/>
+
+                        <TextView
+                            android:id="@+id/tvEmail"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Email"
+                            android:textColor="#E0F2FE"
+                            android:textSize="14sp"
+                            android:layout_marginStart="10dp"/>
+                    </LinearLayout>
+
+                    <!-- Contact info: Phone -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginTop="8dp">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:src="@android:drawable/ic_menu_call"
+                            app:tint="#90CAF9"
+                            android:contentDescription="Phone icon"/>
+
+                        <TextView
+                            android:id="@+id/tvPhone"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Phone"
+                            android:textColor="#E0F2FE"
+                            android:textSize="14sp"
+                            android:layout_marginStart="10dp"/>
+                    </LinearLayout>
+
+                    <!-- Notification settings button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnNotificationSettings"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="16dp"
+                        android:text="🔔 Notification settings"
+                        android:textAllCaps="false"
+                        android:textColor="@android:color/white"
+                        android:textSize="14sp"
+                        app:cornerRadius="12dp"
+                        app:backgroundTint="#0D47A1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"/>
+
+                    <!-- Action Buttons: Edit Profile + Logout -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="10dp">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnEditProfile"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="Edit Profile"
+                            android:textColor="@color/white"
+                            app:backgroundTint="#1976F3"
+                            app:cornerRadius="12dp"
+                            android:textAllCaps="false"
+                            android:textSize="14sp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:layout_marginEnd="8dp"/>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnLogout"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="Log Out"
+                            android:textColor="@color/white"
+                            app:backgroundTint="#EF4444"
+                            app:cornerRadius="12dp"
+                            android:textAllCaps="false"
+                            android:textSize="14sp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"/>
+                    </LinearLayout>
+
+                    <!-- Edit Categories button (Announcers only) -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnEditCategories"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="10dp"
+                        android:text="🛒 Edit My Selling Categories"
+                        android:textColor="@color/white"
+                        app:backgroundTint="#E65100"
+                        app:cornerRadius="12dp"
+                        android:textAllCaps="false"
+                        android:textSize="14sp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:visibility="gone"/>
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- My Posts section Header -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginTop="8dp">
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="6dp">
 
                 <TextView
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
-                    android:text="📞"
-                    android:textSize="14sp"
-                    android:gravity="center"/>
-
-                <TextView
-                    android:id="@+id/tvPhone"
-                    android:layout_width="match_parent"
+                    android:id="@+id/tvMyPostsTitle"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="Phone"
-                    android:textColor="#D6E7FF"
-                    android:textSize="14sp"
-                    android:layout_marginStart="8dp"/>
+                    android:layout_weight="1"
+                    android:text="My Posts"
+                    android:textStyle="bold"
+                    android:textSize="17sp"
+                    android:textColor="#0F172A"/>
             </LinearLayout>
 
-            <!-- Action Buttons -->
-            <LinearLayout
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvMyPosts"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="18dp">
-
-                <Button
-                    android:id="@+id/btnEditProfile"
-                    android:layout_width="0dp"
-                    android:layout_height="46dp"
-                    android:layout_weight="1"
-                    android:text="Edit Profile"
-                    android:textColor="@color/white"
-                    android:backgroundTint="#1976F3"
-                    android:textAllCaps="false"
-                    android:textSize="14sp"
-                    android:layout_marginEnd="8dp"/>
-
-                <Button
-                    android:id="@+id/btnLogout"
-                    android:layout_width="0dp"
-                    android:layout_height="46dp"
-                    android:layout_weight="1"
-                    android:text="Logout"
-                    android:textColor="@color/white"
-                    android:backgroundTint="#E53935"
-                    android:textAllCaps="false"
-                    android:textSize="14sp"/>
-            </LinearLayout>
-
-            <!-- Edit Categories button (Announcers only) -->
-            <Button
-                android:id="@+id/btnEditCategories"
-                android:layout_width="match_parent"
-                android:layout_height="46dp"
-                android:layout_marginTop="10dp"
-                android:text="🛒 Edit My Selling Categories"
-                android:textColor="@color/white"
-                android:backgroundTint="#E65100"
-                android:textAllCaps="false"
-                android:textSize="14sp"
-                android:visibility="gone"/>
+                android:nestedScrollingEnabled="false"
+                android:clipToPadding="false"
+                android:paddingBottom="24dp"/>
 
         </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
-
-    <!-- My Posts section -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingStart="18dp"
-        android:paddingEnd="18dp"
-        android:paddingBottom="8dp">
-
-        <TextView
-            android:id="@+id/tvMyPostsTitle"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="My Posts"
-            android:textStyle="bold"
-            android:textSize="17sp"
-            android:textColor="#1A237E"/>
-    </LinearLayout>
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvMyPosts"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginStart="4dp"
-        android:layout_marginEnd="4dp"
-        android:clipToPadding="false"
-        android:paddingBottom="16dp"/>
+    </androidx.core.widget.NestedScrollView>
 
 </LinearLayout>

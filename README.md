@@ -1,3 +1,5 @@
+> **Current update: free, on-device voice.** Read [বাংলা setup](DEPLOYMENT_BN.md). Microphone and imported files use bundled Bengali/English models; no paid speech API or Firebase deployment is required for voice. The first Android build downloads about 190 MB of public model/runtime dependencies automatically. A new APK must be built; included PREVIOUS_BUILD APKs are historical. Actual device recognition has not been tested here.
+
 # 📢 TownCrierBD (টাউন ক্রায়ার বিডি)
 
 [![Android](https://img.shields.io/badge/Platform-Android-green.svg)](https://developer.android.com/)
@@ -13,23 +15,23 @@
 ## ✨ Features
 
 ### 📣 For Announcers (বিক্রেতা / ঘোষক)
-- **Multi-Step Post Creation Wizard:** Intuitive 3-step publishing flow with categories, subcategories, product tags, multi-image selection, and voice audio recording.
+- **Multi-Step Post Creation Wizard:** Intuitive 3-step publishing flow with categories, flat item selection, multi-image selection, and voice audio recording.
 - **Audio Voice Announcements:** Record voice clips directly in-app and upload them via Cloudinary for citizens to listen to announcements aloud.
-- **Multi-Image Carousel:** Attach up to 5 photos per announcement, displayed using an interactive image slider with dot indicators.
+- **Multi-Image Carousel:** Attach multiple photos per announcement, displayed using an interactive image slider with dot indicators.
 - **Complete Post Lifecycle Management:**
-  - **Full Edit:** Modify title, description, categories, products, images, audio, and validity duration anytime.
+  - **Full Edit:** Modify description, categories, products, images, audio, and validity duration. Titles are generated from the selected items; a delivered request cannot be edited.
   - **Active / Deactivate Toggle:** Temporarily deactivate announcements at the end of the day and reactivate them with new validity when back in business.
   - **Auto-Deactivation:** Expired posts are automatically transitioned to inactive status rather than deleted permanently.
-- **Hawker Category Customization:** Quick one-tap category selection and expandable subcategory picker in profile.
+- **Hawker Category Customization:** Quick one-tap category selection and expandable item picker in profile.
 
 ### 👥 For General Users (সাধারণ নাগরিক)
 - **Proximity-Based Sorting:** Announcements are dynamically sorted in ascending order based on physical distance from the user's current GPS location.
-- **Configurable Radius Filter:** Easily filter announcements within custom radii (e.g., 1 km, 3 km, 5 km, 10 km) via an interactive distance sheet.
+- **Configurable Radius Filter:** Easily filter announcements within custom radii (100 m, 500 m, 1 km, 2 km, 3 km) via an interactive distance sheet.
 - **Live Google Map:** View nearby announcers and stalls as custom map pins with real-time location tracking.
 - **Direct In-App Chat:** Instant messaging between citizens and announcers with message history and unread counters.
 
 ### 🔔 Notifications & Privacy
-- **Firebase Cloud Messaging (FCM):** Background push notifications for nearby broadcasts and incoming chat messages via a dedicated notification server.
+- **Firebase Cloud Messaging (FCM):** Background push notifications for nearby broadcasts and incoming chat messages via Firebase Functions using data-only messages.
 - **Clean Logout & Notification Suppression:** When logged out, the device's FCM token is cleanly removed from Firebase and unregistered locally to prevent unwanted notifications after session end.
 
 ### 🌐 Bilingual Experience
@@ -140,3 +142,41 @@ export JAVA_HOME=/path/to/jdk-17 && ./gradlew assembleDebug
 
 ## 📄 License
 This project is developed for community announcement and vendor discovery in Bangladesh. All rights reserved.
+
+
+## Teacher-requested updates in this version
+
+- Recorded or selected audio is decoded and transcribed; Bangla/English keywords select items after the voice/details step. No filename/metadata guessing.
+- Flat, alphabetically sorted categories; **Add category** in the category editor saves a reusable category and its items.
+- General feed: category dropdown, **All / My requests**, distance sorting, and **💬 ★ Posts** for posts with conversations.
+- Announcer feed: nearest customer requests, five at a time with **Show 5 more**, details and **Delivered**.
+- Owner receives a delivery popup; **Received** completes and hides the request. **Not received** reopens it. Request quantities and delivery seller information appear in details.
+- Request creation shows offered items from active seller posts inside the selected radius. Every requested item has a quantity/unit. Phone visibility is optional; chat is the default, with phone and voice-offer choices.
+- Chat messages keep their related post; voice offers can be recorded, previewed, deleted before sending, and played in the chat.
+- Announcer posts use Active/Deactivate and reuse with a new duration. The announce button in My Posts sets priority and repeat frequency (once, 15, 30, or 60 minutes while active).
+- Profile notification settings persist distance/category choices. Server matching honors them. Logout disables token synchronization; recipient/session checks apply even in the background.
+- Map includes a distance-sorted nearby list and initially focuses the nearest post. Two recent seller location samples show approximate movement towards/away from the viewer. No movement is inferred from stale or missing samples.
+- Title entry has been removed. Description remains optional; existing multi-image selection and audio preview remain available.
+
+## Current voice and backend setup
+
+See [DEPLOYMENT_BN.md](DEPLOYMENT_BN.md) for Windows/Android Studio steps.
+
+Microphone and File both feed the same on-device recognizer. M4A/MP3 and other Android-supported formats use MediaCodec; PCM16/float32 WAV uses a bounded RIFF reader. PCM channels are mixed to normalized mono and sherpa-onnx resamples internally. Continuous streaming preserves words across codec buffers and flushes final words. There is no request to Firebase or any speech API. Local model/audio work is serialized, cancellable and off the UI thread.
+
+The APK bundles Apache-2.0 Bengali and English models. Gradle's `prepareOfflineVoice` downloads the pinned official runtime/models, validates binary SHA256/size and vocabulary shape, and includes the assets. About 190 MB is fetched once, plus normal Android dependencies. The cache survives Clean Project. Publication still uploads the original audio through the existing media service.
+
+The earlier request lifecycle, notifications and tracking features remain dependent on a separately deployed Firebase backend; they have not been converted to free hosting. Do not enable billing or deploy functions to enable voice. The paid `transcribeAudio` implementation and deployment/smoke-test instructions have been removed. Existing remote functions are not automatically changed by a source ZIP.
+
+Current test evidence: [tests/current-update-results.md](tests/current-update-results.md).
+
+## Validation recorded for the previous version (not rerun as a full Android build)
+
+- `:app:assembleDebug :app:testDebugUnitTest`: BUILD SUCCESSFUL. All 14 JVM tests pass.
+- `node --test functions/workflow.test.js`: all 12 backend tests pass.
+- Six callable authentication/input-validation checks pass without contacting live services.
+- Backend workflow tests cover distance/category/radius matching, logout opt-out,
+  delivery ownership, competing delivery claims, and receipt transitions.
+- Cloud Functions exports and callable input/authentication guards are checked locally.
+- Live Firebase/FCM/Speech/Maps behavior still needs testing on your configured account
+  and Android device after deployment. No live backend or credentials were changed.

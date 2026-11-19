@@ -54,15 +54,15 @@
                 android:textColor="#EAF0FF"
                 android:textSize="12sp"/>
 
-            <View android:layout_width="10dp" android:layout_height="10dp" android:background="#FFFFFF"/>
-            <View android:layout_width="20dp" android:layout_height="2dp" android:background="#FFFFFF" android:alpha="0.4" android:layout_marginStart="4dp" android:layout_marginEnd="4dp"/>
-            <View android:layout_width="10dp" android:layout_height="10dp" android:background="#FFFFFF" android:alpha="0.4"/>
-            <View android:layout_width="20dp" android:layout_height="2dp" android:background="#FFFFFF" android:alpha="0.4" android:layout_marginStart="4dp" android:layout_marginEnd="4dp"/>
-            <View android:layout_width="10dp" android:layout_height="10dp" android:background="#FFFFFF" android:alpha="0.4"/>
+            <View android:id="@+id/indicatorDot1" android:layout_width="10dp" android:layout_height="10dp" android:background="@drawable/bg_wizard_dot"/>
+            <View android:id="@+id/indicatorLine1" android:layout_width="20dp" android:layout_height="2dp" android:background="#FFFFFF" android:alpha="0.4" android:layout_marginStart="4dp" android:layout_marginEnd="4dp"/>
+            <View android:id="@+id/indicatorDot2" android:layout_width="10dp" android:layout_height="10dp" android:background="@drawable/bg_wizard_dot" android:alpha="0.4"/>
+            <View android:id="@+id/indicatorLine2" android:layout_width="20dp" android:layout_height="2dp" android:background="#FFFFFF" android:alpha="0.4" android:layout_marginStart="4dp" android:layout_marginEnd="4dp"/>
+            <View android:id="@+id/indicatorDot3" android:layout_width="10dp" android:layout_height="10dp" android:background="@drawable/bg_wizard_dot" android:alpha="0.4"/>
         </LinearLayout>
     </LinearLayout>
 
-    <!-- ══ STEP 1: CATEGORY ══ -->
+    <!-- ══ STEP 1: CATEGORY SELECTION ══ -->
     <ScrollView
         android:id="@+id/stepCategory"
         android:layout_width="match_parent"
@@ -75,7 +75,6 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- ✅ No hardcoded text — set via applyWizardStrings() -->
             <TextView
                 android:id="@+id/tvStep1Title"
                 android:layout_width="wrap_content"
@@ -110,9 +109,9 @@
         </LinearLayout>
     </ScrollView>
 
-    <!-- ══ STEP 2: PRODUCTS ══ -->
+    <!-- ══ STEP 2: POST DETAILS & VOICE BROADCAST (Swapped with Step 3) ══ -->
     <ScrollView
-        android:id="@+id/stepProducts"
+        android:id="@+id/stepDetails"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -124,7 +123,6 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- ✅ No hardcoded text -->
             <TextView
                 android:id="@+id/tvStep2Title"
                 android:layout_width="wrap_content"
@@ -139,74 +137,20 @@
                 android:layout_height="wrap_content"
                 android:textSize="13sp"
                 android:textColor="#6B7280"
-                android:layout_marginBottom="10dp"/>
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="12dp"/>
 
-            <EditText
-                android:id="@+id/etCustomCategory"
-                android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:background="@drawable/bg_input"
-                android:padding="14dp"
-                android:visibility="gone"
-                android:textSize="14sp"
-                android:layout_marginBottom="10dp"/>
 
-            <LinearLayout
-                android:id="@+id/llProductList"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"/>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="20dp">
-
-                <Button
-                    android:id="@+id/btnBackStep2"
-                    android:layout_width="0dp"
-                    android:layout_height="52dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/bg_btn_gray"
-                    android:layout_marginEnd="8dp"/>
-
-                <Button
-                    android:id="@+id/btnNextStep2"
-                    android:layout_width="0dp"
-                    android:layout_height="52dp"
-                    android:layout_weight="2"
-                    android:textColor="@android:color/white"
-                    android:background="@drawable/bg_btn_publish"/>
-            </LinearLayout>
-
-        </LinearLayout>
-    </ScrollView>
-
-    <!-- ══ STEP 3: POST DETAILS ══ -->
-    <ScrollView
-        android:id="@+id/stepDetails"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:visibility="gone">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
-
-            <!-- ✅ Title label — set via Java -->
+            <!-- Title input -->
             <TextView
                 android:id="@+id/tvLabelTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
                 android:textStyle="bold"
                 android:textSize="14sp"
                 android:textColor="#202020"/>
 
-            <!-- ✅ No hint in XML — set via setHint() in Java -->
             <EditText
                 android:id="@+id/etTitle"
                 android:layout_width="match_parent"
@@ -216,7 +160,7 @@
                 android:padding="14dp"
                 android:textSize="14sp"/>
 
-            <!-- ✅ Description label — set via Java -->
+            <!-- Description input -->
             <TextView
                 android:id="@+id/tvLabelDesc"
                 android:layout_width="wrap_content"
@@ -226,18 +170,17 @@
                 android:textSize="14sp"
                 android:textColor="#202020"/>
 
-            <!-- ✅ No hint in XML -->
             <EditText
                 android:id="@+id/etDesc"
                 android:layout_width="match_parent"
-                android:layout_height="120dp"
+                android:layout_height="100dp"
                 android:layout_marginTop="6dp"
                 android:gravity="top"
                 android:background="@drawable/bg_input"
                 android:padding="14dp"
                 android:textSize="14sp"/>
 
-            <!-- Image + Audio row -->
+            <!-- Image + Audio Record Buttons -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -258,7 +201,6 @@
                         android:layout_height="18dp"
                         android:src="@android:drawable/ic_menu_camera"
                         app:tint="#2563EB"/>
-                    <!-- ✅ tvBtnAddImage — set via Java -->
                     <TextView
                         android:id="@+id/tvBtnAddImage"
                         android:layout_width="wrap_content"
@@ -280,11 +222,11 @@
                     android:orientation="horizontal"
                     android:padding="10dp">
                     <ImageView
+                        android:id="@+id/ivBtnAddAudio"
                         android:layout_width="18dp"
                         android:layout_height="18dp"
                         android:src="@android:drawable/ic_btn_speak_now"
                         app:tint="#A21CAF"/>
-                    <!-- ✅ tvBtnAddAudio — set via Java -->
                     <TextView
                         android:id="@+id/tvBtnAddAudio"
                         android:layout_width="wrap_content"
@@ -374,11 +316,23 @@
                     android:contentDescription="Delete audio" />
             </LinearLayout>
 
+            <!-- 🎙️ Voice recognition & auto-selected status from Audio -->
+            <TextView
+                android:id="@+id/tvVoiceStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:padding="10dp"
+                android:textSize="13sp"
+                android:textColor="#1565C0"
+                android:background="#E3F2FD"
+                android:visibility="gone"/>
+
             <!-- ══ EXPIRY SECTION ══ -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
+                android:layout_marginTop="16dp"
                 android:background="#FFF8F0"
                 android:padding="14dp"
                 android:orientation="vertical">
@@ -389,7 +343,6 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
-                    <!-- ✅ tvLabelExpiry — set via Java (bilingual) -->
                     <TextView
                         android:id="@+id/tvLabelExpiry"
                         android:layout_width="0dp"
@@ -399,10 +352,6 @@
                         android:textSize="15sp"
                         android:textColor="#202020"/>
 
-                    <!--
-                        ✅ tvExpiryMax — "max 7 days" / "সর্বোচ্চ ৭ দিন"
-                        Set via Java. Visible always so user knows the limit.
-                    -->
                     <TextView
                         android:id="@+id/tvExpiryMax"
                         android:layout_width="wrap_content"
@@ -411,7 +360,6 @@
                         android:textColor="#EF4444"/>
                 </LinearLayout>
 
-                <!-- ✅ tvExpiryInfo — "Post disappears automatically..." — set via Java -->
                 <TextView
                     android:id="@+id/tvExpiryInfo"
                     android:layout_width="wrap_content"
@@ -421,14 +369,12 @@
                     android:textSize="12sp"
                     android:textColor="#6B7280"/>
 
-                <!-- Number + Unit row -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
-                    <!-- ✅ No hint in XML — set via setHint() in Java -->
                     <EditText
                         android:id="@+id/etExpiryValue"
                         android:layout_width="0dp"
@@ -454,10 +400,8 @@
                         android:popupBackground="@drawable/bg_spinner_popup_white"
                         android:paddingStart="4dp"
                         android:paddingEnd="4dp"/>
-
                 </LinearLayout>
 
-                <!-- Live expiry preview -->
                 <TextView
                     android:id="@+id/tvExpiryPreview"
                     android:layout_width="match_parent"
@@ -471,10 +415,119 @@
                     android:gravity="center"
                     android:visibility="gone"
                     android:background="#E3F2FD"/>
-
             </LinearLayout>
 
-            <!-- Navigation buttons -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="16dp">
+
+                <Button
+                    android:id="@+id/btnNextStep2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="56dp"
+                    android:padding="12dp"
+                    android:textSize="16sp"
+                    android:textAllCaps="false"
+                    android:textColor="@android:color/white"
+                    android:backgroundTint="#1565C0"
+                    android:background="@drawable/bg_btn_publish"/>
+
+                <Button
+                    android:id="@+id/btnBackStep2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
+                    android:layout_marginTop="8dp"
+                    android:padding="10dp"
+                    android:textAllCaps="false"
+                    android:textColor="#1F2937"
+                    android:backgroundTint="#E5E7EB"
+                    android:background="@drawable/bg_btn_gray"/>
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- ══ STEP 3: PRODUCTS & AUTO-SELECTION REVIEW (Swapped with Step 2) ══ -->
+    <ScrollView
+        android:id="@+id/stepProducts"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:id="@+id/tvStep3Title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textStyle="bold"
+                android:textSize="17sp"
+                android:textColor="#111111"/>
+
+            <TextView
+                android:id="@+id/tvStep3Subtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textColor="#6B7280"
+                android:layout_marginBottom="10dp"/>
+
+            <!-- Auto-selected Voice Banner -->
+            <LinearLayout
+                android:id="@+id/llAutoSelectedBanner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="#E8F5E9"
+                android:orientation="horizontal"
+                android:padding="12dp"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="10dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🎙️"
+                    android:textSize="18sp"/>
+
+                <TextView
+                    android:id="@+id/tvAutoSelectedBanner"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:textSize="13sp"
+                    android:textColor="#1B5E20"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+
+            <EditText
+                android:id="@+id/etCustomCategory"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:background="@drawable/bg_input"
+                android:padding="14dp"
+                android:visibility="gone"
+                android:textSize="14sp"
+                android:layout_marginBottom="10dp"/>
+
+            <LinearLayout
+                android:id="@+id/llProductList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"/>
+
+            <!-- Navigation buttons: Back to Step 2 & Publish -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -482,7 +535,6 @@
                 android:layout_marginTop="20dp"
                 android:layout_marginBottom="16dp">
 
-                <!-- ✅ No hardcoded text — set via Java -->
                 <Button
                     android:id="@+id/btnBackStep3"
                     android:layout_width="0dp"
@@ -491,7 +543,6 @@
                     android:background="@drawable/bg_btn_gray"
                     android:layout_marginEnd="8dp"/>
 
-                <!-- ✅ No hardcoded text — set via Java -->
                 <Button
                     android:id="@+id/btnPublish"
                     android:layout_width="0dp"

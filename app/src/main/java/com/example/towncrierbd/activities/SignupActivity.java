@@ -9,6 +9,7 @@ import android.location.Geocoder;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Looper;
+import android.view.View;
 import android.widget.*;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -94,6 +95,7 @@ public class SignupActivity extends AppCompatActivity {
         btnSignup.setOnClickListener(v -> doSignup());
         tvGotoLogin.setOnClickListener(v -> finish());
 
+        setupLanguageToggle();
         if (tvLangToggle != null) {
             tvLangToggle.setOnClickListener(v -> {
                 LanguageManager.toggle(this);
@@ -168,6 +170,34 @@ public class SignupActivity extends AppCompatActivity {
         if (etEmail    != null) etEmail.setHint(s.signupHintEmail());
         if (etDob      != null) etDob.setHint(s.signupHintDob());
         if (etPassword != null) etPassword.setHint(s.signupHintPassword());
+    }
+
+    private void setupLanguageToggle() {
+        TextView tvLangBn = findViewById(R.id.tvLangBn);
+        TextView tvLangEn = findViewById(R.id.tvLangEn);
+
+        if (tvLangBn == null || tvLangEn == null) return;
+
+        boolean isBn = LanguageManager.isBangla(this);
+        if (isBn) {
+            tvLangBn.setBackgroundResource(R.drawable.bg_lang_active_pill);
+            tvLangBn.setTextColor(android.graphics.Color.parseColor("#1565C0"));
+            tvLangEn.setBackground(null);
+            tvLangEn.setTextColor(android.graphics.Color.parseColor("#B0D2FF"));
+        } else {
+            tvLangEn.setBackgroundResource(R.drawable.bg_lang_active_pill);
+            tvLangEn.setTextColor(android.graphics.Color.parseColor("#1565C0"));
+            tvLangBn.setBackground(null);
+            tvLangBn.setTextColor(android.graphics.Color.parseColor("#B0D2FF"));
+        }
+
+        View.OnClickListener onToggle = v -> {
+            LanguageManager.toggle(this);
+            recreate();
+        };
+
+        tvLangBn.setOnClickListener(onToggle);
+        tvLangEn.setOnClickListener(onToggle);
     }
 
     private void routeLoggedInUser(String uid) {
@@ -250,14 +280,20 @@ public class SignupActivity extends AppCompatActivity {
 
     private void doSignup() {
         AppStrings s = AppStrings.get(this);
-        String name  = etName.getText().toString().trim();
-        String phone = etPhone.getText().toString().trim();
+        String name  = com.example.towncrierbd.utils.ProfileValidation.name(etName.getText().toString());
+        String phone = com.example.towncrierbd.utils.ProfileValidation.phone(etPhone.getText().toString());
         String email = etEmail.getText().toString().trim();
         String pass  = etPassword.getText().toString().trim();
 
         if (name.isEmpty() || email.isEmpty() || pass.isEmpty()) {
             toast(s.signupRequiredFields());
             return;
+        }
+        if (!com.example.towncrierbd.utils.ProfileValidation.validName(name)) {
+            etName.setError(LanguageManager.isEnglish(this)?"Use a real name: letters, spaces, apostrophes, periods or single hyphens (2–80 characters).":"নামে অক্ষর, স্পেস, অ্যাপস্ট্রফি, ডট বা একটি হাইফেন ব্যবহার করুন (২–৮০ অক্ষর)।");etName.requestFocus();return;
+        }
+        if (!com.example.towncrierbd.utils.ProfileValidation.validPhone(phone)) {
+            etPhone.setError(LanguageManager.isEnglish(this)?"Enter an 11-digit Bangladesh mobile number":"বাংলাদেশের ১১ সংখ্যার মোবাইল নম্বর লিখুন");etPhone.requestFocus();return;
         }
         if (pass.length() < 6) {
             toast(s.signupPasswordShort());

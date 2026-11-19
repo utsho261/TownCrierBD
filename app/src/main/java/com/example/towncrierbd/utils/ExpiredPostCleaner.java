@@ -44,8 +44,19 @@ public class ExpiredPostCleaner {
                         for (DataSnapshot s : snapshot.getChildren()) {
                             Announcement a = s.getValue(Announcement.class);
                             if (a == null) continue;
+                            if (a.getId() == null || a.getId().isEmpty()) a.setId(s.getKey());
+                            if ("delivered".equals(a.getStatus())) continue;
 
-                            // ✅ Auto-deactivate if expired (keep in database so announcer can reactivate/edit later)
+                            if (RequestLifecycle.request(a)) {
+                                RequestBidManager.syncExpiredBidsIfNeeded(a, now);
+                                long orig = RequestBidManager.getOriginalDeadline(a);
+                                if (orig > 0 && now > orig && myUid.equals(a.getUserId()) && a.isActive()) {
+                                    s.getRef().child("active").setValue(false);
+                                }
+                                continue;
+                            }
+
+                            // ✅ Auto-deactivate expired announcements
                             if (a.getExpireAt() > 0
                                     && now > a.getExpireAt()
                                     && myUid.equals(a.getUserId())) {

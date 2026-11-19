@@ -35,6 +35,7 @@ public class InboxActivity extends AppCompatActivity {
         public String otherUid;
         public String otherName;
         public String lastMessage;
+        public String announcementId;
         public long   lastTimestamp;
         public int    unreadCount;
 
@@ -97,6 +98,7 @@ public class InboxActivity extends AppCompatActivity {
 
             h.itemView.setOnClickListener(v -> {
                 Intent i = new Intent(v.getContext(), ChatActivity.class);
+                i.putExtra("announcementId",c.announcementId);
                 i.putExtra(ChatActivity.EXTRA_OTHER_UID,  c.otherUid);
                 i.putExtra(ChatActivity.EXTRA_OTHER_NAME, name);
                 v.getContext().startActivity(i);
@@ -194,7 +196,8 @@ public class InboxActivity extends AppCompatActivity {
                         long ts = msg.getTimestamp();
                         if (ts > lastTs) {
                             lastTs   = ts;
-                            lastText = msg.getText() != null ? msg.getText() : "";
+                            lastText = msg.getAudioUrl()!=null && !msg.getAudioUrl().isEmpty()?"🎙 Voice offer":msg.getText() != null ? msg.getText() : "";
+                            conv.announcementId=msg.getAnnouncementId();
                         }
 
                         // ✅ FIX: Count only messages from the OTHER user that are unread

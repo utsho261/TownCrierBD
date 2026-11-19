@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:gravity="center_horizontal"
+    android:background="@drawable/bg_create_card">
+
+    <!-- Header status with recording indicator -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="14dp">
+
+        <View
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:background="@drawable/bg_recording_dot"
+            android:layout_marginEnd="8dp"/>
+
+        <TextView
+            android:id="@+id/tvRecordTimer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="00:00"
+            android:textColor="#E11D48"
+            android:textSize="18sp"
+            android:textStyle="bold"/>
+    </LinearLayout>
+
+    <!-- Reference Waveform Capsule (Matches user uploaded image) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:background="@drawable/bg_voice_capsule"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:layout_marginBottom="14dp">
+
+        <com.example.towncrierbd.views.WaveformView
+            android:id="@+id/waveformLive"
+            android:layout_width="match_parent"
+            android:layout_height="36dp"/>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tvRecordPrompt"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="মাইক্রোফোনে কথা বলুন..."
+        android:textColor="#64748B"
+        android:textSize="13sp"
+        android:layout_marginBottom="20dp"/>
+
+    <!-- Action buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCancelRecord"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_weight="1"
+            android:text="বাতিল"
+            android:textAllCaps="false"
+            android:textColor="#64748B"
+            app:strokeColor="#CBD5E1"
+            app:cornerRadius="12dp"
+            android:layout_marginEnd="8dp"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnStopRecord"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_weight="1"
+            android:text="⏹ থামান"
+            android:textAllCaps="false"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"
+            app:backgroundTint="#E11D48"
+            app:cornerRadius="12dp"
+            android:layout_marginStart="8dp"/>
+    </LinearLayout>
+
+</LinearLayout>

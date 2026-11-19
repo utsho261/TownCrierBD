@@ -137,14 +137,18 @@ public class AppStrings {
             int m = (int) (km * 1000);
             return p("within " + m + " m  ▾", m + " মি-এর মধ্যে  ▾");
         }
-        return p("within " + (int) km + " km  ▾", (int) km + " কিমি-এর মধ্যে  ▾");
+        if (km == (int) km) {
+            return p("within " + (int) km + " km  ▾", (int) km + " কিমি-এর মধ্যে  ▾");
+        }
+        return p(String.format(java.util.Locale.ENGLISH, "within %.1f km  ▾", km),
+                 String.format(java.util.Locale.ENGLISH, "%.1f কিমি-এর মধ্যে  ▾", km));
     }
 
-    /** Radius options shown in dialog */
+    /** Radius options shown in dialog: 500m to 3km */
     public String[] feedRadiusOptions() {
         return en
-                ? new String[]{"100 m", "500 m", "1 km", "2 km", "3 km"}
-                : new String[]{"১০০ মি", "৫০০ মি", "১ কিমি", "২ কিমি", "৩ কিমি"};
+                ? new String[]{"500 m", "1 km", "1.5 km", "2 km", "2.5 km", "3 km"}
+                : new String[]{"৫০০ মি", "১ কিমি", "১.৫ কিমি", "২ কিমি", "২.৫ কিমি", "৩ কিমি"};
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -213,25 +217,52 @@ public class AppStrings {
     // Step 1
     public String addStep1Title()         { return p("Select Categories", "ক্যাটাগরি নির্বাচন করুন"); }
     public String addStep1Subtitle()      { return p("Choose all that apply", "প্রযোজ্য সব নির্বাচন করুন"); }
-    public String addStep1Next()          { return p("Next: Choose Products →", "পরবর্তী: পণ্য বাছুন →"); }
+    public String addStep1Next()          { return p("Next: Post Details →", "পরবর্তী: পোস্টের বিস্তারিত →"); }
     public String addStep1SelectAtLeast() { return p("Please select at least one category", "অন্তত একটি ক্যাটাগরি নির্বাচন করুন"); }
     public String addStep1EditCatHint()   { return p("💡 To add more categories, go to Profile → Edit Categories", "💡 আরও ক্যাটাগরি যোগ করতে, প্রোফাইল → ক্যাটাগরি সম্পাদনা করুন"); }
     public String addStep1Items(int n)    { return p(n + " items", n + " পণ্য"); }
 
-    // Step 2
-    public String addStep2Title()         { return p("Select Products", "পণ্য নির্বাচন করুন"); }
-    public String addStep2Subtitle()      { return p("Buyers can filter by specific items (optional)", "ক্রেতারা নির্দিষ্ট পণ্য দিয়ে ফিল্টার করতে পারবেন (ঐচ্ছিক)"); }
-    public String addStep2CustomHint()    { return p("Describe your 'Others' category (e.g. Flower pot seller)", "'অন্যান্য' ক্যাটাগরি বর্ণনা করুন (যেমন: ফুলের টব বিক্রেতা)"); }
-    public String addStep2SelectAll(String cat) { return p("✓ Select all from " + cat, "✓ " + cat + " থেকে সব নির্বাচন"); }
-    public String addStep2NeedDescribe(String pt) {
+    // Step 2 (Details)
+    public String addStep2Title()         { return p("Post Details", "পোস্টের বিবরণ"); }
+    public String addStep2Subtitle()      { return p("Optional description & announcement audio", "ঐচ্ছিক বিবরণ ও মাইকিং অডিও যুক্ত করুন"); }
+    public String addStep2Back()          { return p("← Back", "← পেছনে"); }
+    public String addStep2Next()          { return p("Next: Select Products →", "পরবর্তী: পণ্য নির্বাচন →"); }
+    public String addStep2VoiceBtn()      { return p("🎤 Speak Announcement", "🎤 মাইকিং মুখে বলুন (অটো নির্বাচন)"); }
+    public String addStep2VoiceListening(){ return p("🎙️ Listening... Speak your announcement", "🎙️ শুনছি... আপনার মাইকিংটি বলুন"); }
+    public String addStep2VoiceRecognized(String text) { return p("🎙️ Heard: \"" + text + "\"", "🎙️ শনাক্তকৃত: \"" + text + "\""); }
+    public String addStep2VoicePrompt()   { return p("Speak your announcement (e.g. Fresh fish, potato, onion available)...", "আপনার মাইকিংটি বলুন (যেমন: তাজা রুই মাছ, আলু, পেঁয়াজ পাওয়া যাচ্ছে)..."); }
+
+    // Step 3 (Products & Auto-Selection)
+    public String addStep3Title()         { return p("Select Products", "পণ্য নির্বাচন করুন"); }
+    public String addStep3Subtitle()      { return p("Items matching your announcement have been auto-selected", "মাইকিং অনুযায়ী পণ্যগুলো স্বয়ংক্রিয়ভাবে নির্বাচিত হয়েছে"); }
+    public String addStep3CustomHint()    { return p("Describe your 'Others' category (e.g. Flower pot seller)", "'অন্যান্য' ক্যাটাগরি বর্ণনা করুন (যেমন: ফুলের টব বিক্রেতা)"); }
+    public String addStep3SelectAll(String cat) { return p("✓ Select all from " + cat, "✓ " + cat + " থেকে সব নির্বাচন"); }
+    public String addStep3NeedDescribe(String pt) {
         return p("Describe what you " + ("request".equals(pt) ? "need" : "sell") + " in the field above.",
                 "উপরের ঘরে আপনি কী " + ("request".equals(pt) ? "চান" : "বিক্রি করেন") + " তা লিখুন।");
     }
-    public String addStep2NoProducts()    { return p("No specific products for selected categories. Proceed to next step.", "নির্বাচিত ক্যাটাগরির জন্য কোনো পণ্য নেই। পরবর্তী ধাপে যান।"); }
-    public String addStep2Back()          { return p("← Back", "← পেছনে"); }
-    public String addStep2Next()          { return p("Next: Post Details →", "পরবর্তী: পোস্টের বিস্তারিত →"); }
+    public String addStep3NoProducts()    { return p("No specific products for selected categories. Proceed to publish.", "নির্বাচিত ক্যাটাগরির জন্য কোনো পণ্য নেই। পোস্ট প্রকাশ করুন।"); }
+    public String addStep3SelectAtLeast() { return p("Please select at least one product", "অন্তত একটি পণ্য নির্বাচন করুন"); }
+    public String addStep3FillTitle()     { return addPublishNoTitle(); }
+    public String addStep3InvalidExpiry() { return addPublishNoExpiry(); }
+    public String addStep3AutoSelectedBanner(int count, String items) {
+        return p("🎙️ " + count + " items auto-selected from voice: " + items,
+                 "🎙️ ভয়েস থেকে " + count + "টি পণ্য স্বয়ংক্রিয়ভাবে নির্বাচিত: " + items);
+    }
+    public String addStep3AutoSelectedBanner(int count) {
+        return p("🎙️ " + count + " items auto-selected", "🎙️ " + count + "টি পণ্য স্বয়ংক্রিয়ভাবে নির্বাচিত");
+    }
+    public String addStep3Back()          { return p("← Back", "← পেছনে"); }
+    public String addStep3Publish()       { return p("Publish ✅", "প্রকাশ করুন ✅"); }
 
-    // Step 3
+    // Compatibility aliases
+    public String addStep2CustomHint()             { return addStep3CustomHint(); }
+    public String addStep2SelectAll(String cat)    { return addStep3SelectAll(cat); }
+    public String addStep2NeedDescribe(String pt)  { return addStep3NeedDescribe(pt); }
+    public String addStep2NoProducts()             { return addStep3NoProducts(); }
+    public String addStep2SelectAtLeast()          { return addStep3SelectAtLeast(); }
+
+    // Step Details labels
     public String addStep3LabelTitle()    { return p("Title *", "শিরোনাম *"); }
     public String addStep3HintTitle()     { return p("e.g. Fresh vegetables available today", "যেমন: আজ তাজা সবজি পাওয়া যাচ্ছে"); }
     public String addStep3LabelDesc()     { return p("Description (optional)", "বিবরণ (ঐচ্ছিক)"); }
@@ -248,8 +279,6 @@ public class AppStrings {
     public String[] addStep3ExpiryUnits() { return new String[]{ addStep3ExpiryUnit0(), addStep3ExpiryUnit1(), addStep3ExpiryUnit2() }; }
     public String addStep3ExpiryPreview(String readable) { return p("⏳ Post will expire in " + readable, "⏳ পোস্টটি " + readable + " পরে মেয়াদ শেষ হবে"); }
     public String addStep3ExpiryOver()    { return p("⚠️ Maximum 7 days allowed", "⚠️ সর্বোচ্চ ৭ দিন অনুমোদিত"); }
-    public String addStep3Back()          { return p("← Back", "← পেছনে"); }
-    public String addStep3Publish()       { return p("Publish ✅", "প্রকাশ করুন ✅"); }
 
     // Expiry human readable
     public String expiryHumanDay(long d)  { return p(d + (d == 1 ? " day" : " days"), d + " দিন"); }
@@ -277,18 +306,22 @@ public class AppStrings {
     public String addStopRecordFirst()    { return p("Please stop recording first", "প্রথমে রেকর্ডিং বন্ধ করুন"); }
 
     // Audio options
-    public String audioOptionRecord()    { return p("🎙️ Record Audio", "🎙️ অডিও রেকর্ড করুন"); }
+    public String audioOptionRecord()    { return p("🎙️ Record with Microphone", "🎙️ মাইক্রোফোন দিয়ে রেকর্ড করুন"); }
     public String audioOptionFile()      { return p("📁 Select Audio File", "📁 অডিও ফাইল নির্বাচন করুন"); }
-    public String audioAddTitle()        { return p("Add Audio", "অডিও যোগ করুন"); }
-    public String audioRecording()       { return p("🔴 Recording... tap again to stop", "🔴 রেকর্ডিং চলছে... থামাতে আবার ট্যাপ করুন"); }
+    public String audioAddTitle()        { return p("Add Announcement Audio", "মাইকিং অডিও যোগ করুন"); }
+    public String audioRecording()       { return p("🔴 Recording... tap Stop when done", "🔴 রেকর্ডিং চলছে... শেষ হলে বন্ধ করুন"); }
     public String audioRecorded()        { return p("✅ Audio recorded", "✅ অডিও রেকর্ড হয়েছে"); }
     public String audioFileSelected()    { return p("✅ Audio file selected", "✅ অডিও ফাইল নির্বাচিত"); }
-    public String audioStopBtn()         { return p("⏹ Stop", "⏹ বন্ধ"); }
+    public String audioStopBtn()         { return p("⏹ Stop", "⏹ বন্ধ করুন"); }
     public String audioAddBtn()          { return p("Add Audio", "অডিও যোগ করুন"); }
     public String audioLoadFailed()      { return p("Audio load failed", "অডিও লোড ব্যর্থ"); }
     public String audioCouldNotRead()    { return p("Could not read audio", "অডিও পড়া যায়নি"); }
     public String audioRecordError(String msg)  { return p("❌ Error: " + msg, "❌ ত্রুটি: " + msg); }
     public String audioStopFailed()      { return p("❌ Stop failed", "❌ বন্ধ করা যায়নি"); }
+    public String audioRecordingTitle()  { return p("🎙️ Recording Voice...", "🎙️ মাইকিং অডিও রেকর্ড হচ্ছে..."); }
+    public String audioRecordingHint()   { return p("Speak into the microphone. Tap 'Stop Recording' when you are done.", "মাইক্রোফোনে আপনার ঘোষণাটি বলুন। বলা শেষ হলে 'রেকর্ড সম্পন্ন করুন' বাটনে চাপুন।"); }
+    public String audioRecordingStop()   { return p("⏹ Stop Recording", "⏹ রেকর্ড সম্পন্ন করুন"); }
+    public String audioRecordingCancel() { return p("Cancel", "বাতিল"); }
 
     // Image options
     public String imageAddTitle()        { return p("Add Image", "ছবি যোগ করুন"); }

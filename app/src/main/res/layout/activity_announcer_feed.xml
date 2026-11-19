@@ -1,267 +1,49 @@
-<?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="#EEF3FB">
-
-    <com.google.android.material.appbar.AppBarLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@android:color/transparent"
-        android:elevation="0dp">
-
-        <!-- No Internet Banner -->
-        <TextView
-            android:id="@+id/bannerNoInternet"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="⚠️  No internet connection"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            android:textSize="13sp"
-            android:gravity="center"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp"
-            android:background="#C62828"
-            android:visibility="gone"/>
-
-        <!-- Header Card -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="14dp"
-            android:layout_marginEnd="14dp"
-            android:layout_marginTop="12dp"
-            android:layout_marginBottom="4dp"
-            app:cardCornerRadius="26dp"
-            app:cardElevation="8dp"
-            app:cardBackgroundColor="#1565C0"
-            app:layout_scrollFlags="scroll|enterAlwaysCollapsed">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:padding="20dp"
-                android:orientation="vertical">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:id="@+id/tvWelcome"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Welcome Back!"
-                            android:textColor="@android:color/white"
-                            android:textStyle="bold"
-                            android:textSize="22sp"/>
-
-                        <!-- ✅ ID added for bilingual -->
-                        <TextView
-                            android:id="@+id/tvNearbyPosts"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Nearby Posts"
-                            android:textColor="#90CAF9"
-                            android:textSize="13sp"
-                            android:layout_marginTop="2dp"/>
+<?xml version='1.0' encoding='utf-8'?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#EEF3FB">
+    <com.google.android.material.appbar.AppBarLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@android:color/transparent" android:elevation="0dp">
+        <TextView android:id="@+id/bannerNoInternet" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="⚠️  No internet connection" android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="13sp" android:gravity="center" android:paddingTop="10dp" android:paddingBottom="10dp" android:background="#C62828" android:visibility="gone" />
+        <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_marginEnd="14dp" android:layout_marginTop="12dp" android:layout_marginBottom="4dp" app:cardCornerRadius="26dp" app:cardElevation="8dp" app:cardBackgroundColor="#1565C0" app:layout_scrollFlags="scroll|enterAlwaysCollapsed">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="20dp" android:orientation="vertical">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                        <TextView android:id="@+id/tvWelcome" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Welcome Back!" android:textColor="@android:color/white" android:textStyle="bold" android:textSize="20sp" />
+                        <TextView android:id="@+id/tvNearbyPosts" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Nearby Posts" android:textColor="#90CAF9" android:textSize="13sp" android:layout_marginTop="2dp" />
                     </LinearLayout>
-
-                    <TextView
-                        android:id="@+id/tvLangToggle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:layout_gravity="end"
-                        android:text="Switch to বাংলা"
-                        android:textColor="#90CAF9"
-                        android:textSize="12sp"
-                        android:textStyle="bold"
-                        android:background="#33FFFFFF"
-                        android:paddingStart="10dp"
-                        android:paddingEnd="10dp"
-                        android:paddingTop="5dp"
-                        android:paddingBottom="5dp"
-                        android:clickable="true"
-                        android:focusable="true"/>
-
-                    <TextView
-                        android:layout_width="42dp"
-                        android:layout_height="42dp"
-                        android:gravity="center"
-                        android:text="📢"
-                        android:textSize="22sp"
-                        android:background="#1976F3"/>
-                </LinearLayout>
-
-                <!-- Location pill -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:background="#1E40AF"
-                    android:padding="14dp"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <TextView
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
-                        android:text="📍"
-                        android:textSize="14sp"
-                        android:gravity="center"/>
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="8dp"
-                        android:orientation="vertical">
-
-                        <!-- ✅ ID added -->
-                        <TextView
-                            android:id="@+id/tvYourLocation"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Your Location"
-                            android:textColor="#90CAF9"
-                            android:textSize="11sp"/>
-
-                        <TextView
-                            android:id="@+id/tvLocationName"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Detecting..."
-                            android:textColor="@android:color/white"
-                            android:textStyle="bold"
-                            android:textSize="16sp"/>
+                    <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginStart="8dp">
+                        <LinearLayout android:id="@+id/layoutLangToggle" android:layout_width="wrap_content" android:layout_height="36dp" android:orientation="horizontal" android:background="@drawable/bg_lang_toggle_track" android:padding="3dp" android:gravity="center_vertical" android:clickable="true" android:focusable="true" android:contentDescription="Toggle Language BN or EN">
+                            <TextView android:id="@+id/tvLangBn" android:layout_width="wrap_content" android:layout_height="match_parent" android:gravity="center" android:paddingStart="10dp" android:paddingEnd="10dp" android:text="বাং" android:textSize="12sp" android:textStyle="bold" />
+                            <TextView android:id="@+id/tvLangEn" android:layout_width="wrap_content" android:layout_height="match_parent" android:gravity="center" android:paddingStart="10dp" android:paddingEnd="10dp" android:text="EN" android:textSize="12sp" android:textStyle="bold" />
+                        </LinearLayout>
+                        <TextView android:id="@+id/tvLangToggle" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+                        <FrameLayout android:id="@+id/btnHeaderInbox" android:layout_width="38dp" android:layout_height="38dp" android:layout_marginStart="8dp" android:background="@drawable/bg_header_icon_btn" android:clickable="true" android:focusable="true" android:contentDescription="Open messages">
+                            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:layout_gravity="center" android:src="@drawable/ic_messenger_chat" app:tint="@android:color/white" />
+                            <View android:id="@+id/dotUnreadInbox" android:layout_width="8dp" android:layout_height="8dp" android:layout_gravity="top|end" android:layout_marginTop="5dp" android:layout_marginEnd="5dp" android:background="@drawable/bg_unread_dot" android:visibility="gone" />
+                        </FrameLayout>
                     </LinearLayout>
-
-                    <TextView
-                        android:id="@+id/tvRadius"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="within 3 km  ▾"
-                        android:textColor="#90CAF9"
-                        android:textSize="13sp"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:paddingStart="8dp"/>
                 </LinearLayout>
-
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:background="#1E40AF" android:padding="14dp" android:orientation="horizontal" android:gravity="center_vertical">
+                    <TextView android:layout_width="18dp" android:layout_height="18dp" android:text="📍" android:textSize="14sp" android:gravity="center" />
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="8dp" android:orientation="vertical">
+                        <TextView android:id="@+id/tvYourLocation" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Your Location" android:textColor="#90CAF9" android:textSize="11sp" />
+                        <TextView android:id="@+id/tvLocationName" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Detecting..." android:textColor="@android:color/white" android:textStyle="bold" android:textSize="16sp" />
+                    </LinearLayout>
+                    <TextView android:id="@+id/tvRadius" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="within 3 km  ▾" android:textColor="#90CAF9" android:textSize="13sp" android:clickable="true" android:focusable="true" android:paddingStart="8dp" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
-
-        <!-- Search Bar -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="14dp"
-            android:layout_marginEnd="14dp"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="8dp"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="4dp"
-            app:cardBackgroundColor="@android:color/white">
-
-            <EditText
-                android:id="@+id/etSearch"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:hint="Search by title, category..."
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:background="@android:color/transparent"
-                android:textSize="14sp"
-                android:inputType="text"
-                android:imeOptions="actionSearch"
-                android:drawableStart="@android:drawable/ic_menu_search"/>
+        <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_marginEnd="14dp" android:layout_marginTop="8dp" android:layout_marginBottom="8dp" app:cardCornerRadius="16dp" app:cardElevation="4dp" app:cardBackgroundColor="@android:color/white">
+            <EditText android:id="@+id/etSearch" android:layout_width="match_parent" android:layout_height="50dp" android:hint="Search by title, category..." android:paddingStart="16dp" android:paddingEnd="16dp" android:background="@android:color/transparent" android:textSize="14sp" android:inputType="text" android:imeOptions="actionSearch" android:drawableStart="@android:drawable/ic_menu_search" />
         </com.google.android.material.card.MaterialCardView>
-
+        <com.google.android.material.button.MaterialButton android:id="@+id/btnTrackAcceptedPaths" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginStart="14dp" android:layout_marginEnd="14dp" android:layout_marginBottom="8dp" android:text="🗺️ Track Paths" android:textAllCaps="false" app:cornerRadius="14dp" app:backgroundTint="#059669" android:contentDescription="Track accepted paths" />
     </com.google.android.material.appbar.AppBarLayout>
-
-    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-        android:id="@+id/swipeRefresh"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rvFeed"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:paddingBottom="90dp" />
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout android:id="@+id/swipeRefresh" android:layout_width="match_parent" android:layout_height="match_parent" app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        <androidx.recyclerview.widget.RecyclerView android:id="@+id/rvFeed" android:layout_width="match_parent" android:layout_height="match_parent" android:clipToPadding="false" android:paddingBottom="90dp" />
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-
-    <LinearLayout
-        android:id="@+id/layoutEmpty"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:gravity="center"
-        android:visibility="gone"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="📭"
-            android:textSize="64sp"/>
-
-        <!-- ✅ IDs added -->
-        <TextView
-            android:id="@+id/tvEmptyTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="No posts nearby"
-            android:textStyle="bold"
-            android:textSize="20sp"
-            android:textColor="#1A237E"/>
-
-        <TextView
-            android:id="@+id/tvEmptySub"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="General users nearby will appear here"
-            android:textSize="14sp"
-            android:textColor="#888888"/>
+    <LinearLayout android:id="@+id/layoutEmpty" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center" android:visibility="gone" app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="📭" android:textSize="64sp" />
+        <TextView android:id="@+id/tvEmptyTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="No posts nearby" android:textStyle="bold" android:textSize="20sp" android:textColor="#1A237E" />
+        <TextView android:id="@+id/tvEmptySub" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="General users nearby will appear here" android:textSize="14sp" android:textColor="#888888" />
     </LinearLayout>
-
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/bottomNav"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:background="@android:color/white"
-        android:elevation="8dp"
-        app:menu="@menu/menu_bottom_nav"
-        app:itemIconTint="@android:color/holo_blue_dark"
-        app:itemTextColor="@android:color/holo_blue_dark"/>
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabAdd"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_marginEnd="18dp"
-        android:layout_marginBottom="76dp"
-        android:elevation="16dp"
-        app:srcCompat="@android:drawable/ic_input_add"
-        app:backgroundTint="#1565C0"
-        android:contentDescription="Add announcement"/>
-
+    <com.google.android.material.bottomnavigation.BottomNavigationView android:id="@+id/bottomNav" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_gravity="bottom" android:background="@android:color/white" android:elevation="8dp" app:menu="@menu/menu_bottom_nav" app:itemIconTint="@android:color/holo_blue_dark" app:itemTextColor="@android:color/holo_blue_dark" />
+    <com.google.android.material.floatingactionbutton.FloatingActionButton android:id="@+id/fabAdd" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="bottom|end" android:layout_marginEnd="18dp" android:layout_marginBottom="76dp" android:elevation="16dp" app:srcCompat="@android:drawable/ic_input_add" app:backgroundTint="#1565C0" android:contentDescription="Add announcement" />
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

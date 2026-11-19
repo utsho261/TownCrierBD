@@ -18,54 +18,112 @@
         android:id="@+id/cardHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        app:cardCornerRadius="18dp"
-        app:cardElevation="8dp"
-        app:cardUseCompatPadding="true"
+        android:layout_marginStart="14dp"
+        android:layout_marginEnd="14dp"
+        android:layout_marginTop="14dp"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="6dp"
+        app:cardBackgroundColor="@android:color/white"
+        app:strokeWidth="0dp"
         app:layout_anchor="@id/map"
         app:layout_anchorGravity="top">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:padding="16dp"
-            android:orientation="vertical"
-            android:background="@android:color/holo_blue_dark">
+            android:padding="14dp"
+            android:orientation="vertical">
 
+            <!-- Top Row: Back button, Title & Subtitle, Radius Filter Pill -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <TextView
-                    android:id="@+id/tvHeaderTitle"
+                <!-- Back to Feed Button -->
+                <ImageView
+                    android:id="@+id/btnBack"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="@drawable/bg_map_circle_btn"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_arrow_back"
+                    app:tint="#1E293B"
+                    android:contentDescription="Back"
+                    android:clickable="true"
+                    android:focusable="true"/>
+
+                <!-- Title & Range Info -->
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Map View"
-                    android:textStyle="bold"
-                    android:textSize="18sp"
-                    android:textColor="@android:color/white"/>
+                    android:layout_marginStart="10dp"
+                    android:layout_marginEnd="8dp"
+                    android:orientation="vertical">
 
-                <ImageView
+                    <TextView
+                        android:id="@+id/tvHeaderTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Map View"
+                        android:textStyle="bold"
+                        android:textSize="17sp"
+                        android:textColor="#0F172A"/>
+
+                    <TextView
+                        android:id="@+id/tvRadius"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Within 3 km • Detecting..."
+                        android:textColor="#64748B"
+                        android:textSize="12sp"
+                        android:layout_marginTop="1dp"/>
+                </LinearLayout>
+
+                <!-- Radius Filter Pill Button -->
+                <LinearLayout
                     android:id="@+id/btnFilter"
-                    android:layout_width="36dp"
+                    android:layout_width="wrap_content"
                     android:layout_height="36dp"
-                    android:padding="6dp"
-                    android:src="@android:drawable/ic_menu_sort_by_size"
-                    app:tint="@android:color/white"
-                    android:contentDescription="Filter" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_map_radius_pill"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:contentDescription="Select range">
+
+                    <TextView
+                        android:id="@+id/tvRadiusPill"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="📍 3 km ▾"
+                        android:textColor="#1565C0"
+                        android:textStyle="bold"
+                        android:textSize="12sp"/>
+                </LinearLayout>
+
             </LinearLayout>
 
-            <TextView
-                android:id="@+id/tvRadius"
-                android:layout_width="wrap_content"
+            <!-- Horizontal Carousel of Nearest Posts (Only shown if items exist) -->
+            <HorizontalScrollView
+                android:id="@+id/scrollNearest"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Nearby Announcements"
-                android:textColor="@android:color/white"
-                android:alpha="0.9"
-                android:layout_marginTop="6dp"/>
+                android:layout_marginTop="10dp"
+                android:scrollbars="none"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:id="@+id/nearestChipsLayout"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"/>
+            </HorizontalScrollView>
+
         </LinearLayout>
 
     </com.google.android.material.card.MaterialCardView>
@@ -78,7 +136,7 @@
         android:orientation="vertical"
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="250dp"
+        android:layout_marginBottom="36dp"
         android:gravity="center"
         android:elevation="16dp">
 

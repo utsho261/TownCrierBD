@@ -29,6 +29,8 @@ import com.example.towncrierbd.activities.AnnouncementDetailActivity;
 import com.example.towncrierbd.activities.ChatActivity;
 import com.example.towncrierbd.models.Announcement;
 import com.example.towncrierbd.utils.AppStrings;
+import com.example.towncrierbd.utils.PostWorkflow;
+import com.example.towncrierbd.utils.PostCatalog;
 import com.example.towncrierbd.utils.CategoryConfig;
 import com.example.towncrierbd.utils.Constants;
 import com.example.towncrierbd.utils.DistanceUtil;
@@ -49,6 +51,12 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
     private final Context context;
     private final List<Announcement> items = new ArrayList<>();
 
+    private final java.util.Set<String> highlighted=new java.util.HashSet<>();
+    private boolean hasMore;
+    private Runnable moreAction;
+    public void setHighlighted(java.util.Set<String> ids){highlighted.clear();highlighted.addAll(ids);notifyDataSetChanged();}
+    public void setShowMore(boolean more,Runnable action){hasMore=more;moreAction=action;notifyDataSetChanged();}
+    @Override public int getItemViewType(int position){return position==items.size()?1:0;}
     private double myLat = 0, myLng = 0;
     private boolean hasMyLoc        = false;
     private boolean showEditDelete   = false;
@@ -113,6 +121,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
     @NonNull
     @Override
     public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        if(viewType==1){Button button=new Button(context);button.setLayoutParams(new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT));return new VH(button);}
         View v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_announcement, parent, false);
         return new VH(v);
@@ -120,6 +129,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
 
     @Override
     public void onBindViewHolder(@NonNull VH h, int pos) {
+        if(pos==items.size()){((Button)h.itemView).setText(PostCatalog.text(context,"Show 5 more","আরও ৫টি দেখুন"));h.itemView.setOnClickListener(v->{if(moreAction!=null)moreAction.run();});return;}
         Announcement a = items.get(pos);
         AppStrings s = AppStrings.get(context);
 
@@ -130,7 +140,8 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         String badgeDisplay = LanguageManager.isEnglish(context)
                 ? badgeEn
                 : getCategoryBn(badgeEn);
-        if (h.tvBadge != null) h.tvBadge.setText(badgeDisplay);
+        if (h.tvBadge != null) h.tvBadge.setText((highlighted.contains(a.getId())?"★ ":"")+badgeDisplay);
+        ((androidx.cardview.widget.CardView)h.itemView).setCardBackgroundColor(highlighted.contains(a.getId())?0xFFFFF8DF:0xFFFFFFFF);
 
         // ── Translate state for this item ──────────────────────────────────
         String itemId = safe(a.getId());
@@ -170,13 +181,16 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
 
         // ── Expiry ─────────────────────────────────────────────────────────
         if (h.tvExpiry != null) {
-            String expiry = getExpiryText(a.getExpireAt(), s);
+            long displayExpireAt = PostWorkflow.request(a)
+                    ? com.example.towncrierbd.utils.RequestBidManager.getEffectiveDeadline(a, System.currentTimeMillis())
+                    : a.getExpireAt();
+            String expiry = getExpiryText(displayExpireAt, s);
             if (expiry.isEmpty()) {
                 h.tvExpiry.setVisibility(View.GONE);
             } else {
                 h.tvExpiry.setVisibility(View.VISIBLE);
                 h.tvExpiry.setText(expiry);
-                long remaining = a.getExpireAt() - System.currentTimeMillis();
+                long remaining = displayExpireAt - System.currentTimeMillis();
                 long hours = remaining / 3600000L;
                 if (hours < 1)      h.tvExpiry.setTextColor(0xFFD32F2F);
                 else if (hours < 6) h.tvExpiry.setTextColor(0xFFF57C00);
@@ -335,92 +349,117 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             });
         }
 
-        // ── Action buttons (feed vs profile mode) ─────────────────────────
-        if (showEditDelete) {
+        // ── Action buttons (feed vs profile/owner mode) ───────────────────
+        boolean isOwner = PostWorkflow.owns(a);
+        boolean showOwnerControls = showEditDelete || isOwner;
+        boolean isBn = LanguageManager.isBangla(context);
+
+        // Owner badge indicator
+        if (h.tvOwnerBadge != null) {
+            if (isOwner) {
+                h.tvOwnerBadge.setVisibility(View.VISIBLE);
+                h.tvOwnerBadge.setText(isBn ? "👤 আপনার পোস্ট" : "👤 Your Post");
+            } else {
+                h.tvOwnerBadge.setVisibility(View.GONE);
+            }
+        }
+
+        if (showOwnerControls) {
             if (h.btnListen        != null) h.btnListen.setVisibility(View.GONE);
             if (h.btnChat          != null) h.btnChat.setVisibility(View.GONE);
             if (h.btnCall          != null) h.btnCall.setVisibility(View.GONE);
             if (h.btnDirection     != null) h.btnDirection.setVisibility(View.GONE);
+            if (h.layoutFeedActions!= null) h.layoutFeedActions.setVisibility(View.GONE);
             if (h.layoutEditDelete != null) h.layoutEditDelete.setVisibility(View.VISIBLE);
-            // Hide translate in profile/edit mode — not needed there
+            // Hide translate in profile/owner mode — not needed there
             if (h.btnTranslate     != null) h.btnTranslate.setVisibility(View.GONE);
 
             // Active status badge
             if (h.tvActiveStatus != null) {
                 h.tvActiveStatus.setVisibility(View.VISIBLE);
                 long now = System.currentTimeMillis();
-                boolean isExpired = a.getExpireAt() > 0 && now > a.getExpireAt();
+                boolean isExpired = !com.example.towncrierbd.utils.RequestLifecycle.live(a, now) && a.isActive();
                 if (!a.isActive()) {
                     h.tvActiveStatus.setText(s.cardStatusInactive());
                     h.tvActiveStatus.setTextColor(0xFFD32F2F);
-                    h.tvActiveStatus.setBackground(roundedStatusBg(0xFFFFEBEE, 6));
+                    h.tvActiveStatus.setBackground(roundedStatusBg(0xFFFFEBEE, 12));
                 } else if (isExpired) {
                     h.tvActiveStatus.setText(s.cardStatusExpired());
                     h.tvActiveStatus.setTextColor(0xFFC62828);
-                    h.tvActiveStatus.setBackground(roundedStatusBg(0xFFFFEBEE, 6));
+                    h.tvActiveStatus.setBackground(roundedStatusBg(0xFFFFEBEE, 12));
                 } else {
                     h.tvActiveStatus.setText(s.cardStatusActive());
                     h.tvActiveStatus.setTextColor(0xFF2E7D32);
-                    h.tvActiveStatus.setBackground(roundedStatusBg(0xFFE8F5E9, 6));
+                    h.tvActiveStatus.setBackground(roundedStatusBg(0xFFE8F5E9, 12));
                 }
             }
 
-            // Toggle active / deactive button
-            if (h.btnToggleActive != null) {
-                long now = System.currentTimeMillis();
-                boolean isExpired = a.getExpireAt() > 0 && now > a.getExpireAt();
-                boolean isCurrentlyLive = a.isActive() && !isExpired;
-
-                if (isCurrentlyLive) {
-                    h.btnToggleActive.setText(s.cardDeactivate());
-                    h.btnToggleActive.setBackgroundTintList(ColorStateList.valueOf(0xFFF57C00));
-                    h.btnToggleActive.setOnClickListener(v -> {
-                        if (a.getId() == null) return;
-                        FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS)
-                                .child(a.getId()).child("active").setValue(false);
-                        a.setActive(false);
-                        int adapterPos = h.getAdapterPosition();
-                        if (adapterPos >= 0 && adapterPos < items.size()) notifyItemChanged(adapterPos);
-                        Toast.makeText(context, s.cardPostDeactivated(), Toast.LENGTH_SHORT).show();
-                    });
-                } else {
-                    h.btnToggleActive.setText(s.cardActivate());
-                    h.btnToggleActive.setBackgroundTintList(ColorStateList.valueOf(0xFF2E7D32));
-                    h.btnToggleActive.setOnClickListener(v -> showReactivateDialog(a, h.getAdapterPosition()));
-                }
-            }
-
-            if (h.btnEdit   != null) h.btnEdit.setText(s.cardEdit());
-            if (h.btnDelete != null) h.btnDelete.setText(s.cardDelete());
-            if (h.btnDetails!= null) h.btnDetails.setText(s.cardDetails());
-
+            // Edit button
             if (h.btnEdit != null) {
+                h.btnEdit.setVisibility(View.VISIBLE);
+                h.btnEdit.setText(isBn ? "✏️ সম্পাদনা" : "✏️ Edit");
                 h.btnEdit.setOnClickListener(v -> {
                     Intent intent = new Intent(context, AddAnnouncementActivity.class);
                     intent.putExtra(AddAnnouncementActivity.EXTRA_EDIT_ID, a.getId());
                     context.startActivity(intent);
                 });
             }
+
+            // Delete button - PERMANENT DELETE WITH CONFIRMATION
             if (h.btnDelete != null) {
-                h.btnDelete.setOnClickListener(v ->
-                        new AlertDialog.Builder(context)
-                                .setTitle(s.cardDeleteConfirmTitle())
-                                .setMessage(s.cardDeleteConfirmMsg())
-                                .setPositiveButton(s.delete(),
-                                        (d, w) -> deletePost(a, h.getAdapterPosition()))
-                                .setNegativeButton(s.cancel(), null)
-                                .show());
+                h.btnDelete.setVisibility(View.VISIBLE);
+                h.btnDelete.setText(isBn ? "🗑️ মুছুন" : "🗑️ Delete");
+                h.btnDelete.setOnClickListener(v -> confirmAndDeletePost(a, h.getAdapterPosition()));
             }
-            if (h.btnDetails != null) h.btnDetails.setOnClickListener(v -> openDetail(a));
+
+            // Toggle active / deactivate button
+            if (h.btnToggleActive != null) {
+                if (PostWorkflow.request(a)) {
+                    h.btnToggleActive.setVisibility(View.GONE);
+                } else {
+                    h.btnToggleActive.setVisibility(View.VISIBLE);
+                    long now = System.currentTimeMillis();
+                    boolean isExpired = !com.example.towncrierbd.utils.RequestLifecycle.live(a, now) && a.isActive();
+                    boolean isCurrentlyLive = a.isActive() && !isExpired;
+
+                    if (isCurrentlyLive) {
+                        h.btnToggleActive.setText(isBn ? "⏸ নিষ্ক্রিয়" : "⏸ Deactivate");
+                        h.btnToggleActive.setBackgroundTintList(ColorStateList.valueOf(0xFFF57C00));
+                        h.btnToggleActive.setOnClickListener(v -> {
+                            if (a.getId() == null) return;
+                            FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS)
+                                    .child(a.getId()).child("active").setValue(false);
+                            a.setActive(false);
+                            int adapterPos = h.getAdapterPosition();
+                            if (adapterPos >= 0 && adapterPos < items.size()) notifyItemChanged(adapterPos);
+                            Toast.makeText(context, s.cardPostDeactivated(), Toast.LENGTH_SHORT).show();
+                        });
+                    } else {
+                        h.btnToggleActive.setText(isBn ? "▶ সক্রিয়" : "▶ Activate");
+                        h.btnToggleActive.setBackgroundTintList(ColorStateList.valueOf(0xFF10B981));
+                        h.btnToggleActive.setOnClickListener(v -> showReactivateDialog(a, h.getAdapterPosition()));
+                    }
+                }
+            }
+
+            // Details button
+            if (h.btnDetails != null) {
+                h.btnDetails.setVisibility(View.VISIBLE);
+                h.btnDetails.setText(isBn ? "📄 বিস্তারিত" : "📄 Details");
+                h.btnDetails.setOnClickListener(v -> openDetail(a));
+            }
 
         } else {
+            // Other user's post in feed
             if (h.tvActiveStatus != null) h.tvActiveStatus.setVisibility(View.GONE);
+            if (h.layoutEditDelete != null) h.layoutEditDelete.setVisibility(View.GONE);
+            if (h.layoutFeedActions != null) h.layoutFeedActions.setVisibility(View.VISIBLE);
+            if (h.btnTranslate != null) h.btnTranslate.setVisibility(View.VISIBLE);
+
             if (h.btnListen    != null) { h.btnListen.setVisibility(View.VISIBLE);    h.btnListen.setText(s.cardListen()); }
             if (h.btnChat      != null) { h.btnChat.setVisibility(View.VISIBLE);      h.btnChat.setText(s.cardChat()); }
             if (h.btnCall      != null) { h.btnCall.setVisibility(View.VISIBLE);      h.btnCall.setText(s.cardCall()); }
             if (h.btnDirection != null) { h.btnDirection.setVisibility(View.VISIBLE); h.btnDirection.setText(s.cardDirection()); }
-            if (h.layoutEditDelete != null) h.layoutEditDelete.setVisibility(View.GONE);
-            if (h.btnTranslate != null) h.btnTranslate.setVisibility(View.VISIBLE);
 
             if (h.btnCall != null) {
                 h.btnCall.setOnClickListener(v -> {
@@ -458,6 +497,13 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                 h.btnListen.setOnClickListener(v -> playAudioOrTts(a));
         }
 
+        if(h.workflowPanel!=null)PostWorkflow.bindActions(context,h.workflowPanel,a,()->notifyDataSetChanged());
+        if(h.btnCall!=null)h.btnCall.setVisibility(!showOwnerControls && !safe(a.getPhone()).isEmpty() && (!PostWorkflow.request(a)||a.isShowPhone()) && !PostWorkflow.owns(a)?View.VISIBLE:View.GONE);
+        if(h.btnChat!=null){
+            h.btnChat.setVisibility(!showOwnerControls && !PostWorkflow.chatPeer(a).isEmpty()?View.VISIBLE:View.GONE);
+            h.btnChat.setText("voice".equals(a.getContactMethod())?PostCatalog.text(context,"🎙 Offer","🎙 অফার"):s.cardChat());
+            h.btnChat.setOnClickListener(v->PostWorkflow.chat(context,a));
+        }
         // ── Card click → detail ────────────────────────────────────────────
         if (!disableCardClick) {
             h.itemView.setOnClickListener(v -> openDetail(a));
@@ -568,6 +614,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             dist = s.cardKmAway(fmt);
         }
         Intent intent = new Intent(context, AnnouncementDetailActivity.class);
+        intent.putExtra("announcementId",a.getId());
         // Always pass ORIGINAL text — detail screen has its own translate button
         intent.putExtra(AnnouncementDetailActivity.EXTRA_TITLE,     safe(a.getTitle()));
         intent.putExtra(AnnouncementDetailActivity.EXTRA_DESC,      safe(a.getDescription()));
@@ -592,81 +639,48 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         context.startActivity(intent);
     }
 
-    private void showEditDialog(Announcement a, int pos) {
-        AppStrings s = AppStrings.get(context);
-
-        LinearLayout layout = new LinearLayout(context);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(48, 16, 48, 0);
-
-        TextView labelTitle = new TextView(context);
-        labelTitle.setText(s.cardEditLabelTitle());
-        labelTitle.setTextSize(14);
-        EditText etNewTitle = new EditText(context);
-        etNewTitle.setText(a.getTitle());
-
-        TextView labelDesc = new TextView(context);
-        labelDesc.setText(s.cardEditLabelDesc());
-        labelDesc.setTextSize(14);
-        labelDesc.setPadding(0, 16, 0, 0);
-        EditText etNewDesc = new EditText(context);
-        etNewDesc.setText(a.getDescription());
-        etNewDesc.setMinLines(3);
-
-        layout.addView(labelTitle);
-        layout.addView(etNewTitle);
-        layout.addView(labelDesc);
-        layout.addView(etNewDesc);
+    private void confirmAndDeletePost(Announcement a, int pos) {
+        if (a == null || safe(a.getId()).isEmpty()) return;
+        boolean isBn = LanguageManager.isBangla(context);
+        String title = isBn ? "পোস্ট মুছুন" : "Delete Post";
+        String msg = isBn ? "আপনি কি নিশ্চিত যে এই পোস্টটি মুছে ফেলতে চান? এটি আর ফিরিয়ে আনা যাবে না।"
+                          : "Are you sure you want to delete this post? This cannot be undone.";
+        String yes = isBn ? "মুছুন" : "Delete";
+        String no = isBn ? "বাতিল" : "Cancel";
 
         new AlertDialog.Builder(context)
-                .setTitle(s.cardEditTitle())
-                .setView(layout)
-                .setPositiveButton(s.save(), (d, w) -> {
-                    String newTitle = etNewTitle.getText().toString().trim();
-                    String newDesc  = etNewDesc.getText().toString().trim();
-                    if (newTitle.isEmpty()) {
-                        Toast.makeText(context, s.cardTitleEmpty(), Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    FirebaseDatabase.getInstance()
-                            .getReference(Constants.DB_ANNOUNCEMENTS)
-                            .child(a.getId()).child("title").setValue(newTitle);
-                    FirebaseDatabase.getInstance()
-                            .getReference(Constants.DB_ANNOUNCEMENTS)
-                            .child(a.getId()).child("description").setValue(newDesc);
-                    a.setTitle(newTitle);
-                    a.setDescription(newDesc);
-                    // Clear translate cache since original changed
-                    translateStateMap.remove(safe(a.getId()));
-                    int currentPos = items.indexOf(a);
-                    if (currentPos >= 0) notifyItemChanged(currentPos);
-                    Toast.makeText(context, s.cardUpdated(), Toast.LENGTH_SHORT).show();
+                .setTitle(title)
+                .setMessage(msg)
+                .setPositiveButton(yes, (dialog, which) -> {
+                    String id = a.getId();
+                    FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS)
+                            .child(id).removeValue()
+                            .addOnSuccessListener(unused -> {
+                                int currentPos = pos;
+                                if (currentPos >= 0 && currentPos < items.size() && id.equals(items.get(currentPos).getId())) {
+                                    items.remove(currentPos);
+                                    notifyItemRemoved(currentPos);
+                                    notifyItemRangeChanged(currentPos, items.size());
+                                } else {
+                                    for (int i = 0; i < items.size(); i++) {
+                                        if (id.equals(items.get(i).getId())) {
+                                            items.remove(i);
+                                            notifyItemRemoved(i);
+                                            notifyItemRangeChanged(i, items.size());
+                                            break;
+                                        }
+                                    }
+                                }
+                                String successMsg = isBn ? "পোস্ট সফলভাবে মুছে ফেলা হয়েছে ✅" : "Post deleted successfully ✅";
+                                Toast.makeText(context, successMsg, Toast.LENGTH_SHORT).show();
+                            })
+                            .addOnFailureListener(e -> {
+                                String failMsg = isBn ? "পোস্ট মুছতে ব্যর্থ হয়েছে: " : "Failed to delete post: ";
+                                Toast.makeText(context, failMsg + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            });
                 })
-                .setNegativeButton(s.cancel(), null)
+                .setNegativeButton(no, null)
                 .show();
-    }
-
-    private void deletePost(Announcement a, int pos) {
-        AppStrings s = AppStrings.get(context);
-        if (a.getId() == null) return;
-        if (pos < 0 || pos >= items.size()) return;
-
-        FirebaseDatabase.getInstance()
-                .getReference(Constants.DB_ANNOUNCEMENTS)
-                .child(a.getId())
-                .removeValue()
-                .addOnSuccessListener(v -> {
-                    int currentPos = items.indexOf(a);
-                    if (currentPos >= 0) {
-                        translateStateMap.remove(safe(a.getId()));
-                        items.remove(currentPos);
-                        notifyItemRemoved(currentPos);
-                        notifyItemRangeChanged(currentPos, items.size());
-                    }
-                    Toast.makeText(context, s.cardDeleted(), Toast.LENGTH_SHORT).show();
-                })
-                .addOnFailureListener(e ->
-                        Toast.makeText(context, s.cardDeleteFailed(), Toast.LENGTH_SHORT).show());
     }
 
     private void showReactivateDialog(Announcement a, int pos) {
@@ -692,27 +706,53 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
                     if (a.getId() == null) return;
                     long now = System.currentTimeMillis();
                     long newExpireAt = now + millis[which];
-                    Map<String, Object> updates = new HashMap<>();
-                    updates.put("active", true);
-                    updates.put("time", now);
-                    updates.put("expireAt", newExpireAt);
 
-                    FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS)
-                            .child(a.getId())
-                            .updateChildren(updates)
-                            .addOnSuccessListener(v -> {
-                                a.setActive(true);
-                                a.setTime(now);
-                                a.setExpireAt(newExpireAt);
-                                int currentPos = items.indexOf(a);
-                                if (currentPos >= 0) notifyItemChanged(currentPos);
-                                Toast.makeText(context, s.cardPostActivated(), Toast.LENGTH_SHORT).show();
-                            })
-                            .addOnFailureListener(e ->
-                                    Toast.makeText(context, "Failed to activate post", Toast.LENGTH_SHORT).show());
+                    // Fetch latest live location to ensure reactivated post has current location
+                    try {
+                        com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(context)
+                                .getLastLocation().addOnSuccessListener(loc -> {
+                                    if (loc != null) {
+                                        myLat = loc.getLatitude();
+                                        myLng = loc.getLongitude();
+                                        hasMyLoc = true;
+                                    }
+                                    performReactivate(a, now, newExpireAt, s);
+                                }).addOnFailureListener(e -> performReactivate(a, now, newExpireAt, s));
+                    } catch (SecurityException e) {
+                        performReactivate(a, now, newExpireAt, s);
+                    }
                 })
                 .setNegativeButton(s.cancel(), null)
                 .show();
+    }
+
+    private void performReactivate(Announcement a, long now, long newExpireAt, AppStrings s) {
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("active", true);
+        updates.put("time", now);
+        updates.put("expireAt", newExpireAt);
+        if (hasMyLoc && myLat != 0 && myLng != 0) {
+            updates.put("lat", myLat);
+            updates.put("lng", myLng);
+        }
+
+        FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS)
+                .child(a.getId())
+                .updateChildren(updates)
+                .addOnSuccessListener(v -> {
+                    a.setActive(true);
+                    a.setTime(now);
+                    a.setExpireAt(newExpireAt);
+                    if (hasMyLoc && myLat != 0 && myLng != 0) {
+                        a.setLat(myLat);
+                        a.setLng(myLng);
+                    }
+                    int currentPos = items.indexOf(a);
+                    if (currentPos >= 0) notifyItemChanged(currentPos);
+                    Toast.makeText(context, s.cardPostActivated(), Toast.LENGTH_SHORT).show();
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(context, "Failed to activate post", Toast.LENGTH_SHORT).show());
     }
 
     private GradientDrawable roundedStatusBg(int color, int radiusDp) {
@@ -723,7 +763,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         return gd;
     }
 
-    @Override public int getItemCount() { return items.size(); }
+    @Override public int getItemCount() { return items.size()+(hasMore?1:0); }
 
     private String getRelativeTime(long timeMillis, AppStrings s) {
         if (timeMillis == 0) return "";
@@ -738,18 +778,22 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
     }
 
     public static class VH extends RecyclerView.ViewHolder {
+        LinearLayout workflowPanel;
         View      flImageSlider;
         ViewPager2 vpImageSlider;
         TextView  tvImageIndex;
         TextView  tvBadge, tvTitle, tvDesc, tvAvatar, tvName, tvDistance, tvTime;
-        TextView  tvExpiry, tvAudioBadge, tvActiveStatus;
+        TextView  tvExpiry, tvAudioBadge, tvActiveStatus, tvOwnerBadge;
         Button    btnListen, btnChat, btnCall, btnDirection;
         Button    btnTranslate; // ✅ Only translates title + desc — nothing else
-        View      layoutEditDelete;
+        View      layoutEditDelete, layoutFeedActions;
         Button    btnToggleActive, btnEdit, btnDelete, btnDetails;
 
         public VH(@NonNull View itemView) {
             super(itemView);
+            if(itemView instanceof Button)return;
+            workflowPanel=new LinearLayout(itemView.getContext());workflowPanel.setOrientation(LinearLayout.VERTICAL);workflowPanel.setPadding(32,8,32,8);
+            ((LinearLayout)((ViewGroup)itemView).getChildAt(0)).addView(workflowPanel);
             flImageSlider    = itemView.findViewById(R.id.flImageSlider);
             vpImageSlider    = itemView.findViewById(R.id.vpImageSlider);
             tvImageIndex     = itemView.findViewById(R.id.tvImageIndex);
@@ -762,6 +806,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             tvTime           = itemView.findViewById(R.id.tvTime);
             tvExpiry         = itemView.findViewById(R.id.tvExpiry);
             tvAudioBadge     = itemView.findViewById(R.id.tvAudioBadge);
+            tvOwnerBadge     = itemView.findViewById(R.id.tvOwnerBadge);
             tvActiveStatus   = itemView.findViewById(R.id.tvActiveStatus);
             btnListen        = itemView.findViewById(R.id.btnListen);
             btnChat          = itemView.findViewById(R.id.btnChat);
@@ -769,6 +814,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
             btnDirection     = itemView.findViewById(R.id.btnDirection);
             btnTranslate     = itemView.findViewById(R.id.btnTranslate);
             layoutEditDelete = itemView.findViewById(R.id.layoutEditDelete);
+            layoutFeedActions = itemView.findViewById(R.id.layoutFeedActions);
             btnToggleActive  = itemView.findViewById(R.id.btnToggleActive);
             btnEdit          = itemView.findViewById(R.id.btnEdit);
             btnDelete        = itemView.findViewById(R.id.btnDelete);

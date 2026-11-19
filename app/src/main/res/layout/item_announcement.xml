@@ -4,12 +4,12 @@
     android:id="@+id/cardRoot"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginStart="12dp"
-    android:layout_marginEnd="12dp"
+    android:layout_marginStart="14dp"
+    android:layout_marginEnd="14dp"
     android:layout_marginTop="8dp"
-    android:layout_marginBottom="4dp"
-    app:cardCornerRadius="18dp"
-    app:cardElevation="4dp"
+    android:layout_marginBottom="6dp"
+    app:cardCornerRadius="20dp"
+    app:cardElevation="3dp"
     app:cardUseCompatPadding="true">
 
     <LinearLayout
@@ -21,7 +21,7 @@
         <FrameLayout
             android:id="@+id/flImageSlider"
             android:layout_width="match_parent"
-            android:layout_height="200dp"
+            android:layout_height="210dp"
             android:visibility="gone">
 
             <androidx.viewpager2.widget.ViewPager2
@@ -35,35 +35,36 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="bottom|end"
                 android:layout_margin="12dp"
-                android:background="#80000000"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:paddingTop="2dp"
-                android:paddingBottom="2dp"
+                android:background="#99000000"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
                 android:textColor="@android:color/white"
                 android:textSize="11sp"
+                android:textStyle="bold"
                 android:text="1/1"
                 android:visibility="gone" />
 
         </FrameLayout>
 
-        <!-- Badge row: Category badge + Audio badge + Expiry -->
+        <!-- Badge row: Category badge + Audio badge + Owner badge + Expiry + Active -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="12dp">
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="14dp"
+            android:layout_marginTop="14dp">
 
             <TextView
                 android:id="@+id/tvBadge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="#5E8B1A"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
+                android:background="@drawable/bg_badge_category"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
                 android:paddingTop="5dp"
                 android:paddingBottom="5dp"
                 android:text="Category"
@@ -79,13 +80,30 @@
                 android:text="🔊 Audio"
                 android:textSize="11sp"
                 android:textStyle="bold"
-                android:textColor="#A21CAF"
+                android:textColor="#9333EA"
                 android:visibility="gone"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
                 android:paddingTop="4dp"
                 android:paddingBottom="4dp"
-                android:background="#F5E6FF"/>
+                android:background="@drawable/bg_badge_audio"/>
+
+            <!-- Owner Badge (shown when the post belongs to current user) -->
+            <TextView
+                android:id="@+id/tvOwnerBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="👤 Your Post"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="#1D4ED8"
+                android:visibility="gone"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:background="@drawable/bg_badge_owner"/>
 
             <View
                 android:layout_width="0dp"
@@ -101,12 +119,12 @@
                 android:text="🟢 Active"
                 android:textSize="11sp"
                 android:textStyle="bold"
-                android:textColor="#2E7D32"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
+                android:textColor="#15803D"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
                 android:paddingTop="4dp"
                 android:paddingBottom="4dp"
-                android:background="#E8F5E9"
+                android:background="@drawable/bg_badge_active"
                 android:visibility="gone"/>
 
             <!-- Expiry Countdown -->
@@ -117,13 +135,13 @@
                 android:text="⏳ 24 hrs"
                 android:textSize="11sp"
                 android:textStyle="bold"
-                android:textColor="#388E3C"
+                android:textColor="#B45309"
                 android:visibility="gone"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
                 android:paddingTop="4dp"
                 android:paddingBottom="4dp"
-                android:background="#EDFFF0"/>
+                android:background="@drawable/bg_badge_expiry"/>
 
         </LinearLayout>
 
@@ -132,27 +150,29 @@
             android:id="@+id/tvTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="14dp"
             android:layout_marginTop="10dp"
             android:text="Title"
-            android:textColor="#222222"
+            android:textColor="#0F172A"
             android:textStyle="bold"
-            android:textSize="18sp" />
+            android:textSize="18sp"
+            android:letterSpacing="0.01"/>
 
         <!-- Desc -->
         <TextView
             android:id="@+id/tvDesc"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="14dp"
             android:layout_marginTop="6dp"
             android:text="Description"
-            android:textColor="#555555"
+            android:textColor="#475569"
             android:textSize="14sp"
             android:maxLines="3"
-            android:ellipsize="end"/>
+            android:ellipsize="end"
+            android:lineSpacingMultiplier="1.3"/>
 
         <!-- Time + Translate button row -->
         <LinearLayout
@@ -160,9 +180,9 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="6dp">
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="14dp"
+            android:layout_marginTop="8dp">
 
             <TextView
                 android:id="@+id/tvTime"
@@ -170,11 +190,11 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Just now"
-                android:textColor="#999999"
+                android:textColor="#94A3B8"
                 android:textSize="12sp" />
 
-            <!-- ✅ Translate button — only translates title + description -->
-            <Button
+            <!-- Translate button -->
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnTranslate"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="wrap_content"
@@ -182,6 +202,7 @@
                 android:text="🌐 ইংরেজি"
                 android:textAllCaps="false"
                 android:textSize="11sp"
+                app:cornerRadius="10dp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
                 android:paddingStart="10dp"
@@ -194,21 +215,21 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="14dp"
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
             <TextView
                 android:id="@+id/tvAvatar"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
                 android:gravity="center"
                 android:text="U"
                 android:textStyle="bold"
                 android:textColor="@android:color/white"
-                android:textSize="16sp"
-                android:background="#039BE5" />
+                android:textSize="17sp"
+                android:background="@drawable/bg_avatar_circle" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -224,7 +245,7 @@
                     android:text="User"
                     android:textStyle="bold"
                     android:textSize="14sp"
-                    android:textColor="#333333" />
+                    android:textColor="#1E293B" />
 
                 <TextView
                     android:id="@+id/tvDistance"
@@ -232,7 +253,7 @@
                     android:layout_height="wrap_content"
                     android:text="0.0 km away"
                     android:textSize="12sp"
-                    android:textColor="#777777" />
+                    android:textColor="#64748B" />
             </LinearLayout>
 
         </LinearLayout>
@@ -241,141 +262,199 @@
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="14dp"
             android:layout_marginTop="12dp"
-            android:background="#F0F0F0"/>
+            android:background="#F1F5F9"/>
 
-        <!-- Feed mode: Listen + Chat -->
+        <!-- Feed Mode Actions Container -->
         <LinearLayout
+            android:id="@+id/layoutFeedActions"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="10dp"
-            android:layout_marginBottom="4dp"
-            android:orientation="horizontal">
+            android:orientation="vertical">
 
-            <Button
-                android:id="@+id/btnListen"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="44dp"
-                android:layout_weight="1"
-                android:text="Listen"
-                android:textAllCaps="false"
-                android:textSize="13sp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:layout_marginEnd="6dp"/>
+            <!-- Feed row 1: Listen + Chat -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_marginEnd="14dp"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="4dp"
+                android:orientation="horizontal">
 
-            <Button
-                android:id="@+id/btnChat"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="44dp"
-                android:layout_weight="1"
-                android:text="Chat"
-                android:textAllCaps="false"
-                android:textSize="13sp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnListen"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="🔊 Listen"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="12dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:layout_marginEnd="6dp"/>
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnChat"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="💬 Chat"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/white"
+                    app:cornerRadius="12dp"
+                    app:backgroundTint="#059669"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"/>
+
+            </LinearLayout>
+
+            <!-- Feed row 2: Call + Direction -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_marginEnd="14dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="12dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCall"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="📞 Call"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="12dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:layout_marginEnd="6dp"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDirection"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="🧭 Direction"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="@android:color/white"
+                    app:backgroundTint="#F59E0B"
+                    app:cornerRadius="12dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"/>
+
+            </LinearLayout>
         </LinearLayout>
 
-        <!-- Call + Direction row -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="6dp"
-            android:layout_marginBottom="12dp"
-            android:orientation="horizontal">
-
-            <Button
-                android:id="@+id/btnCall"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="44dp"
-                android:layout_weight="1"
-                android:text="📞 Call"
-                android:textAllCaps="false"
-                android:textSize="13sp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:layout_marginEnd="6dp"/>
-
-            <Button
-                android:id="@+id/btnDirection"
-                android:layout_width="0dp"
-                android:layout_height="44dp"
-                android:layout_weight="1"
-                android:text="🧭 Direction"
-                android:textAllCaps="false"
-                android:textSize="13sp"
-                android:textColor="@android:color/white"
-                android:backgroundTint="#FF7A00"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"/>
-
-        </LinearLayout>
-
-        <!-- Profile mode: Edit / Delete / Details -->
+        <!-- Owner / Profile Mode Actions Container: Edit / Delete / Toggle / Details -->
         <LinearLayout
             android:id="@+id/layoutEditDelete"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="14dp"
+            android:layout_marginTop="10dp"
             android:layout_marginBottom="12dp"
-            android:orientation="horizontal"
+            android:orientation="vertical"
             android:visibility="gone">
 
-            <Button
-                android:id="@+id/btnToggleActive"
-                android:layout_width="0dp"
-                android:layout_height="46dp"
-                android:layout_weight="1.2"
-                android:text="Deactivate"
-                android:textAllCaps="false"
-                android:textSize="12sp"
-                android:backgroundTint="#FF9800"
-                android:textColor="@android:color/white"
-                android:layout_marginEnd="6dp"/>
+            <!-- Row 1: Edit + Delete -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="6dp">
 
-            <Button
-                android:id="@+id/btnEdit"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="46dp"
-                android:layout_weight="1"
-                android:text="Edit"
-                android:textAllCaps="false"
-                android:layout_marginEnd="6dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnEdit"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="✏️ Edit"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    app:backgroundTint="#2563EB"
+                    android:textColor="@android:color/white"
+                    app:cornerRadius="12dp"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:layout_marginEnd="6dp"/>
 
-            <Button
-                android:id="@+id/btnDelete"
-                android:layout_width="0dp"
-                android:layout_height="46dp"
-                android:layout_weight="1"
-                android:text="Delete"
-                android:textAllCaps="false"
-                android:backgroundTint="#F44336"
-                android:textColor="@android:color/white"
-                android:layout_marginEnd="6dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDelete"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="🗑️ Delete"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    app:backgroundTint="#EF4444"
+                    android:textColor="@android:color/white"
+                    app:cornerRadius="12dp"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"/>
+            </LinearLayout>
 
-            <Button
-                android:id="@+id/btnDetails"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="46dp"
-                android:layout_weight="1"
-                android:text="Details"
-                android:textAllCaps="false"
-                android:textSize="13sp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"/>
+            <!-- Row 2: Toggle Active + Details -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnToggleActive"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="Deactivate"
+                    android:textAllCaps="false"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    app:backgroundTint="#F59E0B"
+                    android:textColor="@android:color/white"
+                    app:cornerRadius="12dp"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:layout_marginEnd="6dp"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDetails"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="📄 Details"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    app:backgroundTint="#0F766E"
+                    android:textColor="@android:color/white"
+                    app:cornerRadius="12dp"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"/>
+            </LinearLayout>
 
         </LinearLayout>
 

@@ -28,6 +28,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.example.towncrierbd.R;
+import com.example.towncrierbd.utils.*;
+import android.widget.*;
 import com.example.towncrierbd.adapters.FeedAdapter;
 import com.example.towncrierbd.models.Announcement;
 import com.example.towncrierbd.models.UserModel;
@@ -47,6 +49,10 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     private TextView tvNearbyPosts, tvYourLocation;
     private RecyclerView rvFeed;
     private FeedAdapter adapter;
+    private PostInteractions interactions;
+    private boolean messagePostsOnly=false;
+    private int visibleCount=5;
+    private boolean myRequests=false;
     private FloatingActionButton fabAdd;
     private View layoutEmpty;
     private SwipeRefreshLayout swipeRefresh;
@@ -82,11 +88,24 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     private NetworkMonitor networkMonitor;
     private UserModel currentUser;
     private AppStrings strings;
+    private Button btnTrackAcceptedPaths;
+    private final android.os.Handler bidTicker = new android.os.Handler(Looper.getMainLooper());
+    private final Runnable bidTickRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!isFinishing() && !isDestroyed()) {
+                applyAndShow();
+                bidTicker.postDelayed(this, 15000);
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        PostWorkflow.setViewerRole(Constants.ROLE_ANNOUNCER);
         setContentView(R.layout.activity_announcer_feed);
+        findViewById(R.id.btnHeaderInbox).setOnClickListener(v->startActivity(new Intent(this,InboxActivity.class)));
 
         strings = AppStrings.get(this);
 
@@ -132,6 +151,7 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
                 @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
                 @Override public void afterTextChanged(Editable s) {}
                 @Override public void onTextChanged(CharSequence s, int st, int b, int c) {
+                    visibleCount=5;
                     searchQuery = s.toString().trim().toLowerCase();
                     applyAndShow();
                 }
@@ -152,25 +172,27 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
                     startActivity(new Intent(AnnouncerFeedActivity.this, AddAnnouncementActivity.class)));
         }
 
-        TextView tvLangToggle = findViewById(R.id.tvLangToggle);
-        if (tvLangToggle != null) {
-            tvLangToggle.setText(LanguageManager.getToggleLabel(this));
-            tvLangToggle.setOnClickListener(v -> {
-                LanguageManager.toggle(this);
-                String uid = auth.getUid();
-                if (uid != null) LanguageManager.saveToFirebase(this, uid);
-                recreate();
-            });
-        }
+        setupLanguageToggle();
 
         setupBottomNav();
         selectedRadius = RadiusManager.getRadius(this);
+        if (selectedRadius < 0.5 || selectedRadius > 3.0) {
+            selectedRadius = 1.0;
+            RadiusManager.setRadius(this, 1.0);
+        }
         updateRadiusText();
         locationClient = LocationServices.getFusedLocationProviderClient(this);
         requestNotificationPermission();
         startNetworkMonitoring();
         loadUserThenStart();
         listenForUnreadMessages();
+        com.example.towncrierbd.utils.AppUpdateManager.listenForUpdates(this);
+        interactions=new PostInteractions(()->{if(interactions!=null){adapter.setHighlighted(interactions.ids);applyAndShow();}});
+        btnTrackAcceptedPaths=findViewById(R.id.btnTrackAcceptedPaths);
+        if(btnTrackAcceptedPaths!=null){
+            btnTrackAcceptedPaths.setText(PostCatalog.text(this,"🗺️ Track Paths","🗺️ ট্র্যাক পাথ"));
+            btnTrackAcceptedPaths.setOnClickListener(v->startActivity(new Intent(this, AnnouncerAcceptedMapActivity.class)));
+        }
     }
 
     // ✅ Apply all bilingual strings
@@ -197,8 +219,11 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        com.example.towncrierbd.services.DeliveryLocationService.resumeAssigned(this);
         if (fabAdd != null) fabAdd.show();
         if (bottomNav != null) bottomNav.setSelectedItemId(R.id.menu_feed);
+        bidTicker.removeCallbacks(bidTickRunnable);
+        bidTicker.postDelayed(bidTickRunnable, 15000);
 
         // Sync radius from Map/Global preference
         double savedRadius = RadiusManager.getRadius(this);
@@ -207,6 +232,12 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
             updateRadiusText();
             applyAndShow();
         }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        bidTicker.removeCallbacks(bidTickRunnable);
     }
 
     private void setupBottomNav() {
@@ -260,11 +291,75 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
                             badge.clearNumber();
                         }
                     } catch (Exception ignored) {}
+                    try {
+                        View dotUnread = findViewById(R.id.dotUnreadInbox);
+                        if (dotUnread != null) {
+                            dotUnread.setVisibility(unread > 0 ? View.VISIBLE : View.GONE);
+                        }
+                    } catch (Exception ignored) {}
                 });
             }
             @Override public void onCancelled(@NonNull DatabaseError error) {}
         };
         chatsRef.addValueEventListener(unreadListener);
+    }
+
+    private void setupLanguageToggle() {
+        View layoutLangToggle = findViewById(R.id.layoutLangToggle);
+        TextView tvLangBn = findViewById(R.id.tvLangBn);
+        TextView tvLangEn = findViewById(R.id.tvLangEn);
+
+        boolean isBn = LanguageManager.isBangla(this);
+
+        if (tvLangBn != null && tvLangEn != null) {
+            if (isBn) {
+                tvLangBn.setBackgroundResource(R.drawable.bg_lang_active_pill);
+                tvLangBn.setTextColor(android.graphics.Color.parseColor("#1565C0"));
+                tvLangEn.setBackground(null);
+                tvLangEn.setTextColor(android.graphics.Color.parseColor("#B0D2FF"));
+            } else {
+                tvLangEn.setBackgroundResource(R.drawable.bg_lang_active_pill);
+                tvLangEn.setTextColor(android.graphics.Color.parseColor("#1565C0"));
+                tvLangBn.setBackground(null);
+                tvLangBn.setTextColor(android.graphics.Color.parseColor("#B0D2FF"));
+            }
+
+            View.OnClickListener onToggle = v -> {
+                LanguageManager.toggle(this);
+                String uid = auth.getUid();
+                if (uid != null) LanguageManager.saveToFirebase(this, uid);
+                recreate();
+            };
+
+            if (layoutLangToggle != null) layoutLangToggle.setOnClickListener(onToggle);
+            tvLangBn.setOnClickListener(v -> {
+                if (!LanguageManager.isBangla(this)) {
+                    LanguageManager.setLanguage(this, LanguageManager.LANG_BN);
+                    String uid = auth.getUid();
+                    if (uid != null) LanguageManager.saveToFirebase(this, uid);
+                    recreate();
+                }
+            });
+            tvLangEn.setOnClickListener(v -> {
+                if (!LanguageManager.isEnglish(this)) {
+                    LanguageManager.setLanguage(this, LanguageManager.LANG_EN);
+                    String uid = auth.getUid();
+                    if (uid != null) LanguageManager.saveToFirebase(this, uid);
+                    recreate();
+                }
+            });
+        }
+
+        TextView tvLangToggle = findViewById(R.id.tvLangToggle);
+        if (tvLangToggle != null) {
+            tvLangToggle.setText(LanguageManager.getToggleLabel(this));
+            tvLangToggle.setOnClickListener(v -> {
+                LanguageManager.toggle(this);
+                String uid = auth.getUid();
+                if (uid != null) LanguageManager.saveToFirebase(this, uid);
+                recreate();
+            });
+        }
     }
 
     private void requestNotificationPermission() {
@@ -315,6 +410,7 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if(interactions!=null)interactions.close();
         if (feedListener != null)   annRef.removeEventListener(feedListener);
         if (unreadListener != null) chatsRef.removeEventListener(unreadListener);
         if (locationClient != null && locationCallback != null)
@@ -325,10 +421,11 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
 
     private void showRadiusDialog() {
         AppStrings s = AppStrings.get(this);
-        double[] values = {0.1, 0.5, 1.0, 2.0, 3.0};
+        double[] values = {0.5, 1.0, 1.5, 2.0, 2.5, 3.0};
         new AlertDialog.Builder(this)
                 .setTitle(s.feedSelectRadius())
                 .setItems(s.feedRadiusOptions(), (d, which) -> {
+                    visibleCount=5;
                     selectedRadius = values[which];
                     RadiusManager.setRadius(this, selectedRadius);
                     updateRadiusText();
@@ -362,6 +459,14 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
                     myHawkerSubcategories = u.getHawkerSubcategories();
                     if (u.getLanguage() != null && !u.getLanguage().isEmpty()) {
                         LanguageManager.setLanguage(AnnouncerFeedActivity.this, u.getLanguage());
+                    }
+                    if (!locationReady && u.getLat() != 0 && u.getLng() != 0) {
+                        myLat = u.getLat();
+                        myLng = u.getLng();
+                        locationReady = true;
+                        if (tvLocationName != null && u.getLocationName() != null && !u.getLocationName().isEmpty()) {
+                            tvLocationName.setText(u.getLocationName());
+                        }
                     }
                 }
                 attachFeedListenerOnce();
@@ -405,15 +510,37 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
         long now = System.currentTimeMillis();
         List<Announcement> out = new ArrayList<>();
 
+        // Collect this announcer's currently LIVE active announcement posts
+        List<Announcement> myActivePosts = new ArrayList<>();
+        if (myUid != null) {
+            for (Announcement p : all) {
+                if (p != null && !PostWorkflow.request(p) && myUid.equals(p.getUserId())
+                        && RequestLifecycle.live(p, now)) {
+                    myActivePosts.add(p);
+                }
+            }
+        }
+
+        int myAcceptedCount = 0;
         for (Announcement a : all) {
             if (a == null) continue;
-            if (myUid != null && myUid.equals(a.getUserId())) continue;
-            if (!a.isActive()) continue;
-            if (a.getExpireAt() > 0 && now > a.getExpireAt()) continue;
-
-            String postRole = resolvePostRole(a);
-            if (!Constants.ROLE_USER.equals(postRole)) continue;
-
+            if (PostWorkflow.request(a)) {
+                RequestBidManager.syncExpiredBidsIfNeeded(a, now);
+                if (RequestLifecycle.hasActiveJob(a, myUid, now)) {
+                    myAcceptedCount++;
+                }
+            }
+            boolean related=interactions!=null&&interactions.ids.contains(a.getId());
+            if (PostWorkflow.request(a)) {
+                if (!com.example.towncrierbd.utils.RequestLifecycle.visibleToSeller(a, myUid, now)) continue;
+                boolean isAssignedToMe = RequestLifecycle.hasActiveJob(a, myUid, now);
+                boolean isSpecificToMe = myUid != null && myUid.equals(a.getSourceAnnouncerUid());
+                // Self / general request: ONLY show if announcer has an active post containing ALL requested items
+                if (!isAssignedToMe && !isSpecificToMe) {
+                    if (!RequestMatcher.matchesAnnouncerActivePosts(a, myActivePosts, now)) continue;
+                }
+            } else if (!messagePostsOnly || !related || !PostWorkflow.owns(a) || !PostWorkflow.live(a)) continue;
+            if(messagePostsOnly&&!related)continue;
             if (!searchQuery.isEmpty()) {
                 String title = safe(a.getTitle()).toLowerCase();
                 String desc  = safe(a.getDescription()).toLowerCase();
@@ -423,20 +550,38 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
                         !cat.contains(searchQuery)) continue;
             }
 
-            if (!locationReady) continue;
-            double dist = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
-            if (dist <= selectedRadius) {
+            boolean assigned=RequestLifecycle.hasActiveJob(a, myUid, now)||(myUid!=null&&myUid.equals(a.getSourceAnnouncerUid()));
+            if(assigned||messagePostsOnly){out.add(a);continue;}
+            if (locationReady && a.getLat() != 0 && a.getLng() != 0) {
+                double dist = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
+                if (dist <= Math.min(selectedRadius, a.getRequestRadiusKm())) {
+                    out.add(a);
+                }
+            } else {
                 out.add(a);
             }
+        }
+
+        if (btnTrackAcceptedPaths != null) {
+            String base = PostCatalog.text(this, "🗺️ Track Paths", "🗺️ ট্র্যাক পাথ");
+            btnTrackAcceptedPaths.setText(myAcceptedCount > 0 ? (base + " (" + myAcceptedCount + ")") : base);
         }
 
         // Sort posts within radius by distance in ascending order (closest to announcer first)
         if (locationReady) {
             Collections.sort(out, (a1, a2) -> {
-                double d1 = DistanceUtil.distanceKm(myLat, myLng, a1.getLat(), a1.getLng());
-                double d2 = DistanceUtil.distanceKm(myLat, myLng, a2.getLat(), a2.getLng());
-                int cmp = Double.compare(d1, d2);
-                if (cmp != 0) return cmp;
+                boolean has1 = a1.getLat() != 0 && a1.getLng() != 0;
+                boolean has2 = a2.getLat() != 0 && a2.getLng() != 0;
+                if (has1 && has2) {
+                    double d1 = DistanceUtil.distanceKm(myLat, myLng, a1.getLat(), a1.getLng());
+                    double d2 = DistanceUtil.distanceKm(myLat, myLng, a2.getLat(), a2.getLng());
+                    int cmp = Double.compare(d1, d2);
+                    if (cmp != 0) return cmp;
+                } else if (has1) {
+                    return -1;
+                } else if (has2) {
+                    return 1;
+                }
                 return Long.compare(a2.getTime(), a1.getTime());
             });
         } else {
@@ -444,11 +589,12 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
             Collections.sort(out, (a1, a2) -> Long.compare(a2.getTime(), a1.getTime()));
         }
 
-        adapter.setData(out);
+        adapter.setData(new ArrayList<>(out.subList(0,Math.min(visibleCount,out.size()))));
+        adapter.setShowMore(out.size()>visibleCount,()->{visibleCount+=5;applyAndShow();});
         if (locationReady) adapter.setMyLocation(myLat, myLng);
 
         if (layoutEmpty != null) {
-            layoutEmpty.setVisibility(out.isEmpty() && locationReady ? View.VISIBLE : View.GONE);
+            layoutEmpty.setVisibility(out.isEmpty() ? View.VISIBLE : View.GONE);
         }
         if (fabAdd != null) fabAdd.show();
     }
@@ -481,9 +627,15 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     }
 
     private void startLiveLocation() {
+        if (tvLocationName != null) {
+            tvLocationName.setOnClickListener(v -> {
+                if (!isLocationEnabled()) {
+                    startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+                }
+            });
+        }
         if (!isLocationEnabled()) {
-            if (tvLocationName != null) tvLocationName.setText(strings.feedTurnOnGps());
-            startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+            if (tvLocationName != null && !locationReady) tvLocationName.setText(strings.feedTurnOnGps());
             return;
         }
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
@@ -492,6 +644,21 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_REQ);
             return;
         }
+        try {
+            locationClient.getLastLocation().addOnSuccessListener(loc -> {
+                if (loc != null) {
+                    myLat = loc.getLatitude();
+                    myLng = loc.getLongitude();
+                    locationReady = true;
+                    String nice = getNiceLocationName(myLat, myLng);
+                    if (tvLocationName != null) tvLocationName.setText(nice);
+                    updateUserLocationInFirebase(myLat, myLng, nice);
+                    updateAnnouncementsLocationInFirebase(myLat, myLng);
+                    adapter.setMyLocation(myLat, myLng);
+                    applyAndShow();
+                }
+            });
+        } catch (SecurityException ignored) {}
         LocationRequest req = new LocationRequest.Builder(
                 Priority.PRIORITY_BALANCED_POWER_ACCURACY, 10000)
                 .setMinUpdateIntervalMillis(5000)
@@ -507,11 +674,31 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
                 String nice = getNiceLocationName(myLat, myLng);
                 if (tvLocationName != null) tvLocationName.setText(nice);
                 updateUserLocationInFirebase(myLat, myLng, nice);
+                updateAnnouncementsLocationInFirebase(myLat, myLng);
                 adapter.setMyLocation(myLat, myLng);
                 applyAndShow();
             }
         };
         locationClient.requestLocationUpdates(req, locationCallback, Looper.getMainLooper());
+    }
+
+    private void updateAnnouncementsLocationInFirebase(double lat, double lng) {
+        String uid = auth.getUid();
+        if (uid == null) return;
+        for (Announcement a : all) {
+            if (a != null && uid.equals(a.getUserId()) && a.isActive() && !PostWorkflow.request(a)) {
+                // If location changed by more than 20 meters, update in Firebase Realtime Database
+                if (DistanceUtil.distanceKm(a.getLat(), a.getLng(), lat, lng) > 0.02) {
+                    a.setLat(lat);
+                    a.setLng(lng);
+                    Map<String, Object> locMap = new HashMap<>();
+                    locMap.put("lat", lat);
+                    locMap.put("lng", lng);
+                    locMap.put("locationUpdatedAt", ServerValue.TIMESTAMP);
+                    annRef.child(a.getId()).updateChildren(locMap);
+                }
+            }
+        }
     }
 
     private String getNiceLocationName(double lat, double lng) {
@@ -532,12 +719,13 @@ public class AnnouncerFeedActivity extends AppCompatActivity {
     }
 
     private void updateUserLocationInFirebase(double lat, double lng, String name) {
+        if(com.example.towncrierbd.services.DeliveryLocationService.isRunning())return;
         String uid = auth.getUid();
         if (uid == null) return;
         DatabaseReference ref = userRef.child(uid);
-        ref.child("lat").setValue(lat);
-        ref.child("lng").setValue(lng);
-        ref.child("locationName").setValue(name);
+        java.util.Map<String,Object> update=new java.util.HashMap<>();
+        update.put("lat",lat);update.put("lng",lng);update.put("locationName",name);update.put("locationUpdatedAt",com.google.firebase.database.ServerValue.TIMESTAMP);
+        ref.updateChildren(update);
     }
 
     private boolean isLocationEnabled() {

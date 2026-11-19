@@ -1,0 +1,18 @@
+TownCrierBD offline voice dependencies
+
+sherpa-onnx v2.0.1, k2-fsa contributors, Apache License 2.0.
+https://github.com/k2-fsa/sherpa-onnx/tree/v2.0.1
+
+Bengali: Alpha Cephei Vosk small streaming Bengali v0.60 (Zipformer2), Apache License 2.0.
+https://huggingface.co/alphacep/vosk-model-small-streaming-bn
+Revision: dfabeea5eee1f33d81436826d0575d8cfd64bd1d
+
+English: sherpa-onnx streaming Zipformer en-20M-2023-02-17, Apache License 2.0.
+Exported by csukuangfj from desh2608/icefall-asr-librispeech-pruned-transducer-stateless7-streaming-small.
+https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17
+Revision: d42f2d9f7ca24806fb667456a18a9f1b60f70d16
+
+No model weights are modified. English uses upstream int8 encoder/joiner and float decoder.
+Binaries are fetched at build time from the official repositories. SHA256/size checks cover every native/model binary. Text vocabularies are commit-pinned and validated.
+Apache License 2.0 is included as sherpa-onnx-APACHE-2.0.txt.
+Recognition runs on the phone. Audio is not sent to a speech API. Publishing still uploads the original audio to the existing media service.

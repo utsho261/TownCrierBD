@@ -51,3 +51,13 @@ app/google-services.json
 .DS_Store
 Thumbs.db
 captures/
+
+# Downloaded, verified offline speech build dependencies
+.offline-voice/
+
+# Test artifacts and screenshots
+screen_*.png
+window_dump*.xml
+test_evidence/
+TEST_REPORT.md
+

@@ -15,6 +15,7 @@ import com.example.towncrierbd.utils.AppStrings;
 import com.example.towncrierbd.utils.CategoryConfig;
 import com.example.towncrierbd.utils.CategoryConfig.HawkerCategory;
 import com.example.towncrierbd.utils.CategoryConfig.SubGroup;
+import com.example.towncrierbd.utils.PostCatalog;
 import com.example.towncrierbd.utils.LanguageManager;
 
 import java.util.*;
@@ -60,7 +61,7 @@ public class HawkerCategoryActivity extends AppCompatActivity {
             if (preOthers != null && !preOthers.isEmpty()) othersCustomName = preOthers;
         }
 
-        buildUI();
+        PostCatalog.load(this, this::buildUI);
     }
 
     private void buildUI() {
@@ -123,11 +124,17 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         llCategoryList.setOrientation(LinearLayout.VERTICAL);
         container.addView(llCategoryList);
 
-        for (HawkerCategory cat : CategoryConfig.HAWKER_CATEGORIES) {
+        for (HawkerCategory cat : PostCatalog.sorted(this)) {
             addCategoryRow(cat);
         }
 
         restorePreSelectedUI();
+        Button addCategory = new Button(this);
+        addCategory.setText(PostCatalog.text(this,"+ Add category","+ ক্যাটাগরি যোগ করুন"));
+        addCategory.setOnClickListener(v -> PostCatalog.addDialog(this, name -> {
+            selectedCategories.add(name); buildUI();
+        }));
+        container.addView(addCategory);
         root.addView(container);
 
         FrameLayout frame = new FrameLayout(this);
@@ -166,7 +173,7 @@ public class HawkerCategoryActivity extends AppCompatActivity {
     }
 
     private void restorePreSelectedUI() {
-        for (HawkerCategory cat : CategoryConfig.HAWKER_CATEGORIES) {
+        for (HawkerCategory cat : PostCatalog.sorted(this)) {
             if (!selectedCategories.contains(cat.name)) continue;
 
             View row = catRowMap.get(cat.name);
@@ -352,15 +359,6 @@ public class HawkerCategoryActivity extends AppCompatActivity {
         panel.addView(tvSelectAll);
 
         for (SubGroup group : cat.subGroups) {
-            TextView tvGroup = new TextView(this);
-            // ✅ Show group name in current language
-            tvGroup.setText("▸ " + (isBn ? group.groupNameBn : group.groupName));
-            tvGroup.setTextSize(12);
-            tvGroup.setTypeface(null, android.graphics.Typeface.BOLD);
-            tvGroup.setTextColor(0xFF6B7280);
-            tvGroup.setPadding(0, dp(10), 0, dp(4));
-            panel.addView(tvGroup);
-
             // ✅ Display items in current language but store English keys
             List<String> displayItems = isBn ? group.itemsBn : group.items;
             for (int i = 0; i < displayItems.size(); i += 2) {

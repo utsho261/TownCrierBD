@@ -47,9 +47,19 @@ public class AudioRecorderHelper {
 
     public boolean isRecording() { return isRecording; }
 
+    public int getMaxAmplitude() {
+        if (recorder != null && isRecording) {
+            try {
+                return recorder.getMaxAmplitude();
+            } catch (Exception ignored) {}
+        }
+        return 0;
+    }
+
     // ── Recording ──────────────────────────────────────────────────────────
 
     public void startRecording(RecordListener listener) {
+        if (isRecording) { if (listener != null) listener.onError("Already recording"); return; }
         try {
             File dir = context.getCacheDir();
             if (!dir.exists()) dir.mkdirs();
@@ -77,7 +87,7 @@ public class AudioRecorderHelper {
             if (listener != null) listener.onRecordStarted();
 
         } catch (Exception e) {
-            isRecording = false;
+            cancelRecording();
             if (listener != null) listener.onError("Recording failed: " + e.getMessage());
         }
     }
@@ -94,8 +104,7 @@ public class AudioRecorderHelper {
             isRecording = false;
             if (listener != null) listener.onRecordStopped(outputPath);
         } catch (Exception e) {
-            recorder = null;
-            isRecording = false;
+            cancelRecording();
             if (listener != null) listener.onError("Stop failed: " + e.getMessage());
         }
     }
@@ -115,16 +124,15 @@ public class AudioRecorderHelper {
 
     // ── Cloudinary Upload ──────────────────────────────────────────────────
 
-    /**
-     * Cloudinary REST API দিয়ে audio upload।
-     * resource_type = raw  →  .m4a / audio যেকোনো file accept করে।
-     * SDK ব্যবহার করা হয়নি কারণ Cloudinary Android SDK
-     * raw audio officially support করে না।
-     */
+    /** Audio assets use Cloudinary's video upload endpoint and retain their sound. */
     public static void uploadAudio(String localPath,
                                    String announcementId,
                                    UploadListener listener) {
+        uploadAudio(localPath, announcementId, listener, false);
+    }
 
+    public static void uploadAudio(String localPath, String announcementId,
+                                   UploadListener listener, boolean retainLocalCopy) {
         if (localPath == null || localPath.isEmpty()) {
             if (listener != null) listener.onError("No audio file path");
             return;
@@ -138,8 +146,8 @@ public class AudioRecorderHelper {
 
         new Thread(() -> {
             try {
-                String url = doUpload(file, announcementId, listener);
-                file.delete(); // local temp সরাও
+                String url = doUpload(file, announcementId + "_" + java.util.UUID.randomUUID(), listener);
+                if (!retainLocalCopy) file.delete();
                 if (url != null && listener != null) {
                     listener.onSuccess(url);
                 }
@@ -160,8 +168,8 @@ public class AudioRecorderHelper {
         String cloudName    = Constants.CLOUDINARY_CLOUD_NAME;
         String uploadPreset = Constants.CLOUDINARY_UPLOAD_PRESET;
 
-        // resource_type=raw → audio/video/any binary
-        String apiUrl    = "https://api.cloudinary.com/v1_1/" + cloudName + "/raw/upload";
+        // Cloudinary treats audio as a video asset without a visual track.
+        String apiUrl    = "https://api.cloudinary.com/v1_1/" + cloudName + "/video/upload";
         String boundary  = "TCBoundary" + System.currentTimeMillis();
         String CRLF      = "\r\n";
         String DASHDASH  = "--";
@@ -188,11 +196,41 @@ public class AudioRecorderHelper {
         out.writeBytes("Content-Disposition: form-data; name=\"public_id\"" + CRLF + CRLF);
         out.writeBytes("announcement_audio/" + publicId + CRLF);
 
+        // Determine dynamic extension & MIME type from actual file
+        String ext = "m4a";
+        String contentType = "audio/mp4";
+        String lowerName = file.getName().toLowerCase(java.util.Locale.ROOT);
+        if (lowerName.endsWith(".mp3")) {
+            ext = "mp3";
+            contentType = "audio/mpeg";
+        } else if (lowerName.endsWith(".wav")) {
+            ext = "wav";
+            contentType = "audio/wav";
+        } else if (lowerName.endsWith(".ogg")) {
+            ext = "ogg";
+            contentType = "audio/ogg";
+        } else if (lowerName.endsWith(".aac")) {
+            ext = "aac";
+            contentType = "audio/aac";
+        } else if (lowerName.endsWith(".flac")) {
+            ext = "flac";
+            contentType = "audio/flac";
+        } else if (lowerName.endsWith(".opus")) {
+            ext = "opus";
+            contentType = "audio/ogg";
+        } else if (lowerName.endsWith(".amr")) {
+            ext = "amr";
+            contentType = "audio/amr";
+        } else if (lowerName.endsWith(".3gp")) {
+            ext = "3gp";
+            contentType = "audio/3gpp";
+        }
+
         // ── file field ────────────────────────────────────────────────────
         out.writeBytes(DASHDASH + boundary + CRLF);
         out.writeBytes("Content-Disposition: form-data; name=\"file\"; "
-                + "filename=\"audio_" + publicId + ".m4a\"" + CRLF);
-        out.writeBytes("Content-Type: audio/mp4" + CRLF + CRLF);
+                + "filename=\"audio_" + publicId + "." + ext + "\"" + CRLF);
+        out.writeBytes("Content-Type: " + contentType + CRLF + CRLF);
 
         // File bytes + progress
         long   total    = file.length();

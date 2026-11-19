@@ -37,6 +37,7 @@ public class ImageSliderAdapter extends RecyclerView.Adapter<ImageSliderAdapter.
                 .load(url)
                 .centerCrop()
                 .placeholder(android.R.drawable.ic_menu_gallery)
+                .error(android.R.drawable.ic_menu_report_image)
                 .into(holder.ivImage);
 
         if (clickListener != null) {

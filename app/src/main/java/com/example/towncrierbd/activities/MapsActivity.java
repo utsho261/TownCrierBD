@@ -14,6 +14,11 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.view.ViewGroup;
+import com.google.android.gms.location.*;
+import android.os.Looper;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -32,9 +37,13 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.Circle;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import android.graphics.Color;
+import android.widget.HorizontalScrollView;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
@@ -44,7 +53,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
-import java.util.HashMap;
+import java.util.*;
 import java.util.Locale;
 import java.util.Map;
 
@@ -63,6 +72,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private String myRole   = "";
     private String wantRole = "";
+    private String myName   = "";
+    private String myPhotoUrl = "";
 
     private BottomSheetBehavior<View> sheetBehavior;
     private View bottomSheet;
@@ -70,17 +81,32 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private ImageView btnCloseSheet;
     private View coverPlaceholder;
     private TextView tvBadge, tvTitle, tvDesc, tvDistance, tvRadius;
+    private TextView tvHeaderTitle, tvRadiusPill;
+    private ImageView btnBack;
+    private HorizontalScrollView scrollNearest;
+    private LinearLayout nearestChipsLayout;
     private Button btnDetails;
     private ImageButton btnChat, btnCall;
     private ImageButton btnDirectionSheet;
 
     private FloatingActionButton fabMyLoc, fabDirections;
+    private View fabRow;
 
     private final Map<String, Announcement> markerMap = new HashMap<>();
     private Announcement lastSelected = null;
     private double selectedRadius;
+    private Circle radiusCircle = null;
+    private boolean initialZoomDone = false;
 
     private ValueEventListener annListener = null;
+    private final List<Announcement> mapPosts=new ArrayList<>();
+    private final List<Announcement> myOwnActivePosts=new ArrayList<>();
+    private final Map<String,ValueEventListener> sellerListeners=new HashMap<>();
+    private final Map<String,UserModel> sellerLocations=new HashMap<>(), previousSellerLocations=new HashMap<>();
+    private TextView movementLabel;
+    private boolean focusedNearest;
+    private LocationCallback liveLocation;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -107,13 +133,48 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         tvDesc            = findViewById(R.id.tvDesc);
         tvDistance        = findViewById(R.id.tvDistance);
         tvRadius          = findViewById(R.id.tvRadius);
+        tvHeaderTitle     = findViewById(R.id.tvHeaderTitle);
+        tvRadiusPill      = findViewById(R.id.tvRadiusPill);
+        btnBack           = findViewById(R.id.btnBack);
+        if (btnBack != null) btnBack.setOnClickListener(v -> finish());
+
+        scrollNearest      = findViewById(R.id.scrollNearest);
+        nearestChipsLayout = findViewById(R.id.nearestChipsLayout);
+
         btnDetails        = findViewById(R.id.btnDetails);
         btnChat           = findViewById(R.id.btnChat);
         btnCall           = findViewById(R.id.btnCall);
         btnDirectionSheet = findViewById(R.id.btnDirectionSheet);
-        ImageView btnFilter = findViewById(R.id.btnFilter);
+        View btnFilter    = findViewById(R.id.btnFilter);
+
+        movementLabel=new TextView(this);movementLabel.setTextSize(14);
+        if (tvDistance != null && tvDistance.getParent() instanceof LinearLayout) {
+            ((LinearLayout)tvDistance.getParent()).addView(movementLabel,((LinearLayout)tvDistance.getParent()).indexOfChild(tvDistance)+1);
+        }
+
+        fabRow            = findViewById(R.id.fabRow);
         fabMyLoc          = findViewById(R.id.fabMyLoc);
         fabDirections     = findViewById(R.id.fabDirections);
+
+        // Slide FABs up smoothly when bottom sheet expands
+        if (bottomSheet != null && sheetBehavior != null) {
+            sheetBehavior.addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
+                @Override
+                public void onStateChanged(@NonNull View sheet, int newState) {
+                    if (newState == BottomSheetBehavior.STATE_HIDDEN && fabRow != null) {
+                        fabRow.animate().translationY(0).setDuration(150).start();
+                    }
+                }
+
+                @Override
+                public void onSlide(@NonNull View sheet, float slideOffset) {
+                    if (fabRow != null) {
+                        float h = sheet.getHeight();
+                        fabRow.setTranslationY(-h * Math.max(0f, slideOffset));
+                    }
+                }
+            });
+        }
 
         if (btnCloseSheet != null) {
             btnCloseSheet.setOnClickListener(v -> {
@@ -129,10 +190,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         selectedRadius = RadiusManager.getRadius(this);
         updateRadiusBanner();
 
-        selectedRadius = RadiusManager.getRadius(this);
-        updateRadiusBanner();
-
-        if (fabMyLoc != null)      fabMyLoc.setOnClickListener(v -> requestLocation());
+        if (fabMyLoc != null) {
+            fabMyLoc.setOnClickListener(v -> {
+                if (hasMyLoc && mMap != null) {
+                    zoomToRadius(true);
+                }
+                requestLocation();
+            });
+        }
         if (fabDirections != null) fabDirections.setOnClickListener(v -> openDirectionsToSelected());
 
         SupportMapFragment mapFragment = (SupportMapFragment)
@@ -142,9 +207,15 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         loadMyRoleThenStart();
     }
 
+    @Override protected void onResume(){super.onResume();if(fusedLoc!=null){selectedRadius=RadiusManager.getRadius(this);updateRadiusBanner();requestLocation();}}
+    @Override protected void onPause(){super.onPause();if(liveLocation!=null){fusedLoc.removeLocationUpdates(liveLocation);liveLocation=null;}}
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if(liveLocation!=null)fusedLoc.removeLocationUpdates(liveLocation);
+        for(Map.Entry<String,ValueEventListener> entry:sellerListeners.entrySet())userRef.child(entry.getKey()).removeEventListener(entry.getValue());
+        sellerListeners.clear();
         if (annListener != null && annRef != null) {
             annRef.removeEventListener(annListener);
             annListener = null;
@@ -165,6 +236,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 UserModel u = snapshot.getValue(UserModel.class);
                 myRole = safe(u == null ? "" : u.getRole());
+                myName = safe(u == null ? "" : u.getName());
+                myPhotoUrl = safe(u == null ? "" : u.getPhotoUrl());
                 if (myRole.isEmpty()) myRole = Constants.ROLE_USER;
                 wantRole = Constants.ROLE_ANNOUNCER.equals(myRole)
                         ? Constants.ROLE_USER : Constants.ROLE_ANNOUNCER;
@@ -219,8 +292,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_REQ);
             return;
         }
+        if(liveLocation==null) {
+            liveLocation=new LocationCallback(){@Override public void onLocationResult(@NonNull LocationResult result){if(result.getLastLocation()!=null)setMyLocation(result.getLastLocation());}};
+            LocationRequest request=new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY,10000).setMinUpdateIntervalMillis(5000).build();
+            fusedLoc.requestLocationUpdates(request,liveLocation,Looper.getMainLooper());
+        }
         fusedLoc.getLastLocation().addOnSuccessListener(loc -> {
-            if (loc != null) setMyLocation(loc);
+            if (loc != null && android.os.SystemClock.elapsedRealtimeNanos()-loc.getElapsedRealtimeNanos()<=120_000_000_000L) setMyLocation(loc);
             else             attachAnnouncementsListener();
         });
     }
@@ -229,20 +307,54 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         myLat    = loc.getLatitude();
         myLng    = loc.getLongitude();
         hasMyLoc = true;
-        if (mMap != null) {
-            LatLng me = new LatLng(myLat, myLng);
-            float zoom = getZoomForRadius(selectedRadius);
-            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(me, zoom));
+        String uid=auth.getUid();
+        if(uid!=null){Map<String,Object> update=new HashMap<>();update.put("lat",myLat);update.put("lng",myLng);update.put("locationUpdatedAt",com.google.firebase.database.ServerValue.TIMESTAMP);userRef.child(uid).updateChildren(update);}
+        if(mMap!=null){
+            if (!initialZoomDone) {
+                initialZoomDone = true;
+                zoomToRadius(true);
+            }
             attachAnnouncementsListener();
+            renderMapPosts();
         }
     }
 
+    private void drawRadiusCircle() {
+        if (mMap == null || !hasMyLoc) return;
+        if (radiusCircle != null) {
+            try { radiusCircle.remove(); } catch (Exception ignored) {}
+            radiusCircle = null;
+        }
+
+        double radiusMeters = selectedRadius * 1000.0;
+        CircleOptions circleOptions = new CircleOptions()
+                .center(new LatLng(myLat, myLng))
+                .radius(radiusMeters)
+                .strokeWidth(3.5f)
+                .strokeColor(Color.parseColor("#801565C0"))
+                .fillColor(Color.parseColor("#181565C0"))
+                .zIndex(1.0f);
+
+        radiusCircle = mMap.addCircle(circleOptions);
+    }
+
     private float getZoomForRadius(double radiusKm) {
-        if (radiusKm <= 0.11) return 18.0f; // 100m
-        if (radiusKm <= 0.51) return 16.5f; // 500m
-        if (radiusKm <= 1.1)  return 15.5f; // 1km
-        if (radiusKm <= 2.1)  return 14.5f; // 2km
-        return 14.0f; // 3km or more
+        if (radiusKm <= 0.12) return 17.6f; // 100m -> tight street-level zoom
+        if (radiusKm <= 0.55) return 15.8f; // 500m -> neighborhood zoom
+        if (radiusKm <= 1.15) return 14.8f; // 1 km -> area zoom
+        if (radiusKm <= 2.15) return 13.8f; // 2 km -> city-sector zoom
+        return 13.1f;                       // 3 km or more -> wider overview zoom
+    }
+
+    private void zoomToRadius(boolean animate) {
+        if (mMap == null || !hasMyLoc) return;
+        LatLng userPos = new LatLng(myLat, myLng);
+        float zoom = getZoomForRadius(selectedRadius);
+        if (animate) {
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(userPos, zoom), 600, null);
+        } else {
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(userPos, zoom));
+        }
     }
 
     private boolean isLocationEnabled() {
@@ -266,60 +378,153 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void attachAnnouncementsListener() {
-        if (annRef == null) return;
-        if (annListener != null) annRef.removeEventListener(annListener);
-
-        annListener = new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if (mMap == null) return;
-                AppStrings s = AppStrings.get(MapsActivity.this);
-
-                mMap.clear();
-                markerMap.clear();
-
-                if (hasMyLoc) {
-                    LatLng me = new LatLng(myLat, myLng);
-                    mMap.addMarker(new MarkerOptions()
-                            .position(me)
-                            .title(s.mapYou())
-                            .icon(BitmapDescriptorFactory.defaultMarker(
-                                    BitmapDescriptorFactory.HUE_AZURE)));
-                }
-
-                String myUid = auth.getUid();
-                long now = System.currentTimeMillis();
-
-                for (DataSnapshot ds : snapshot.getChildren()) {
-                    Announcement a = ds.getValue(Announcement.class);
-                    if (a == null) continue;
-                    if (a.getId() == null || a.getId().trim().isEmpty()) a.setId(ds.getKey());
-                    if (a.getId() == null) continue;
-                    if (myUid != null && myUid.equals(a.getUserId())) continue;
-                    if (!a.isActive()) continue;
-                    if (a.getExpireAt() > 0 && now > a.getExpireAt()) continue;
-                    String postRole = safe(a.getUserRole());
-                    if (!wantRole.equals(postRole)) continue;
-                    if (hasMyLoc) {
-                        double d = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng());
-                        if (d > selectedRadius) continue;
+        if(annRef==null || annListener!=null || wantRole.isEmpty())return;
+        annListener=new ValueEventListener(){
+            @Override public void onDataChange(@NonNull DataSnapshot data){
+                mapPosts.clear();myOwnActivePosts.clear();Set<String> owners=new HashSet<>();
+                for(DataSnapshot row:data.getChildren()){
+                    Announcement a=row.getValue(Announcement.class);
+                    if(a==null || !PostWorkflow.live(a))continue;
+                    a.setId(row.getKey());
+                    if(PostWorkflow.owns(a)){
+                        if(!PostWorkflow.request(a))myOwnActivePosts.add(a);
+                        continue;
                     }
-                    LatLng pos = new LatLng(a.getLat(), a.getLng());
-                    Marker m = mMap.addMarker(new MarkerOptions()
-                            .position(pos)
-                            .title(safe(a.getTitle()).isEmpty() ? "Announcement" : a.getTitle())
-                            .icon(BitmapDescriptorFactory.defaultMarker(
-                                    BitmapDescriptorFactory.HUE_VIOLET)));
-                    if (m != null) {
-                        m.setTag(a.getId());
-                        markerMap.put(a.getId(), a);
-                    }
+                    if(!wantRole.equals(a.getUserRole()))continue;
+                    mapPosts.add(a);
+                    if(a.getUserId()!=null && !a.getUserId().trim().isEmpty())owners.add(a.getUserId());
                 }
+                for(String uid:new ArrayList<>(sellerListeners.keySet()))if(!owners.contains(uid)){
+                    userRef.child(uid).removeEventListener(sellerListeners.remove(uid));sellerLocations.remove(uid);previousSellerLocations.remove(uid);
+                }
+                for(String uid:owners)watchSeller(uid);
+                renderMapPosts();
             }
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {}
-        };
-        annRef.addValueEventListener(annListener);
+            @Override public void onCancelled(@NonNull DatabaseError error){Toast.makeText(MapsActivity.this,error.getMessage(),Toast.LENGTH_SHORT).show();}
+        };annRef.addValueEventListener(annListener);
+    }
+    private void watchSeller(String uid){
+        if(sellerListeners.containsKey(uid))return;
+        ValueEventListener listener=new ValueEventListener(){
+            @Override public void onDataChange(@NonNull DataSnapshot data){
+                UserModel next=data.getValue(UserModel.class);if(next==null)return;
+                UserModel previous=sellerLocations.get(uid);
+                if(previous!=null && next.getLocationUpdatedAt()>previous.getLocationUpdatedAt())previousSellerLocations.put(uid,previous);
+                sellerLocations.put(uid,next);renderMapPosts();
+            }
+            @Override public void onCancelled(@NonNull DatabaseError error){}
+        };sellerListeners.put(uid,listener);userRef.child(uid).addValueEventListener(listener);
+    }
+    private void renderMapPosts(){
+        if(mMap==null || !hasMyLoc || wantRole.isEmpty())return;
+        mMap.clear();markerMap.clear();
+        if (nearestChipsLayout != null) nearestChipsLayout.removeAllViews();
+
+        String myUid = auth.getUid();
+        int myColor = Color.parseColor("#2563EB");
+        Marker myMarker = mMap.addMarker(new MarkerOptions()
+                .position(new LatLng(myLat, myLng))
+                .title(AppStrings.get(this).mapYou())
+                .icon(MapMarkerHelper.getInitialOrCachedDescriptor(this, myUid, myName, myPhotoUrl, myColor))
+                .anchor(0.5f, 1.0f));
+        MapMarkerHelper.bindProfileMarker(this, myMarker, myUid, myName, myPhotoUrl, myColor);
+        drawRadiusCircle();
+
+        List<Announcement> visible=new ArrayList<>();long now=System.currentTimeMillis();
+        for(Announcement a:mapPosts){
+            if(!PostWorkflow.live(a))continue;
+            if(PostWorkflow.request(a)){
+                RequestBidManager.syncExpiredBidsIfNeeded(a, now);
+                if(!RequestLifecycle.visibleToSeller(a, myUid, now))continue;
+                boolean isAssigned = RequestLifecycle.hasActiveJob(a, myUid, now);
+                boolean isSpecific = myUid != null && myUid.equals(a.getSourceAnnouncerUid());
+                if(!isAssigned && !isSpecific && !RequestMatcher.matchesAnnouncerActivePosts(a, myOwnActivePosts, now))continue;
+            }
+            UserModel live=sellerLocations.get(a.getUserId());
+            if(Constants.ROLE_ANNOUNCER.equals(a.getUserRole()) && live!=null && live.getLocationUpdatedAt()>0 && now-live.getLocationUpdatedAt()<=120000){a.setLat(live.getLat());a.setLng(live.getLng());}
+            double radius=PostWorkflow.request(a)?Math.min(selectedRadius,a.getRequestRadiusKm()):selectedRadius;
+            double distKm=DistanceUtil.distanceKm(myLat,myLng,a.getLat(),a.getLng());
+            if(distKm<=radius)visible.add(a);
+        }
+        visible.sort((a,b)->{int distance=Double.compare(DistanceUtil.distanceKm(myLat,myLng,a.getLat(),a.getLng()),DistanceUtil.distanceKm(myLat,myLng,b.getLat(),b.getLng()));return distance!=0?distance:Long.compare(b.getTime(),a.getTime());});
+
+        boolean isBn = LanguageManager.isBangla(this);
+        if (tvRadius != null) {
+            String countText;
+            if (visible.isEmpty()) {
+                countText = isBn ? "কাছাকাছি কোনো সক্রিয় পোস্ট নেই" : "No active posts in range";
+            } else {
+                countText = visible.size() + (isBn ? "টি পোস্ট সক্রিয়" : (visible.size() == 1 ? " post active" : " posts active"));
+            }
+            tvRadius.setText(AppStrings.get(this).feedWithinKmBanner(selectedRadius) + " • " + countText);
+        }
+
+        if (scrollNearest != null) {
+            scrollNearest.setVisibility(visible.isEmpty() ? View.GONE : View.VISIBLE);
+        }
+
+        for(Announcement a:visible){
+            UserModel owner = sellerLocations.get(a.getUserId());
+            String ownerName = (owner != null && owner.getName() != null && !owner.getName().trim().isEmpty())
+                    ? owner.getName() : a.getUserName();
+            String ownerPhoto = owner != null ? owner.getPhotoUrl() : "";
+            int pinColor = PostWorkflow.request(a) ? Color.parseColor("#E11D48") : Color.parseColor("#7C3AED");
+
+            Marker marker=mMap.addMarker(new MarkerOptions()
+                    .position(new LatLng(a.getLat(),a.getLng()))
+                    .title(a.getTitle())
+                    .icon(MapMarkerHelper.getInitialOrCachedDescriptor(this, a.getUserId(), ownerName, ownerPhoto, pinColor))
+                    .anchor(0.5f, 1.0f));
+            MapMarkerHelper.bindProfileMarker(this, marker, a.getUserId(), ownerName, ownerPhoto, pinColor);
+            if(marker!=null)marker.setTag(a.getId());markerMap.put(a.getId(),a);
+
+            if (nearestChipsLayout != null) {
+                TextView chip = new TextView(this);
+                chip.setBackgroundResource(R.drawable.bg_chip_nearest);
+                chip.setTextColor(Color.parseColor("#1565C0"));
+                chip.setTextSize(12);
+                chip.setTypeface(null, android.graphics.Typeface.BOLD);
+                int padH = (int)(12 * getResources().getDisplayMetrics().density);
+                int padV = (int)(6 * getResources().getDisplayMetrics().density);
+                chip.setPadding(padH, padV, padH, padV);
+                double distM = DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng()) * 1000.0;
+                String distStr = distM < 1000 ? String.format(Locale.getDefault(), "%.0fm", distM)
+                                              : String.format(Locale.getDefault(), "%.1fkm", distM / 1000.0);
+                chip.setText("📍 " + distStr + " • " + safe(a.getTitle()));
+
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+                lp.setMarginEnd((int)(8 * getResources().getDisplayMetrics().density));
+                chip.setLayoutParams(lp);
+
+                chip.setOnClickListener(v -> {
+                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(
+                            new LatLng(a.getLat(), a.getLng()),
+                            getZoomForRadius(selectedRadius)), 500, null);
+                    showBottomSheet(a);
+                });
+                nearestChipsLayout.addView(chip);
+            }
+        }
+        if(!focusedNearest && !visible.isEmpty()){
+            focusedNearest=true;
+        }
+        if(lastSelected!=null){
+            Announcement current=markerMap.get(lastSelected.getId());
+            if(current==null){lastSelected=null;if(sheetBehavior!=null)sheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);}
+            else if(sheetBehavior!=null && sheetBehavior.getState()!=BottomSheetBehavior.STATE_HIDDEN)showBottomSheet(current);
+        }
+    }
+    private String movement(Announcement a){
+        if(PostWorkflow.request(a))return "";
+        UserModel current=sellerLocations.get(a.getUserId()),previous=previousSellerLocations.get(a.getUserId());
+        int direction=current==null || previous==null?2:SellerMovement.direction(myLat,myLng,previous.getLat(),previous.getLng(),current.getLat(),current.getLng(),previous.getLocationUpdatedAt(),current.getLocationUpdatedAt(),System.currentTimeMillis());
+        if(direction==-1)return PostCatalog.text(this,"Seller moving towards you (approx.)","বিক্রেতা আপনার দিকে আসছেন (আনুমানিক)");
+        if(direction==1)return PostCatalog.text(this,"Seller moving away (approx.)","বিক্রেতা দূরে যাচ্ছেন (আনুমানিক)");
+        if(direction==0)return PostCatalog.text(this,"No significant movement","উল্লেখযোগ্য চলাচল নেই");
+        return PostCatalog.text(this,"Waiting for recent seller locations","বিক্রেতার সাম্প্রতিক অবস্থানের অপেক্ষায়");
     }
 
     private void showBottomSheet(Announcement a) {
@@ -336,6 +541,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         if (tvTitle != null) tvTitle.setText(safe(a.getTitle()));
         if (tvDesc  != null) tvDesc.setText(safe(a.getDescription()));
+        movementLabel.setText(movement(a));
+        btnCall.setVisibility(!safe(a.getPhone()).isEmpty() && (!PostWorkflow.request(a)||a.isShowPhone())?View.VISIBLE:View.GONE);
 
         // ✅ FIX: mapKmAway already returns a formatted string — no double-format
         if (tvDistance != null) {
@@ -373,52 +580,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             });
         }
 
-        if (btnChat != null) {
-            btnChat.setOnClickListener(v -> {
-                AppStrings as = AppStrings.get(this);
-                String postOwnerUid = safe(a.getUserId());
-                String myUidNow     = safe(auth.getUid());
-                if (postOwnerUid.isEmpty()) {
-                    Toast.makeText(this, as.mapCannotChat(), Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                if (myUidNow.equals(postOwnerUid)) {
-                    Toast.makeText(this, as.mapChatSelf(), Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                Intent i = new Intent(this, ChatActivity.class);
-                i.putExtra(ChatActivity.EXTRA_OTHER_UID,  postOwnerUid);
-                i.putExtra(ChatActivity.EXTRA_OTHER_NAME, safe(a.getUserName()));
-                startActivity(i);
-            });
-        }
+        if(btnChat!=null)btnChat.setOnClickListener(v->PostWorkflow.chat(this,a));
 
         if (btnDirectionSheet != null) {
             btnDirectionSheet.setOnClickListener(v ->
                     openDirectionsTo(a.getLat(), a.getLng()));
         }
 
-        if (btnDetails != null) {
-            btnDetails.setOnClickListener(v -> {
-                AppStrings as = AppStrings.get(this);
-                String dist = hasMyLoc
-                        ? as.mapKmAway(DistanceUtil.distanceKm(myLat, myLng, a.getLat(), a.getLng()))
-                        : "";
-                Intent intent = new Intent(MapsActivity.this, AnnouncementDetailActivity.class);
-                intent.putExtra(AnnouncementDetailActivity.EXTRA_TITLE,     safe(a.getTitle()));
-                intent.putExtra(AnnouncementDetailActivity.EXTRA_DESC,      safe(a.getDescription()));
-                intent.putExtra(AnnouncementDetailActivity.EXTRA_CATEGORY,  safe(a.getDisplayCategoryLabel()));
-                intent.putExtra(AnnouncementDetailActivity.EXTRA_PHONE,     safe(a.getPhone()));
-                intent.putExtra(AnnouncementDetailActivity.EXTRA_IMAGE_URL, safe(a.getImageUrl()));
-                intent.putExtra(AnnouncementDetailActivity.EXTRA_USER_NAME, safe(a.getUserName()));
-                intent.putExtra(AnnouncementDetailActivity.EXTRA_DISTANCE,  dist);
-                intent.putExtra(AnnouncementDetailActivity.EXTRA_TIME,      getRelativeTime(a.getTime()));
-                intent.putExtra(AnnouncementDetailActivity.EXTRA_OTHER_UID, safe(a.getUserId()));
-                intent.putExtra(AnnouncementDetailActivity.EXTRA_LAT,       a.getLat());
-                intent.putExtra(AnnouncementDetailActivity.EXTRA_LNG,       a.getLng());
-                startActivity(intent);
-            });
-        }
+        if(btnDetails!=null)btnDetails.setOnClickListener(v->PostWorkflow.detail(this,a));
 
         if (sheetBehavior != null)
             sheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
@@ -452,13 +621,33 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void updateRadiusBanner() {
-        if (tvRadius != null)
-            tvRadius.setText(AppStrings.get(this).feedWithinKmBanner(selectedRadius));
+        AppStrings s = AppStrings.get(this);
+        boolean isBn = LanguageManager.isBangla(this);
+
+        if (tvHeaderTitle != null) {
+            tvHeaderTitle.setText(s.mapTitle());
+        }
+
+        String radiusLabel = selectedRadius < 1.0
+                ? ((int) (selectedRadius * 1000)) + (isBn ? " মি" : " m")
+                : ((int) selectedRadius) + (isBn ? " কিমি" : " km");
+
+        if (tvRadiusPill != null) {
+            tvRadiusPill.setText("📍 " + radiusLabel + " ▾");
+        }
+
+        if (tvRadius != null) {
+            if (!hasMyLoc) {
+                tvRadius.setText(s.feedWithinKmBanner(selectedRadius) + " • " + s.feedDetecting());
+            } else {
+                tvRadius.setText(s.feedWithinKmBanner(selectedRadius));
+            }
+        }
     }
 
     private void showRadiusDialog() {
         AppStrings s = AppStrings.get(this);
-        double[] values = {0.1, 0.5, 1.0, 2.0, 3.0};
+        double[] values = {0.5, 1.0, 1.5, 2.0, 2.5, 3.0};
         new androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle(s.feedSelectRadius())
                 .setItems(s.feedRadiusOptions(), (d, which) -> {
@@ -466,14 +655,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     RadiusManager.setRadius(this, selectedRadius);
                     updateRadiusBanner();
 
-                    // Adjust camera zoom based on new radius if we have location
-                    if (hasMyLoc) {
-                        LatLng me = new LatLng(myLat, myLng);
-                        float zoom = getZoomForRadius(selectedRadius);
-                        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(me, zoom));
+                    // Smoothly animate camera zoom when range changes (zooms in if range decreases)
+                    if (hasMyLoc && mMap != null) {
+                        zoomToRadius(true);
                     }
 
-                    attachAnnouncementsListener(); // Refresh map markers
+                    focusedNearest = false;
+                    renderMapPosts();
                 }).show();
     }
 

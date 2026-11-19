@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
@@ -12,14 +14,23 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
 
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />
 
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
+
     <application
         android:name=".MyApplication"
         android:label="Town Crier BD"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/Theme.TownCrierBD"
         android:forceDarkAllowed="false"
         tools:targetApi="q">
@@ -49,17 +60,22 @@
         <activity android:name="com.example.towncrierbd.activities.HawkerCategoryActivity"
             android:windowSoftInputMode="adjustResize"/>
 
-        <activity android:name="com.example.towncrierbd.activities.ForgotPasswordActivity"/>
-        <activity android:name="com.example.towncrierbd.activities.AnnouncementDetailActivity"/>
+        <activity android:name="com.example.towncrierbd.activities.ForgotPasswordActivity" android:exported="true"/>
+        <activity android:name="com.example.towncrierbd.activities.AnnouncementDetailActivity" android:exported="true"/>
         <activity android:name="com.example.towncrierbd.activities.AddAnnouncementActivity"
-            android:windowSoftInputMode="adjustResize"/>
-        <activity android:name="com.example.towncrierbd.activities.MapsActivity"/>
-        <activity android:name="com.example.towncrierbd.activities.ProfileActivity"/>
-        <activity android:name="com.example.towncrierbd.activities.AnnouncerFeedActivity"/>
-        <activity android:name="com.example.towncrierbd.activities.GeneralFeedActivity"/>
-        <activity android:name="com.example.towncrierbd.activities.SignupActivity"/>
-        <activity android:name="com.example.towncrierbd.activities.ChatActivity"/>
-        <activity android:name="com.example.towncrierbd.activities.InboxActivity"/>
+            android:windowSoftInputMode="adjustResize"
+            android:exported="true"/>
+        <service android:name=".services.DeliveryLocationService" android:exported="false" android:foregroundServiceType="location"/>
+        <activity android:name=".activities.RequestTrackingActivity" android:exported="false"/>
+        <activity android:name=".activities.AnnouncerAcceptedMapActivity" android:exported="false"/>
+        <activity android:name=".activities.RequestNotificationActivity" android:exported="false"/>
+        <activity android:name="com.example.towncrierbd.activities.MapsActivity" android:exported="true"/>
+        <activity android:name="com.example.towncrierbd.activities.ProfileActivity" android:exported="true"/>
+        <activity android:name="com.example.towncrierbd.activities.AnnouncerFeedActivity" android:exported="true"/>
+        <activity android:name="com.example.towncrierbd.activities.GeneralFeedActivity" android:exported="true"/>
+        <activity android:name="com.example.towncrierbd.activities.SignupActivity" android:exported="true"/>
+        <activity android:name="com.example.towncrierbd.activities.ChatActivity" android:exported="true"/>
+        <activity android:name="com.example.towncrierbd.activities.InboxActivity" android:exported="true"/>
 
         <activity
             android:name="com.example.towncrierbd.activities.LoginActivity"

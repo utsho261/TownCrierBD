@@ -14,12 +14,12 @@
         <!-- Image + Back overlay -->
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="240dp">
+            android:layout_height="250dp">
 
             <View
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:background="#D0D0D0"/>
+                android:background="#E2E8F0"/>
 
             <androidx.viewpager2.widget.ViewPager2
                 android:id="@+id/vpImageSlider"
@@ -33,41 +33,47 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="bottom|end"
                 android:layout_margin="14dp"
-                android:background="#80000000"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
+                android:background="#99000000"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
                 android:paddingTop="4dp"
                 android:paddingBottom="4dp"
                 android:textColor="@android:color/white"
                 android:textSize="12sp"
+                android:textStyle="bold"
                 android:text="1/1"
                 android:visibility="gone" />
 
             <ImageView
                 android:id="@+id/btnBack"
-                android:layout_width="42dp"
-                android:layout_height="42dp"
-                android:layout_margin="14dp"
-                android:padding="8dp"
-                android:background="#88000000"
-                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_margin="16dp"
+                android:padding="10dp"
+                android:background="@drawable/bg_header_icon_btn"
+                android:src="@drawable/ic_arrow_back"
                 android:contentDescription="Back"
-                app:tint="@android:color/white"/>
+                app:tint="@android:color/white"
+                android:elevation="6dp"/>
         </FrameLayout>
 
         <!-- Content Card -->
-        <androidx.cardview.widget.CardView
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_margin="14dp"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="4dp">
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="14dp"
+            android:layout_marginTop="-16dp"
+            android:layout_marginBottom="24dp"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="6dp"
+            app:cardBackgroundColor="@color/white">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="18dp">
+                android:padding="20dp">
 
                 <!-- Category badge + Translate button row -->
                 <LinearLayout
@@ -78,29 +84,33 @@
 
                     <TextView
                         android:id="@+id/tvCategory"
-                        android:layout_width="0dp"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:background="#5E8B1A"
-                        android:paddingStart="12dp"
-                        android:paddingEnd="12dp"
-                        android:paddingTop="5dp"
-                        android:paddingBottom="5dp"
+                        android:background="@drawable/bg_badge_category"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:paddingTop="6dp"
+                        android:paddingBottom="6dp"
                         android:text="Category"
                         android:textColor="@android:color/white"
                         android:textStyle="bold"
                         android:textSize="13sp"/>
 
-                    <!-- ✅ NEW: Translate toggle button -->
-                    <Button
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1"/>
+
+                    <!-- Translate toggle button -->
+                    <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnTranslate"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="36dp"
-                        android:layout_marginStart="10dp"
                         android:text="🌐 English"
                         android:textAllCaps="false"
                         android:textSize="12sp"
+                        app:cornerRadius="10dp"
                         android:insetTop="0dp"
                         android:insetBottom="0dp"
                         android:paddingStart="12dp"
@@ -114,11 +124,12 @@
                     android:id="@+id/tvTitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
+                    android:layout_marginTop="14dp"
                     android:text="Title"
-                    android:textColor="#111111"
+                    android:textColor="#0F172A"
                     android:textStyle="bold"
-                    android:textSize="20sp"/>
+                    android:textSize="22sp"
+                    android:letterSpacing="0.01"/>
 
                 <!-- Description -->
                 <TextView
@@ -127,7 +138,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     android:text="Description"
-                    android:textColor="#444444"
+                    android:textColor="#475569"
                     android:textSize="15sp"
                     android:lineSpacingMultiplier="1.4"/>
 
@@ -137,19 +148,22 @@
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="wrap_content"
                     android:layout_height="48dp"
-                    android:layout_marginTop="12dp"
-                    android:text="🔊 Play Audio"
+                    android:layout_marginTop="14dp"
+                    android:text="🔊 Play Voice Broadcast"
                     android:textAllCaps="false"
                     android:textSize="14sp"
+                    android:textColor="#9333EA"
+                    app:strokeColor="#C084FC"
+                    app:cornerRadius="12dp"
                     android:visibility="gone"/>
 
                 <!-- Divider -->
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:layout_marginTop="16dp"
-                    android:layout_marginBottom="14dp"
-                    android:background="#E0E0E0"/>
+                    android:layout_marginTop="18dp"
+                    android:layout_marginBottom="16dp"
+                    android:background="#F1F5F9"/>
 
                 <!-- User row -->
                 <LinearLayout
@@ -160,20 +174,21 @@
 
                     <TextView
                         android:id="@+id/tvAvatar"
-                        android:layout_width="46dp"
-                        android:layout_height="46dp"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
                         android:gravity="center"
                         android:text="U"
                         android:textStyle="bold"
                         android:textColor="@android:color/white"
-                        android:textSize="18sp"
-                        android:background="#039BE5"/>
+                        android:textSize="19sp"
+                        android:background="@drawable/bg_avatar_circle"
+                        android:backgroundTint="#2563EB"/>
 
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:layout_marginStart="12dp"
+                        android:layout_marginStart="14dp"
                         android:orientation="vertical">
 
                         <TextView
@@ -182,8 +197,8 @@
                             android:layout_height="wrap_content"
                             android:text="User"
                             android:textStyle="bold"
-                            android:textSize="15sp"
-                            android:textColor="#222222"/>
+                            android:textSize="16sp"
+                            android:textColor="#0F172A"/>
 
                         <TextView
                             android:id="@+id/tvDistance"
@@ -191,7 +206,7 @@
                             android:layout_height="wrap_content"
                             android:text="Nearby"
                             android:textSize="13sp"
-                            android:textColor="#777777"/>
+                            android:textColor="#64748B"/>
                     </LinearLayout>
 
                     <TextView
@@ -200,16 +215,16 @@
                         android:layout_height="wrap_content"
                         android:text="Just now"
                         android:textSize="12sp"
-                        android:textColor="#999999"/>
+                        android:textColor="#94A3B8"/>
                 </LinearLayout>
 
                 <!-- Divider -->
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:layout_marginTop="14dp"
-                    android:layout_marginBottom="14dp"
-                    android:background="#E0E0E0"/>
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="16dp"
+                    android:background="#F1F5F9"/>
 
                 <!-- Call + Chat Buttons -->
                 <LinearLayout
@@ -217,45 +232,88 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal">
 
-                    <Button
+                    <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnCall"
                         android:layout_width="0dp"
-                        android:layout_height="50dp"
+                        android:layout_height="52dp"
                         android:layout_weight="1"
                         android:text="📞 Call"
                         android:textAllCaps="false"
                         android:textSize="15sp"
-                        android:backgroundTint="#1976F3"
+                        android:textStyle="bold"
+                        app:backgroundTint="#2563EB"
+                        app:cornerRadius="14dp"
                         android:textColor="@android:color/white"
                         android:layout_marginEnd="8dp"/>
 
-                    <Button
+                    <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnChat"
                         android:layout_width="0dp"
-                        android:layout_height="50dp"
+                        android:layout_height="52dp"
                         android:layout_weight="1"
                         android:text="💬 Chat"
                         android:textAllCaps="false"
                         android:textSize="15sp"
-                        android:backgroundTint="#25D366"
+                        android:textStyle="bold"
+                        app:backgroundTint="#059669"
+                        app:cornerRadius="14dp"
                         android:textColor="@android:color/white"/>
                 </LinearLayout>
 
                 <!-- Direction Button -->
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnDirection"
                     android:layout_width="match_parent"
-                    android:layout_height="50dp"
+                    android:layout_height="52dp"
                     android:layout_marginTop="10dp"
                     android:text="🧭 Get Directions"
                     android:textAllCaps="false"
                     android:textSize="15sp"
-                    android:backgroundTint="#FF7A00"
+                    android:textStyle="bold"
+                    app:backgroundTint="#F59E0B"
+                    app:cornerRadius="14dp"
                     android:textColor="@android:color/white"
                     android:visibility="gone"/>
 
+                <!-- Owner Action Buttons (Edit + Delete) -->
+                <LinearLayout
+                    android:id="@+id/layoutOwnerActions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="10dp"
+                    android:visibility="gone">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnEditPost"
+                        android:layout_width="0dp"
+                        android:layout_height="52dp"
+                        android:layout_weight="1"
+                        android:text="✏️ Edit"
+                        android:textAllCaps="false"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        app:backgroundTint="#2563EB"
+                        app:cornerRadius="14dp"
+                        android:textColor="@android:color/white"
+                        android:layout_marginEnd="8dp"/>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnDeletePost"
+                        android:layout_width="0dp"
+                        android:layout_height="52dp"
+                        android:layout_weight="1"
+                        android:text="🗑️ Delete"
+                        android:textAllCaps="false"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        app:backgroundTint="#EF4444"
+                        app:cornerRadius="14dp"
+                        android:textColor="@android:color/white"/>
+                </LinearLayout>
+
             </LinearLayout>
-        </androidx.cardview.widget.CardView>
+        </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

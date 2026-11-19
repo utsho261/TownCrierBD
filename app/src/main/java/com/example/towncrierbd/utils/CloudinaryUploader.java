@@ -32,6 +32,7 @@ public class CloudinaryUploader {
 
     public static void uploadBitmap(Context context, Bitmap bitmap, UploadListener listener) {
         try {
+            init(context.getApplicationContext());
             Bitmap scaled = scaleBitmap(bitmap, 900);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             scaled.compress(Bitmap.CompressFormat.JPEG, 75, baos);
@@ -56,7 +57,8 @@ public class CloudinaryUploader {
                         public void onSuccess(String requestId, Map resultData) {
                             String url = (String) resultData.get("secure_url");
                             tempFile.delete();
-                            listener.onSuccess(url != null ? url : "");
+                            if(url==null||!url.startsWith("https://"))listener.onError("Image upload returned no usable URL");
+                            else listener.onSuccess(url);
                         }
 
                         @Override

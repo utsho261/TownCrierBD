@@ -2,6 +2,7 @@ package com.example.towncrierbd.activities;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -43,6 +44,7 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         setContentView(R.layout.activity_login);
+        com.example.towncrierbd.utils.AppUpdateManager.listenForUpdates(this);
 
         etEmail          = findViewById(R.id.etEmail);
         etPassword       = findViewById(R.id.etPassword);
@@ -65,13 +67,42 @@ public class LoginActivity extends AppCompatActivity {
                     startActivity(new Intent(this, ForgotPasswordActivity.class)));
         }
 
-        // ✅ Language toggle — Login page er input khali thake so recreate safe
+        // ✅ Segmented Language toggle
+        setupLanguageToggle();
         if (tvLangToggle != null) {
             tvLangToggle.setOnClickListener(v -> {
                 LanguageManager.toggle(this);
                 recreate();
             });
         }
+    }
+
+    private void setupLanguageToggle() {
+        TextView tvLangBn = findViewById(R.id.tvLangBn);
+        TextView tvLangEn = findViewById(R.id.tvLangEn);
+
+        if (tvLangBn == null || tvLangEn == null) return;
+
+        boolean isBn = LanguageManager.isBangla(this);
+        if (isBn) {
+            tvLangBn.setBackgroundResource(R.drawable.bg_lang_active_pill);
+            tvLangBn.setTextColor(android.graphics.Color.parseColor("#1565C0"));
+            tvLangEn.setBackground(null);
+            tvLangEn.setTextColor(android.graphics.Color.parseColor("#B0D2FF"));
+        } else {
+            tvLangEn.setBackgroundResource(R.drawable.bg_lang_active_pill);
+            tvLangEn.setTextColor(android.graphics.Color.parseColor("#1565C0"));
+            tvLangBn.setBackground(null);
+            tvLangBn.setTextColor(android.graphics.Color.parseColor("#B0D2FF"));
+        }
+
+        View.OnClickListener onToggle = v -> {
+            LanguageManager.toggle(this);
+            recreate();
+        };
+
+        tvLangBn.setOnClickListener(onToggle);
+        tvLangEn.setOnClickListener(onToggle);
     }
 
     private void applyStrings() {

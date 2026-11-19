@@ -25,8 +25,12 @@ android {
         applicationId = "com.example.towncrierbd"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 4
+        versionName = "2.2"
+
+        ndk {
+            abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
+        }
 
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
         buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"$cloudinaryCloudName\"")
@@ -34,13 +38,28 @@ android {
         buildConfigField("String", "SERVER_URL", "\"$serverUrl\"")
     }
 
+    sourceSets.getByName("main").assets.srcDir(rootProject.file(".offline-voice/assets"))
+    androidResources { noCompress += "onnx" }
+
     buildFeatures {
         buildConfig = true
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file("towncrierbd-release.jks")
+            storePassword = "towncrierbd123"
+            keyAlias = "towncrierbd"
+            keyPassword = "towncrierbd123"
+            isV1SigningEnabled = true
+            isV2SigningEnabled = true
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
@@ -50,7 +69,25 @@ android {
     }
 }
 
+// Models are build dependencies; recognition never calls a paid speech service.
+val voiceCache = rootProject.file(".offline-voice")
+val voiceRuntime = rootProject.file(".offline-voice/runtime/sherpa-onnx-2.0.1.aar")
+val prepareOfflineVoice = tasks.register<JavaExec>("prepareOfflineVoice") {
+    group = "build setup"
+    description = "Download and verify free Bengali/English models for offline voice"
+    mainClass.set(rootProject.file("tools/PrepareOfflineVoice.java").absolutePath)
+    args(rootProject.projectDir.absolutePath)
+    if (gradle.startParameter.isOffline) args("--offline")
+    inputs.files(rootProject.file("tools/PrepareOfflineVoice.java"), rootProject.file("tools/offline-voice-manifest.tsv"))
+    outputs.dir(voiceCache)
+    outputs.upToDateWhen { false }
+}
+tasks.named("preBuild").configure { dependsOn(prepareOfflineVoice) }
+
 dependencies {
+    implementation(files(voiceRuntime).builtBy(prepareOfflineVoice))
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.7.20")
+
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
@@ -75,4 +112,6 @@ dependencies {
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 
     implementation("com.cloudinary:cloudinary-android:2.3.1")
+
+    testImplementation("junit:junit:4.13.2")
 }

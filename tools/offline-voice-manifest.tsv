@@ -1,0 +1,10 @@
+# destination	bytes (or token rows)	SHA256 (or tokens)	immutable HTTPS URL
+runtime/sherpa-onnx-2.0.1.aar	49441341	a8d09d1d32f3eb8520482c6d3d43fae674681c5b050385967c70a3c2c9bf0ee7	https://github.com/k2-fsa/sherpa-onnx/releases/download/v2.0.1/sherpa-onnx-2.0.1.aar
+assets/voice/bn/encoder.onnx	90994145	779f2412d6fa56f76be9fe71349cdf3edd10434ae9b1fc5e49834fb904320516	https://huggingface.co/alphacep/vosk-model-small-streaming-bn/resolve/dfabeea5eee1f33d81436826d0575d8cfd64bd1d/am-onnx/encoder.onnx
+assets/voice/bn/decoder.onnx	2093080	fc03e8ca154593b95748198a56de115d4e6048d97c41692f93dfefb05f3693b4	https://huggingface.co/alphacep/vosk-model-small-streaming-bn/resolve/dfabeea5eee1f33d81436826d0575d8cfd64bd1d/am-onnx/decoder.onnx
+assets/voice/bn/joiner.onnx	1026462	1df7319f4f9c36d7130cacaf629e1d52e904070e7a14bca9d4f209edeb162da6	https://huggingface.co/alphacep/vosk-model-small-streaming-bn/resolve/dfabeea5eee1f33d81436826d0575d8cfd64bd1d/am-onnx/joiner.onnx
+assets/voice/bn/tokens.txt	500	tokens	https://huggingface.co/alphacep/vosk-model-small-streaming-bn/resolve/dfabeea5eee1f33d81436826d0575d8cfd64bd1d/lang/tokens.txt
+assets/voice/en/encoder.onnx	42845182	3810755ce7c3ab26b42a8bcf39d191308fa27fb0f53358823ba46141d03b7eb3	https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/resolve/d42f2d9f7ca24806fb667456a18a9f1b60f70d16/encoder-epoch-99-avg-1.int8.onnx
+assets/voice/en/decoder.onnx	2092272	45a7f940ecfb53d89fa270ad11b88b961e53a317203eb24b1c8e95ed208b0f30	https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/resolve/d42f2d9f7ca24806fb667456a18a9f1b60f70d16/decoder-epoch-99-avg-1.onnx
+assets/voice/en/joiner.onnx	259572	e085d73b593cf9b0707f370dbd656d58327d3fe36d80d849202ef81df02cb01e	https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/resolve/d42f2d9f7ca24806fb667456a18a9f1b60f70d16/joiner-epoch-99-avg-1.int8.onnx
+assets/voice/en/tokens.txt	502	tokens	https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/resolve/d42f2d9f7ca24806fb667456a18a9f1b60f70d16/tokens.txt

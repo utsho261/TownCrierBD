@@ -9,6 +9,11 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.LinearLayout;
+import com.example.towncrierbd.utils.*;
+import com.example.towncrierbd.models.Announcement;
+import com.google.firebase.database.*;
+import androidx.annotation.NonNull;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.viewpager2.widget.ViewPager2;
@@ -39,6 +44,8 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
     public static final String EXTRA_LAT        = "lat";
     public static final String EXTRA_LNG        = "lng";
 
+    private DatabaseReference postRef;
+    private ValueEventListener postListener;
     private MediaPlayer mediaPlayer;
     private boolean isPlaying = false;
 
@@ -304,6 +311,7 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
                     return;
                 }
                 Intent i = new Intent(this, ChatActivity.class);
+                i.putExtra("announcementId",getIntent().getStringExtra("announcementId"));
                 i.putExtra(ChatActivity.EXTRA_OTHER_UID,  otherUid);
                 i.putExtra(ChatActivity.EXTRA_OTHER_NAME, safe(userName));
                 startActivity(i);
@@ -319,6 +327,61 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
                 btnDirection.setVisibility(View.GONE);
             }
         }
+        attachPostWorkflow();
+    }
+
+    private void attachPostWorkflow() {
+        String id=getIntent().getStringExtra("announcementId");if(id==null || id.isEmpty())return;
+        LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(0,16,0,16);
+        TextView desc=findViewById(R.id.tvDesc);LinearLayout parent=(LinearLayout)desc.getParent();parent.addView(panel,parent.indexOfChild(desc)+1);
+        postRef=FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS).child(id);
+        postListener=new ValueEventListener(){
+            @Override public void onDataChange(@NonNull DataSnapshot data){
+                Announcement a=data.getValue(Announcement.class);if(a==null){panel.removeAllViews();return;}a.setId(data.getKey());
+                PostWorkflow.bindActions(AnnouncementDetailActivity.this,panel,a,null);
+                Button chat=findViewById(R.id.btnChat);chat.setVisibility(PostWorkflow.chatPeer(a).isEmpty()?View.GONE:View.VISIBLE);
+                chat.setText("voice".equals(a.getContactMethod())?PostCatalog.text(AnnouncementDetailActivity.this,"🎙 Voice offer","🎙 ভয়েস অফার"):AppStrings.get(AnnouncementDetailActivity.this).cardChat());chat.setOnClickListener(v->PostWorkflow.chat(AnnouncementDetailActivity.this,a));
+                Button call=findViewById(R.id.btnCall);call.setVisibility(!safe(a.getPhone()).isEmpty() && (!PostWorkflow.request(a)||a.isShowPhone()) && !PostWorkflow.owns(a)?View.VISIBLE:View.GONE);
+                call.setOnClickListener(v->startActivity(new Intent(Intent.ACTION_DIAL,Uri.parse("tel:"+a.getPhone()))));
+
+                boolean isOwner = PostWorkflow.owns(a);
+                boolean isBn = LanguageManager.isBangla(AnnouncementDetailActivity.this);
+                View ownerLayout = findViewById(R.id.layoutOwnerActions);
+                if (ownerLayout != null) {
+                    ownerLayout.setVisibility(isOwner ? View.VISIBLE : View.GONE);
+                }
+                Button btnEditPost = findViewById(R.id.btnEditPost);
+                if (btnEditPost != null) {
+                    btnEditPost.setText(isBn ? "✏️ সম্পাদনা" : "✏️ Edit");
+                    btnEditPost.setOnClickListener(v -> {
+                        Intent intent = new Intent(AnnouncementDetailActivity.this, AddAnnouncementActivity.class);
+                        intent.putExtra(AddAnnouncementActivity.EXTRA_EDIT_ID, a.getId());
+                        startActivity(intent);
+                    });
+                }
+                Button btnDeletePost = findViewById(R.id.btnDeletePost);
+                if (btnDeletePost != null) {
+                    btnDeletePost.setText(isBn ? "🗑️ মুছুন" : "🗑️ Delete");
+                    btnDeletePost.setOnClickListener(v -> {
+                        new androidx.appcompat.app.AlertDialog.Builder(AnnouncementDetailActivity.this)
+                                .setTitle(isBn ? "পোস্ট মুছুন" : "Delete Post")
+                                .setMessage(isBn ? "আপনি কি নিশ্চিত যে এই পোস্টটি মুছে ফেলতে চান? এটি আর ফিরিয়ে আনা যাবে না।" : "Are you sure you want to delete this post? This cannot be undone.")
+                                .setPositiveButton(isBn ? "মুছুন" : "Delete", (dialog, which) -> {
+                                    FirebaseDatabase.getInstance().getReference(Constants.DB_ANNOUNCEMENTS)
+                                            .child(a.getId()).removeValue()
+                                            .addOnSuccessListener(unused -> {
+                                                Toast.makeText(AnnouncementDetailActivity.this, isBn ? "পোস্ট সফলভাবে মুছে ফেলা হয়েছে ✅" : "Post deleted successfully ✅", Toast.LENGTH_SHORT).show();
+                                                finish();
+                                            })
+                                            .addOnFailureListener(e -> Toast.makeText(AnnouncementDetailActivity.this, e.getMessage(), Toast.LENGTH_SHORT).show());
+                                })
+                                .setNegativeButton(isBn ? "বাতিল" : "Cancel", null)
+                                .show();
+                    });
+                }
+            }
+            @Override public void onCancelled(@NonNull DatabaseError error){Toast.makeText(AnnouncementDetailActivity.this,error.getMessage(),Toast.LENGTH_SHORT).show();}
+        };postRef.addValueEventListener(postListener);
     }
 
     private void openDirections(double destLat, double destLng) {
@@ -403,6 +466,7 @@ public class AnnouncementDetailActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if(postRef!=null && postListener!=null)postRef.removeEventListener(postListener);
         stopAudio();
     }
 

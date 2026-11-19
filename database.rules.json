@@ -1,0 +1,41 @@
+{
+  "rules": {
+    "phone_to_email": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "users": {
+      ".read": true,
+      ".write": "auth != null",
+      ".indexOn": ["phone"]
+    },
+    "categories": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "announcements": {
+      ".read": true,
+      ".write": "auth != null",
+      ".indexOn": ["userId", "acceptedByUid", "expireAt"]
+    },
+    "chats": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "requestTracking": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "requestNotifications": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$uid": {
+        ".indexOn": ["read", "timestamp"]
+      }
+    },
+    "app_update": {
+      ".read": true,
+      ".write": "auth != null"
+    }
+  }
+}
